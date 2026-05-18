@@ -37,25 +37,8 @@ export interface Schema_Association<
     value: Schema_Value<S>
 }
 
-/**
- * Limited allowed values
- */
-interface Enumeration<
-    T extends Data_Type
-> {
-    name: string
-    value: Data_Type_Map[T]
-}
 
-/**
- * Suggested/selectable values
- */
-interface Option<
-    T extends Data_Type
-> {
-    name: string
-    value: Data_Type_Map[T]
-}
+
 
 export interface Schema<
     T extends Data_Type = Data_Type
@@ -88,12 +71,12 @@ export interface Schema<
     /**
      * Limited allowed values
      */
-    enumerations?: Enumeration<T>[]
+    enumerations?: Data_Type_Map[T][]
 
     /**
-     * Suggested/selectable values
+     * Optional values not enforced
      */
-    options?: Option<T>[]
+    options?: Data_Type_Map[T][]
 
     /**
      * will probably make into relationship rather than property
