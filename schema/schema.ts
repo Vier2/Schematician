@@ -1,0 +1,122 @@
+
+type Data_Type =
+    | 'String'
+    | 'Number'
+    | 'Boolean'
+    | 'Interface'
+    | 'Associative_Array'
+
+type Data_Type_Map = {
+    String: string
+    Number: number
+    Boolean: boolean
+    Interface: Schema_Instance
+    Associative_Array: Record<string, unknown>
+}
+
+/**
+ * Value resolved from schema data type
+ */
+type Schema_Value<
+    S extends Schema
+> = Data_Type_Map[S['data_type']]
+
+/**
+ * Generic schema/value association
+ *
+ * Used for:
+ * - properties
+ * - identifiers
+ * - instance values
+ * - relationships
+ */
+export interface Schema_Association<
+    S extends Schema = Schema
+> {
+    schema: S
+    value: Schema_Value<S>
+}
+
+/**
+ * Limited allowed values
+ */
+interface Enumeration<
+    T extends Data_Type
+> {
+    name: string
+    value: Data_Type_Map[T]
+}
+
+/**
+ * Suggested/selectable values
+ */
+interface Option<
+    T extends Data_Type
+> {
+    name: string
+    value: Data_Type_Map[T]
+}
+
+export interface Schema<
+    T extends Data_Type = Data_Type
+> {
+    /**
+     * Semantic identifier
+     */
+    name: string
+
+    /**
+     * Determines runtime value typing
+     */
+    data_type: T
+
+    /**
+     * Structural decomposition
+     */
+    elements?: Schema[]
+
+    /**
+     * Property definitions
+     */
+    properties?: Schema_Association[]
+
+    /**
+     * Identifier definitions
+     */
+    identifiers?: Schema_Association[]
+
+    /**
+     * Limited allowed values
+     */
+    enumerations?: Enumeration<T>[]
+
+    /**
+     * Suggested/selectable values
+     */
+    options?: Option<T>[]
+
+    /**
+     * will probably make into relationship rather than property
+     */
+    instances?: Record<
+        string,
+        Data_Type_Map[T]
+    >
+
+    rules?: string
+
+    logic?: string
+
+    constraints?: string
+
+    relationships?: string
+}
+
+/**
+ * Runtime object instance
+ */
+export interface Schema_Instance {
+    schema: Schema
+
+    values?: Schema_Association[]
+}
