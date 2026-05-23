@@ -1,0 +1,120 @@
+/*make a function that will apply a descending indentation
+effect on any children of a div element. Current or new elements
+parameters: indentation amount and parent div element
+
+implementation:
+1. Shift current child elements
+    1a. Get all children element, sort from top to bottom
+    1b. iterate through the element, incrementally shifting by the the indentation parameter,
+        by setting the margin left attribute
+
+
+2. shift new elements
+    2a. add a event listener to div element
+    2b. Whenever child element is added, read adjacent sibling margin left value
+        and adding the margin left value to that, setting it
+*/
+
+import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./types/types";
+/**
+ Apply a Descending Indentation structure to elements currently in, and added to a div element
+ */
+
+export function Apply_Descending_Indentation(parent: HTMLDivElement, margin: number) {
+    Add_Flex_Style(parent, 'column')
+   Apply_Incremental_CSS_To_Children(parent, 'marginLeft', margin, 'px')
+    Observe_New_Children(parent, (node) => {
+        const previous = node.previousElementSibling as HTMLElement | null
+        const compute: Value_Computer = () => {
+            const previous_value = parseFloat(previous?.style.marginLeft ?? '0') || 0
+            return previous === null ? margin : previous_value + margin
+        }
+        Apply_Length_Value_CSS(node, "marginLeft", "px", compute())
+    })
+}
+export function Add_Flex_Style(element: HTMLElement, flex_direction: string) {
+    element.style.display = 'flex'
+    element.style.flexDirection = flex_direction
+}
+export function Apply_Incremental_CSS_To_Children(parent: HTMLDivElement, property: CSS_Property, 
+    init_value: number, unit: CSS_Unit
+) {
+    const children = Create_Child_Element_Array(parent)
+    children.forEach((element, index) => {
+        const value = (index + 1) * init_value
+        Apply_Length_Value_CSS(element, property, unit, value)
+    })
+
+}
+export function Convert_Camel_to_Kebab(camel: CSS_Property): string {
+    const kebab = (camel as string).replace(/[A-Z]/g, c => `-${c.toLowerCase()}`)
+    return kebab
+
+}
+
+export function Add_Header_For_Each_KeyValue(object: {[key: string]: any}, Parent: HTMLDivElement) {
+    const keys: string[] = Object.keys(object);
+    console.log(`keys ${keys}`)
+    console.log(`object ${JSON.stringify(object)}`)
+    keys.forEach(key => {
+        const parameter = document.createElement('header')
+        parameter.textContent = key
+        const value = document.createElement('header')
+        value.textContent = object[key]
+        const div = document.createElement('div');
+        Add_Flex_Style(div, 'row')
+        div.appendChild(parameter)
+        div.appendChild(value)
+        Parent.appendChild(div)
+    })
+}
+export function Observe_New_Children<T extends any[]>(
+    parent: HTMLElement,
+    handler: Element_Handler<T>,
+    ...args: T
+): MutationObserver {
+    const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (node instanceof HTMLElement) {
+                    handler(node, ...args)
+                }
+            }
+        }
+    })
+
+    observer.observe(parent, { childList: true })
+    return observer
+}
+
+
+//general operation. incrementation. 
+
+export function Create_Child_Element_Array(Div_Element: HTMLDivElement): HTMLElement[] {
+    const Child_Collection: HTMLCollection = Div_Element.children;
+    const Collection_Array: HTMLElement[] = Array.from(Child_Collection) as HTMLElement[]
+    return Collection_Array
+}
+
+/* 
+@param property - Css propetry for style in camelCase
+*/
+export function Apply_Length_Value_CSS(Element: HTMLElement, property: CSS_Property, unit: CSS_Unit, value: number) {
+    const kebab_property: string = Convert_Camel_to_Kebab(property)
+    Element.style.setProperty(kebab_property, `${value}${unit}`)
+    console.log(`apply style function unit: ${unit} value ${value}`)
+    console.log(`element margin ${window.getComputedStyle(Element).marginLeft}`)
+}
+
+/* as I'm pondering how to make the function singular resposibility and abstract, I kept going higher.
+ to explain I wanted to make a function to incrementally add a margin value to a list of html element
+ Then I considered if I should make a function to apply a margin, then I realized I should make the 
+unit and value a parameter. Then I realized that other css styles that the same parameters so I should
+make a function to apply a css style with style, unit, and parameter as inputs. But then I realized not all
+css styles have a unit, or share units. So now I should I should categorize css styles according to shared attributes,
+units, data type, and enumerations. Now i'm considering the fact that this may already be a library, and considering using
+a library for css styling like tailwind. But I'm inclined to not because of this principle I'm about to describe.
+I developed a inclication for universal, transferable, consistently deployable strategy over niche or hyperspecialized frameworks.
+So I would rather code in that way that will work in various environments or frameworks, which may be not the optimized or most efficient approach 
+for that one environment. But will have consistent success. I like domain fidelty. I like the idea of mathematical purity.
+*/
