@@ -14,7 +14,7 @@ implementation:
     2b. Whenever child element is added, read adjacent sibling margin left value
         and adding the margin left value to that, setting it
 */
-
+import type { Schema } from "./Schema/models";
 import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./types/types";
 /**
  Apply a Descending Indentation structure to elements currently in, and added to a div element
@@ -46,12 +46,35 @@ export function Apply_Incremental_CSS_To_Children(parent: HTMLDivElement, proper
     })
 
 }
+export function Render_Schema_MetaData(schema: Schema,
+    parent_container: HTMLDivElement
+) {
+    
+    schema.identifiers?.forEach(element => {
+        const div = document.createElement('div')
+        const identifier: HTMLParagraphElement = Make_Bold_P_Element(element.schema.name)
+        const value_element = document.createElement('p')
+        value_element.textContent = `${element.value}`
+        div.style.display = 'flex'
+        div.style.flexDirection = 'row'
+        div.style.gap = '5px'
+        div.appendChild(identifier)
+        div.appendChild(value_element)
+        parent_container.appendChild(div)
+    });
+
+}
 export function Convert_Camel_to_Kebab(camel: CSS_Property): string {
     const kebab = (camel as string).replace(/[A-Z]/g, c => `-${c.toLowerCase()}`)
     return kebab
 
 }
-
+export function Make_Bold_P_Element(text: string) {
+    const p = document.createElement('p')
+    p.style.fontWeight = 'bold'
+    p.textContent = text
+    return p
+}
 export function Add_Header_For_Each_KeyValue(object: {[key: string]: any}, Parent: HTMLDivElement) {
     const keys: string[] = Object.keys(object);
     console.log(`keys ${keys}`)

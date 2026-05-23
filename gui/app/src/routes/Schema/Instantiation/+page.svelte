@@ -77,18 +77,31 @@
 <script lang="ts">
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
-import { Apply_Descending_Indentation, Apply_Incremental_CSS_To_Children, Add_Header_For_Each_KeyValue } from "$lib/utils";
-import type { Schema } from "$lib/Schema/models";
+import { Apply_Descending_Indentation, Render_Schema_MetaData, Apply_Incremental_CSS_To_Children, Add_Header_For_Each_KeyValue } from "$lib/utils";
+import type { Schema, Schema_Association } from "$lib/Schema/models";
     onMount(() => {
         if (browser) {
+            const Definition: Schema = {'name': 'Definition', 'data_type': 'String'}
+
             const Hierarchical_Path_Div: HTMLDivElement = document.getElementById('Hierarchical_Path_Div') as HTMLDivElement;
             Apply_Descending_Indentation(Hierarchical_Path_Div, 42)
             Apply_Incremental_CSS_To_Children(Hierarchical_Path_Div, 'fontSize', 15, 'px')
-            const Coordinating_Conjunction_Schema: Schema = {'name': 'Complex Sentence', 'elements': [{'name': 'Coordinating Conjunction', 'data_type': 'String'}, 
-                {'name': 'Independent Clause', 'data_type': 'String'}
-            ], 'data_type': 'Interface'}
+            const Independent_Clause: Schema = {'name': 'Independent Clause', 'data_type': 'String'}
+            const Coordinating_Conjunction: Schema = {'name': 'Coordinating Conjunction', 'data_type': `String`}
+            const Complex_Sentence_Identifiers: Schema_Association[] = [{'schema': Definition, 'value': `
+             a sentence that combines one independent clause with at least one dependent clause`}]
+            const Complex_Sentence: Schema = {'name': 'Complex Sentence', 'data_type': 'Interface', 
+                'elements': [Independent_Clause, Coordinating_Conjunction],
+                'identifiers': Complex_Sentence_Identifiers
+            }
+
+
             const Current_Schema_Div: HTMLDivElement = document.getElementById('Current_Schema_Div') as HTMLDivElement
-            Add_Header_For_Each_KeyValue(Coordinating_Conjunction_Schema, Current_Schema_Div)
+            Render_Schema_MetaData(Complex_Sentence, Current_Schema_Div)
+            //function to take key of object and make it bold
+            //than take the value and show it side by side. Rememeber show certain level of depth, if its interface only show link
+
+
         }
     });
 </script>
