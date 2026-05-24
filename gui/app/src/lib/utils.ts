@@ -49,7 +49,8 @@ export function Apply_Incremental_CSS_To_Children(parent: HTMLDivElement, proper
 export function Render_Schema_MetaData(schema: Schema,
     parent_container: HTMLDivElement
 ) {
-    
+    const name = Make_Bold_P_Element(schema.name)
+    parent_container.appendChild(name)
     schema.identifiers?.forEach(element => {
         const div = document.createElement('div')
         const identifier: HTMLParagraphElement = Make_Bold_P_Element(element.schema.name)
@@ -62,7 +63,19 @@ export function Render_Schema_MetaData(schema: Schema,
         div.appendChild(value_element)
         parent_container.appendChild(div)
     });
-
+    schema.properties?.forEach(element => {
+        const div = document.createElement('div')
+        const property: HTMLParagraphElement = Make_Bold_P_Element(element.schema.name)
+        const value_element = document.createElement('p')
+        value_element.textContent = `${element.value}`
+        div.style.display = 'flex'
+        div.style.flexDirection = 'row'
+        div.style.gap = '5px'
+        div.appendChild(property)
+        div.appendChild(value_element)
+        parent_container.appendChild(div)
+    })
+    Apply_Descending_Indentation(parent_container, 40)
 }
 export function Convert_Camel_to_Kebab(camel: CSS_Property): string {
     const kebab = (camel as string).replace(/[A-Z]/g, c => `-${c.toLowerCase()}`)
