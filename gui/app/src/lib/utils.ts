@@ -105,25 +105,50 @@ export function Add_Hierarchical_Elements(
     Map_Div: HTMLDivElement,
     Top_Level_Schema: Schema
 ) {
-    function Render_Schema_Node(
-        schema: Schema,
-        parent: HTMLElement,
-        depth: number
-    ) {
-        const row = document.createElement('div')
-        Add_Flex_Style(row, 'row')
-        Apply_Length_Value_CSS(row, 'marginLeft', 'px', depth * 20)
+    
+    const list = Render_Schema_Node(Top_Level_Schema, Map_Div, 0)
+    return list
+}
+export function Apply_Hover_Highlight(element: HTMLElement, color: string) {
+    const original = element.style.backgroundColor
+    element.addEventListener('mouseenter', () => {
+        element.style.backgroundColor = color
+    })
+    element.addEventListener('mouseleave', () => {
+        element.style.backgroundColor = original
+    })
+}
+function Render_Schema_Node(
+    schema: Schema,
+    parent: HTMLElement,
+    depth: number,
+    list: { schema: Schema; element: HTMLParagraphElement }[] = []
+): { schema: Schema; element: HTMLParagraphElement }[] {
 
-        const label = Make_Bold_P_Element(schema.name)
-        row.appendChild(label)
-        parent.appendChild(row)
+    const row = document.createElement('div')
+    Add_Flex_Style(row, 'row')
+    Apply_Length_Value_CSS(row, 'marginLeft', 'px', depth * 20)
 
-        schema.elements?.forEach(child =>
-            Render_Schema_Node(child, parent, depth + 1)
-        )
-    }
+    const label = Make_Bold_P_Element(schema.name)
+    Apply_Hover_Highlight(label, 'red')
+    row.appendChild(label)
+    parent.appendChild(row)
 
-    Render_Schema_Node(Top_Level_Schema, Map_Div, 0)
+    list.push({ schema, element: label })
+
+    schema.elements?.forEach(child =>
+        Render_Schema_Node(child, parent, depth + 1, list)
+    )
+
+    return list
+}
+export function Add_Event_Map_Elements(current_schema_div: HTMLDivElement, list: { schema: Schema; element: HTMLParagraphElement }[] ) {
+    list.forEach(item => {
+        item.element.addEventListener('click', function() {
+            current_schema_div.replaceChildren()
+            Render_Schema_MetaData(item.schema, current_schema_div)
+        })
+    });
 }
 export function Make_Bold_P_Element(text: string) {
     const p = document.createElement('p')

@@ -29,7 +29,7 @@
         <div id="Current_Instance_MetaData_Div"> </div>
     </div>
     <div class="Right_Column">
-        <div id="Map_Div"></div>
+        <div id="Map_Div" class="border"></div>
         <button id="Next_Element_Button"> Next</button>
     </div>
     
@@ -41,6 +41,9 @@
         grid-template-columns: 1fr 1fr 1fr;
         height: 80vh;
         max-width: 100%;
+    }
+    .border {
+        border: 2px solid black
     }
     .Left_Column {
         /* Hierarchical Path, Schema App Mode, & Previous Element Arrow*/
@@ -77,7 +80,7 @@
 <script lang="ts">
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
-import { Add_Hierarchical_Elements, Apply_Descending_Indentation, Render_Schema_MetaData, Apply_Incremental_CSS_To_Children, Add_Header_For_Each_KeyValue } from "$lib/utils";
+import { Add_Hierarchical_Elements, Apply_Descending_Indentation, Render_Schema_MetaData, Apply_Incremental_CSS_To_Children, Add_Header_For_Each_KeyValue, Add_Event_Map_Elements } from "$lib/utils";
 import type { Schema, Schema_Association } from "$lib/Schema/models";
     onMount(() => {
         if (browser) {
@@ -87,7 +90,7 @@ import type { Schema, Schema_Association } from "$lib/Schema/models";
             Apply_Descending_Indentation(Hierarchical_Path_Div, 42)
             Apply_Incremental_CSS_To_Children(Hierarchical_Path_Div, 'fontSize', 15, 'px')
             const Independent_Clause: Schema = {'name': 'Independent Clause', 'data_type': 'String'}
-            const Dependent_Clause: Schema = {'name': 'Independent Clause', 'data_type': 'String'}
+            const Dependent_Clause: Schema = {'name': 'Dependent Clause', 'data_type': 'String'}
 
             const Subordinating_Conjunction: Schema = {'name': 'Subordinating Conjunction', 'data_type': `String`}
             const Complex_Sentence_Identifiers: Schema_Association[] = [{'schema': Definition, 'value': `
@@ -103,7 +106,8 @@ import type { Schema, Schema_Association } from "$lib/Schema/models";
             const Current_Schema_Div: HTMLDivElement = document.getElementById('Current_Schema_Div') as HTMLDivElement
             Render_Schema_MetaData(Complex_Sentence, Current_Schema_Div)
             const Map_Div: HTMLDivElement = document.getElementById('Map_Div') as HTMLDivElement
-            Add_Hierarchical_Elements(Map_Div, Complex_Sentence)
+            const list = Add_Hierarchical_Elements(Map_Div, Complex_Sentence)
+            Add_Event_Map_Elements(Current_Schema_Div, list)
 
         }
     });
