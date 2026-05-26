@@ -82,6 +82,49 @@ export function Convert_Camel_to_Kebab(camel: CSS_Property): string {
     return kebab
 
 }
+
+// export function Add_Hierarchical_Elements(Map_Div: HTMLDivElement, 
+//     Top_Level_Schema: Schema) {
+//     /**
+//      * Will need to take in state as well
+//      * 1. Recursively, For every element in the schema, make a p element,
+//      * with the text_content = to the schema.name
+//      * and for each hierarchical level, make a indentation
+//      * so for complex sentence
+//      *      Complex_Sentence
+//      *          Independent_Clause
+//      *          Subordinating_Conjunction
+//      *          Dependent_Clause
+//      * 
+//      * 3. 
+//      */
+   
+// }
+
+export function Add_Hierarchical_Elements(
+    Map_Div: HTMLDivElement,
+    Top_Level_Schema: Schema
+) {
+    function Render_Schema_Node(
+        schema: Schema,
+        parent: HTMLElement,
+        depth: number
+    ) {
+        const row = document.createElement('div')
+        Add_Flex_Style(row, 'row')
+        Apply_Length_Value_CSS(row, 'marginLeft', 'px', depth * 20)
+
+        const label = Make_Bold_P_Element(schema.name)
+        row.appendChild(label)
+        parent.appendChild(row)
+
+        schema.elements?.forEach(child =>
+            Render_Schema_Node(child, parent, depth + 1)
+        )
+    }
+
+    Render_Schema_Node(Top_Level_Schema, Map_Div, 0)
+}
 export function Make_Bold_P_Element(text: string) {
     const p = document.createElement('p')
     p.style.fontWeight = 'bold'
