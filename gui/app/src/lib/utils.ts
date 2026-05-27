@@ -142,13 +142,75 @@ function Render_Schema_Node(
 
     return list
 }
-export function Add_Event_Map_Elements(current_schema_div: HTMLDivElement, list: { schema: Schema; element: HTMLParagraphElement }[] ) {
-    list.forEach(item => {
+export function Add_Event_Map_Elements(current_schema_div: HTMLDivElement, 
+    list: { schema: Schema; element: HTMLParagraphElement }[],
+    previous_button: HTMLButtonElement, next_button: HTMLButtonElement ) {
+    for (const [index, item] of list.entries()) {
         item.element.addEventListener('click', function() {
             current_schema_div.replaceChildren()
             Render_Schema_MetaData(item.schema, current_schema_div)
+            Render_Adjacent_Elements(index, list, previous_button, next_button,
+                current_schema_div
+            )
+           
         })
-    });
+    }
+}
+export function Render_Adjacent_Elements(
+    current_index: number,
+    list: { schema: Schema; element: HTMLParagraphElement }[],
+    previous_button: HTMLButtonElement,
+    next_button: HTMLButtonElement,
+    current_schema_div: HTMLDivElement
+) {
+    const previous = list[current_index - 1]
+    const next = list[current_index + 1]
+
+    Modify_Button_Element(
+        previous_button,
+        previous?.schema ?? null,
+        current_index - 1,
+        list,
+        previous_button,
+        next_button,
+        current_schema_div
+    )
+
+    Modify_Button_Element(
+        next_button,
+        next?.schema ?? null,
+        current_index + 1,
+        list,
+        previous_button,
+        next_button,
+        current_schema_div
+    )
+}
+export function Modify_Button_Element(
+    button: HTMLButtonElement,
+    schema: Schema | null,
+    target_index: number,
+    list: { schema: Schema; element: HTMLParagraphElement }[],
+    previous_button: HTMLButtonElement,
+    next_button: HTMLButtonElement,
+    current_schema_div: HTMLDivElement
+) {
+    button.textContent = schema ? schema.name : '—'
+    button.disabled = schema === null
+
+    // Replaces any existing handler — no accumulation
+    button.onclick = () => {
+        if (!schema) return
+        current_schema_div.replaceChildren()
+        Render_Schema_MetaData(schema, current_schema_div)
+        Render_Adjacent_Elements(
+            target_index,
+            list,
+            previous_button,
+            next_button,
+            current_schema_div
+        )
+    }
 }
 export function Make_Bold_P_Element(text: string) {
     const p = document.createElement('p')
