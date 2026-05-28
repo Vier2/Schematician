@@ -25,7 +25,7 @@
     </div>
     <div class="Center_Column">
         <div id="Current_Schema_Div"></div>
-        <div id="Current_Instance_Div"></div>
+        <div id="Current_Instance_Div" class="current_instance_div"></div>
         <div id="Current_Instance_MetaData_Div"> </div>
     </div>
     <div class="Right_Column">
@@ -58,7 +58,7 @@
     .Center_Column {
         /* Schema Meta Data, Schema Value Box, Schema Instant Data */
         display: grid;
-        grid-template-rows: 20% 40% 20%
+        grid-template-columns;: 20% 40% 20%
     }
     .Right_Column {
         /* Map & Next Element Arrow */
@@ -73,6 +73,10 @@
   .Font_Size_Large {
     font-size: large;
     margin-left: 350px;
+  }
+  .current_instance_div {
+    display: flex;
+    justify-content: center;
   }
  
 </style>
@@ -115,6 +119,7 @@ import type { Schema, Schema_Association } from "$lib/Schema/models";
                 'identifiers': Complex_Sentence_Identifiers
             }
 
+            const Current_Instance_Div: HTMLDivElement = document.getElementById('Current_Instance_Div') as HTMLDivElement
 
             const Current_Schema_Div: HTMLDivElement = document.getElementById('Current_Schema_Div') as HTMLDivElement
             Render_Schema_MetaData(Complex_Sentence, Current_Schema_Div)
@@ -123,7 +128,7 @@ import type { Schema, Schema_Association } from "$lib/Schema/models";
             const previous_button: HTMLButtonElement = document.getElementById('Previous_Element_Button') as HTMLButtonElement
             const next_button: HTMLButtonElement = document.getElementById('Next_Element_Button') as HTMLButtonElement
 
-            Add_Event_Map_Elements(Current_Schema_Div, list, previous_button, next_button)
+            Add_Event_Map_Elements(Current_Schema_Div, list, previous_button, next_button, Current_Instance_Div)
         }
     });
 </script>

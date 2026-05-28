@@ -120,6 +120,17 @@ export interface Schema<
 
     relationships?: string
 }
+type character_limit = number
+type character_minimum = number
+type max_number = number
+type minimum_number = number
+
+export interface Constraint {
+    /**
+     * Constraints depends on data type
+     */
+    type: 
+}
 
 /**
  * Runtime object instance

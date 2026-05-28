@@ -46,6 +46,29 @@ export function Apply_Incremental_CSS_To_Children(parent: HTMLDivElement, proper
     })
 
 }
+export function Handle_Schema_input_rendering(schema: Schema, div: HTMLDivElement) {
+    if (schema.data_type != 'Interface' && schema.data_type != 'Associative_Array')
+    {
+        div.replaceChildren()
+        const input = Make_Schema_Input(schema)
+        div.appendChild(input)
+    }
+
+    //handle enumerations and options. Only allow one or the other
+    if (schema.enumerations) {
+        //select element
+    }
+    if (schema.options) {
+        //make input element with select element
+    }
+    
+
+}
+export function Make_Schema_Input(schema: Schema): HTMLInputElement {
+    const input = document.createElement('input')
+    input.type = schema.data_type.toLowerCase()
+    return input
+}
 export function Render_Schema_MetaData(schema: Schema,
     parent_container: HTMLDivElement
 ) {
@@ -144,14 +167,19 @@ function Render_Schema_Node(
 }
 export function Add_Event_Map_Elements(current_schema_div: HTMLDivElement, 
     list: { schema: Schema; element: HTMLParagraphElement }[],
-    previous_button: HTMLButtonElement, next_button: HTMLButtonElement ) {
+    previous_button: HTMLButtonElement, 
+    next_button: HTMLButtonElement,
+    current_instance_div: HTMLDivElement ) {
     for (const [index, item] of list.entries()) {
         item.element.addEventListener('click', function() {
             current_schema_div.replaceChildren()
             Render_Schema_MetaData(item.schema, current_schema_div)
             Render_Adjacent_Elements(index, list, previous_button, next_button,
-                current_schema_div
+                current_schema_div,
+                current_instance_div
             )
+            Handle_Schema_input_rendering(item.schema, 
+                current_instance_div)
            
         })
     }
@@ -161,7 +189,8 @@ export function Render_Adjacent_Elements(
     list: { schema: Schema; element: HTMLParagraphElement }[],
     previous_button: HTMLButtonElement,
     next_button: HTMLButtonElement,
-    current_schema_div: HTMLDivElement
+    current_schema_div: HTMLDivElement,
+    current_instance_div: HTMLDivElement
 ) {
     const previous = list[current_index - 1]
     const next = list[current_index + 1]
@@ -173,7 +202,8 @@ export function Render_Adjacent_Elements(
         list,
         previous_button,
         next_button,
-        current_schema_div
+        current_schema_div,
+        current_instance_div
     )
 
     Modify_Button_Element(
@@ -183,7 +213,8 @@ export function Render_Adjacent_Elements(
         list,
         previous_button,
         next_button,
-        current_schema_div
+        current_schema_div,
+        current_instance_div
     )
 }
 export function Modify_Button_Element(
@@ -193,7 +224,8 @@ export function Modify_Button_Element(
     list: { schema: Schema; element: HTMLParagraphElement }[],
     previous_button: HTMLButtonElement,
     next_button: HTMLButtonElement,
-    current_schema_div: HTMLDivElement
+    current_schema_div: HTMLDivElement,
+    current_instance_div: HTMLDivElement
 ) {
     button.textContent = schema ? schema.name : '—'
     button.disabled = schema === null
@@ -208,8 +240,10 @@ export function Modify_Button_Element(
             list,
             previous_button,
             next_button,
-            current_schema_div
+            current_schema_div,
+            current_instance_div
         )
+        Handle_Schema_input_rendering(schema, current_instance_div)
     }
 }
 export function Make_Bold_P_Element(text: string) {
