@@ -51,6 +51,8 @@ export function Handle_Schema_input_rendering(schema: Schema, div: HTMLDivElemen
     {
         div.replaceChildren()
         const input = Make_Schema_Input(schema)
+        const view = Make_Viewer_Element(input)
+        div.appendChild(view)
         div.appendChild(input)
     }
 
@@ -68,6 +70,21 @@ export function Make_Schema_Input(schema: Schema): HTMLInputElement {
     const input = document.createElement('input')
     input.type = schema.data_type.toLowerCase()
     return input
+}
+export function Make_Viewer_Element(input: HTMLInputElement): HTMLParagraphElement {
+    const p = document.createElement('p')
+    p.style.overflowWrap = 'break-word'
+    Link_Viewer_Input(p, input)
+    return p
+}
+
+export function Link_Viewer_Input(viewer: HTMLElement, input: HTMLElement) {
+    input.addEventListener('input', (event: Event) => {
+        let target = event.target as HTMLInputElement;
+        let value = target.value;
+        viewer.textContent = value
+
+    });
 }
 export function Render_Schema_MetaData(schema: Schema,
     parent_container: HTMLDivElement
@@ -173,6 +190,7 @@ export function Add_Event_Map_Elements(current_schema_div: HTMLDivElement,
     for (const [index, item] of list.entries()) {
         item.element.addEventListener('click', function() {
             current_schema_div.replaceChildren()
+            current_instance_div.replaceChildren()
             Render_Schema_MetaData(item.schema, current_schema_div)
             Render_Adjacent_Elements(index, list, previous_button, next_button,
                 current_schema_div,

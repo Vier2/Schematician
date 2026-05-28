@@ -25,7 +25,8 @@
     </div>
     <div class="Center_Column">
         <div id="Current_Schema_Div"></div>
-        <div id="Current_Instance_Div" class="current_instance_div"></div>
+        <div id="Current_Instance_Div" class="current_instance_div">
+        </div>
         <div id="Current_Instance_MetaData_Div"> </div>
     </div>
     <div class="Right_Column">
@@ -58,7 +59,7 @@
     .Center_Column {
         /* Schema Meta Data, Schema Value Box, Schema Instant Data */
         display: grid;
-        grid-template-columns;: 20% 40% 20%
+        grid-template-columns: 20% 40% 20%
     }
     .Right_Column {
         /* Map & Next Element Arrow */
@@ -77,6 +78,9 @@
   .current_instance_div {
     display: flex;
     justify-content: center;
+    overflow-wrap: break-word;
+    flex-direction: column;
+    overflow-x: hidden;
   }
  
 </style>
@@ -108,8 +112,11 @@ import type { Schema, Schema_Association } from "$lib/Schema/models";
                 'data_type': 'String',
             'identifiers': Dependent_Clause_Identifier
         }
-
-            const Subordinating_Conjunction: Schema = {'name': 'Subordinating Conjunction', 'data_type': `String`}
+            const Subordinating_Conjunction_identifiers: Schema_Association[] = 
+            [{'schema': Definition, 'value': ` a word or phrase that connects a dependent clause (a fragment that cannot stand alone) to an independent clause (a complete thought)`}]
+            const Subordinating_Conjunction: Schema = {'name': 'Subordinating Conjunction',
+                'data_type': `String`,
+                'identifiers': Subordinating_Conjunction_identifiers}
             const Complex_Sentence_Identifiers: Schema_Association[] = [{'schema': Definition, 'value': `
              a sentence that combines one independent clause with at least one dependent clause`}]
             const Complex_Sentence: Schema = {'name': 'Complex Sentence', 'data_type': 'Interface', 
