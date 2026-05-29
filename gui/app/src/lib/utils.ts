@@ -83,6 +83,9 @@ export function Handle_Schema_input_rendering(schema: Schema, div: HTMLDivElemen
     if (schema.enumerations && Is_String_Schema(schema)) {
         //select element
         console.log('schema as enums')
+        const p = document.createElement('p')
+        p.textContent = `Enumerations`
+        div.appendChild(p)
         const select_element = document.createElement('select')
         Create_Options_In_Select_From_Array(select_element, schema.enumerations 
         )
@@ -97,6 +100,9 @@ export function Handle_Schema_input_rendering(schema: Schema, div: HTMLDivElemen
     div.appendChild(input)
     
     if (schema.options && Is_String_Schema(schema)) {
+        const p = document.createElement('p')
+        p.textContent = `Options`
+        div.appendChild(p)
         Add_Popup_Select_Input(input, schema.options,
             div
         )
