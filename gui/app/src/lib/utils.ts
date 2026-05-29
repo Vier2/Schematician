@@ -47,20 +47,35 @@ export function Apply_Incremental_CSS_To_Children(parent: HTMLDivElement, proper
 
 }
 export function Handle_Schema_input_rendering(schema: Schema, div: HTMLDivElement) {
-    if (schema.data_type != 'Interface' && schema.data_type != 'Associative_Array')
+    console.log(`schema ${schema.name} has type
+        ${schema.data_type}`)
+    console.log('handle input function starting')
+    if (schema.data_type == 'Interface' || schema.data_type == 'Associative_Array')
     {
-        div.replaceChildren()
-        const input = Make_Schema_Input(schema)
-        const view = Make_Viewer_Element(input)
-        div.appendChild(view)
-        div.appendChild(input)
+        console.log('tis interface exiting')
+        return
+        
     }
 
     //handle enumerations and options. Only allow one or the other
-    if (schema.enumerations) {
+    if (schema.enumerations && Is_String_Schema(schema)) {
         //select element
+        console.log('schema as enums')
+        const select_element = document.createElement('select')
+        Create_Options_In_Select_From_Array(select_element, schema.enumerations 
+        )
+        div.appendChild(select_element)
+        return
     }
+    console.log(`schema has no enums`)
+    div.replaceChildren()
+    const input = Make_Schema_Input(schema)
+    const view = Make_Viewer_Element(input)
+    div.appendChild(view)
+    div.appendChild(input)
+    
     if (schema.options) {
+
         //make input element with select element
     }
     
@@ -88,6 +103,14 @@ export function Make_Viewer_Element(input: HTMLInputElement): HTMLParagraphEleme
     p.style.overflowWrap = 'break-word'
     Link_Viewer_Input(p, input)
     return p
+}
+export function Create_Options_In_Select_From_Array(Select_Element: HTMLSelectElement, Array: readonly string[]) {
+    Array.forEach((item) => {
+        const option = document.createElement('option')
+        option.textContent = item
+        option.value = item
+        Select_Element.append(option)
+    })
 }
 
 export function Link_Viewer_Input(viewer: HTMLElement, input: HTMLElement) {
@@ -340,8 +363,6 @@ export function Create_Child_Element_Array(Div_Element: HTMLDivElement): HTMLEle
 export function Apply_Length_Value_CSS(Element: HTMLElement, property: CSS_Property, unit: CSS_Unit, value: number) {
     const kebab_property: string = Convert_Camel_to_Kebab(property)
     Element.style.setProperty(kebab_property, `${value}${unit}`)
-    console.log(`apply style function unit: ${unit} value ${value}`)
-    console.log(`element margin ${window.getComputedStyle(Element).marginLeft}`)
 }
 
 /* as I'm pondering how to make the function singular resposibility and abstract, I kept going higher.

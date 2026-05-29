@@ -120,8 +120,16 @@ import type { Schema, Schema_Association } from "$lib/Schema/models";
                 'identifiers': Subordinating_Conjunction_identifiers,
                 'constraints': {
                     'maximum_characters': 8
-                }
-            }
+                },
+                'enumerations': [
+                    'because',
+                    'since',
+                    'until',
+                    'once',
+                    'although'
+                    
+                ],
+                            }
             
             const Complex_Sentence_Identifiers: Schema_Association[] = [{'schema': Definition, 'value': `
              a sentence that combines one independent clause with at least one dependent clause`}]
