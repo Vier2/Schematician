@@ -88,7 +88,7 @@
 <script lang="ts">
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
-import { Render_Adjacent_Elements, Add_Hierarchical_Elements, Apply_Descending_Indentation, Render_Schema_MetaData, Apply_Incremental_CSS_To_Children, Add_Header_For_Each_KeyValue, Add_Event_Map_Elements } from "$lib/utils";
+import { Render_Adjacent_Elements, Create_Schema, Add_Hierarchical_Elements, Apply_Descending_Indentation, Render_Schema_MetaData, Apply_Incremental_CSS_To_Children, Add_Header_For_Each_KeyValue, Add_Event_Map_Elements } from "$lib/utils";
 import type { Schema, Schema_Association } from "$lib/Schema/models";
     onMount(() => {
         if (browser) {
@@ -114,9 +114,15 @@ import type { Schema, Schema_Association } from "$lib/Schema/models";
         }
             const Subordinating_Conjunction_identifiers: Schema_Association[] = 
             [{'schema': Definition, 'value': ` a word or phrase that connects a dependent clause (a fragment that cannot stand alone) to an independent clause (a complete thought)`}]
-            const Subordinating_Conjunction: Schema = {'name': 'Subordinating Conjunction',
-                'data_type': `String`,
-                'identifiers': Subordinating_Conjunction_identifiers}
+            const Subordinating_Conjunction: Schema  = {
+                'name': 'Subordinating Conjunction',
+                'data_type': 'String',
+                'identifiers': Subordinating_Conjunction_identifiers,
+                'constraints': {
+                    'maximum_characters': 8
+                }
+            }
+            
             const Complex_Sentence_Identifiers: Schema_Association[] = [{'schema': Definition, 'value': `
              a sentence that combines one independent clause with at least one dependent clause`}]
             const Complex_Sentence: Schema = {'name': 'Complex Sentence', 'data_type': 'Interface', 

@@ -1,5 +1,5 @@
 
-type Data_Type =
+export type Data_Type =
     | 'String'
     | 'Number'
     | 'Boolean'
@@ -116,10 +116,46 @@ export interface Schema<
 
     logic?: string
 
-    constraints?: string
-
+    constraints?: Constraint_Map[T]
     relationships?: string
 }
+
+interface Number_Constraints {
+    minimum_number?: number
+    maximum_number?: number
+}
+
+interface String_Constraints {
+    minimum_characters?: number
+    maximum_characters?: number
+    regex?: RegExp
+}
+
+type Constraint_Map = {
+    String: String_Constraints
+    Number: Number_Constraints
+    Boolean: Boolean_Constraints
+    Interface: Interface_Constraints
+    Associative_Array: Associative_Array_Constraints
+}
+
+interface Boolean_Constraints {
+
+}
+interface Interface_Constraints {
+
+}
+
+interface Associative_Array_Constraints {
+
+}
+
+type character_limit = number
+type character_minimum = number
+type max_number = number
+type minimum_number = number
+
+
 
 /**
  * Runtime object instance

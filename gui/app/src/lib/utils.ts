@@ -14,7 +14,7 @@ implementation:
     2b. Whenever child element is added, read adjacent sibling margin left value
         and adding the margin left value to that, setting it
 */
-import type { Schema } from "./Schema/models";
+import type { Schema, Data_Type } from "./Schema/models";
 import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./types/types";
 /**
  Apply a Descending Indentation structure to elements currently in, and added to a div element
@@ -66,9 +66,19 @@ export function Handle_Schema_input_rendering(schema: Schema, div: HTMLDivElemen
     
 
 }
+function Is_String_Schema(
+    schema: Schema
+): schema is Schema<'String'> {
+    return schema.data_type === 'String'
+}
 export function Make_Schema_Input(schema: Schema): HTMLInputElement {
     const input = document.createElement('input')
     input.type = schema.data_type.toLowerCase()
+    if (Is_String_Schema(schema)) {
+
+        input.maxLength =
+            schema.constraints?.maximum_characters ?? Infinity
+    }
     return input
 }
 export function Make_Viewer_Element(input: HTMLInputElement): HTMLParagraphElement {
@@ -234,6 +244,14 @@ export function Render_Adjacent_Elements(
         current_schema_div,
         current_instance_div
     )
+}
+
+export function Create_Schema<
+    T extends Data_Type
+>(
+    schema: Schema<T>
+): Schema<T> {
+    return schema
 }
 export function Modify_Button_Element(
     button: HTMLButtonElement,
