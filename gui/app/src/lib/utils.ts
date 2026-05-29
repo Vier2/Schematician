@@ -74,10 +74,12 @@ function Is_String_Schema(
 export function Make_Schema_Input(schema: Schema): HTMLInputElement {
     const input = document.createElement('input')
     input.type = schema.data_type.toLowerCase()
-    if (Is_String_Schema(schema)) {
-
+    if (
+        Is_String_Schema(schema)
+        && schema.constraints?.maximum_characters !== undefined
+    ) {
         input.maxLength =
-            schema.constraints?.maximum_characters ?? Infinity
+            schema.constraints.maximum_characters
     }
     return input
 }
