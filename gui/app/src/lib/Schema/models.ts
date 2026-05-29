@@ -66,59 +66,42 @@ export interface Schema_Association<
 
 
 
-export interface Schema<
-    T extends Data_Type = Data_Type
-> {
-    /**
-     * Semantic identifier
-     */
+type Exclusive<
+    A,
+    B,
+    K extends keyof any = keyof (A & B)
+> =
+    | (A & { [P in keyof B]?: never })
+    | (B & { [P in keyof A]?: never });
+
+type BaseSchema<T extends Data_Type> = {
     name: string
-
-    /**
-     * Determines runtime value typing
-     */
     data_type: T
-
-    /**
-     * Structural decomposition
-     */
     elements?: Schema[]
-
-    /**
-     * Property definitions
-     */
     properties?: Schema_Association[]
-
-    /**
-     * Identifier definitions
-     */
     identifiers?: Schema_Association[]
-
-    /**
-     * Limited allowed values
-     */
-    enumerations?: Data_Type_Map[T][]
-
-    /**
-     * Optional values not enforced
-     */
-    options?: Data_Type_Map[T][]
-
-    /**
-     * will probably make into relationship rather than property
-     */
-    instances?: Record<
-        string,
-        Data_Type_Map[T]
-    >
-
+    instances?: Record<string, Data_Type_Map[T]>
     rules?: string
-
     logic?: string
-
     constraints?: Constraint_Map[T]
     relationships?: string
 }
+type EnumPart<T extends Data_Type> = {
+    enumerations: Data_Type_Map[T][]
+    options?: never
+}
+
+type OptionsPart<T extends Data_Type> = {
+    options: Data_Type_Map[T][]
+    enumerations?: never
+}
+
+type EmptyPart = {
+    enumerations?: never
+    options?: never
+}
+export type Schema<T extends Data_Type = Data_Type> =
+BaseSchema<T> & (EnumPart<T> | OptionsPart<T> | EmptyPart)
 
 interface Number_Constraints {
     minimum_number?: number
@@ -129,6 +112,8 @@ interface String_Constraints {
     minimum_characters?: number
     maximum_characters?: number
     regex?: RegExp
+    lowercase?: boolean
+    uppercase?: boolean
 }
 
 type Constraint_Map = {
