@@ -46,6 +46,28 @@ export function Apply_Incremental_CSS_To_Children(parent: HTMLDivElement, proper
     })
 
 }
+
+async function Add_Popup_Select_Input(Element: HTMLInputElement, option_values: string[], Group_Container: HTMLDivElement) {
+    const Select: HTMLSelectElement = document.createElement('select');
+    option_values.forEach(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value
+        Select.appendChild(option)
+    })
+    Element.addEventListener('focus', function () {
+
+        Select.value = "" //to remove issue where first value can't be selected unless something is selected first
+        Group_Container.appendChild(Select);
+
+    })
+    Select.addEventListener('input', function () {
+        Element.value = this.value
+        Element.dispatchEvent(new Event("input", { bubbles: true })); //notifying element of input
+        Select.remove()
+    })
+
+}
 export function Handle_Schema_input_rendering(schema: Schema, div: HTMLDivElement) {
     console.log(`schema ${schema.name} has type
         ${schema.data_type}`)
@@ -74,8 +96,10 @@ export function Handle_Schema_input_rendering(schema: Schema, div: HTMLDivElemen
     div.appendChild(view)
     div.appendChild(input)
     
-    if (schema.options) {
-
+    if (schema.options && Is_String_Schema(schema)) {
+        Add_Popup_Select_Input(input, schema.options,
+            div
+        )
         //make input element with select element
     }
     

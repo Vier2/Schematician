@@ -128,15 +128,33 @@ import type { Schema, Schema_Association } from "$lib/Schema/models";
                     'once',
                     'although'
                     
+                ],}
+            const Coordinating_Conjunction_identifiers: Schema_Association[] = 
+            [{"schema": Definition, 'value': `
+            a word that connects words, phrases, or clauses of equal grammatical rank`}]
+            const Coordinating_Conjunction: Schema = {
+                'name': 'Coordinating Conjunction',
+                'data_type': 'String',
+                'options': [
+                    'For',
+                    'And',
+                    'Nor',
+                    'But',
+                    'Or',
+                    'Yet',
+                    'So'
                 ],
-                            }
-            
+                'constraints': {
+                    'maximum_characters': 3
+                },
+                'identifiers': Coordinating_Conjunction_identifiers
+            }
             const Complex_Sentence_Identifiers: Schema_Association[] = [{'schema': Definition, 'value': `
              a sentence that combines one independent clause with at least one dependent clause`}]
             const Complex_Sentence: Schema = {'name': 'Complex Sentence', 'data_type': 'Interface', 
                 'elements': [Independent_Clause, 
                 Subordinating_Conjunction,
-                Dependent_Clause],
+                Dependent_Clause, Coordinating_Conjunction],
                 'identifiers': Complex_Sentence_Identifiers
             }
 
