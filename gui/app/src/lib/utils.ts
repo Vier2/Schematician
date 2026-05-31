@@ -82,6 +82,8 @@ export function Handle_Schema_input_rendering(schema: Schema, div: HTMLDivElemen
     //handle enumerations and options. Only allow one or the other
     if (schema.enumerations && Is_String_Schema(schema)) {
         //select element
+        div.replaceChildren()
+
         console.log('schema as enums')
         const p = document.createElement('p')
         p.textContent = `Enumerations`
