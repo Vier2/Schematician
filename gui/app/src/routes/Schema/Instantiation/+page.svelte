@@ -88,8 +88,8 @@
 <script lang="ts">
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
-import { Render_Adjacent_Elements, Create_Schema, Add_Hierarchical_Elements, Apply_Descending_Indentation, Render_Schema_MetaData, Apply_Incremental_CSS_To_Children, Add_Header_For_Each_KeyValue, Add_Event_Map_Elements } from "$lib/utils";
-import type { Schema, Schema_Association } from "$lib/Schema/models";
+import { Add_Hierarchical_Elements, Apply_Descending_Indentation, Render_Schema_MetaData, Apply_Incremental_CSS_To_Children, Add_Header_For_Each_KeyValue, Add_Event_Map_Elements } from "$lib/utils";
+import type { Schema, Schema_Association, Schema_Instance } from "$lib/Schema/models";
     onMount(() => {
         if (browser) {
             const Definition: Schema = {'name': 'Definition', 'data_type': 'String'}
@@ -166,8 +166,13 @@ import type { Schema, Schema_Association } from "$lib/Schema/models";
             const list = Add_Hierarchical_Elements(Map_Div, Complex_Sentence)
             const previous_button: HTMLButtonElement = document.getElementById('Previous_Element_Button') as HTMLButtonElement
             const next_button: HTMLButtonElement = document.getElementById('Next_Element_Button') as HTMLButtonElement
-
-            Add_Event_Map_Elements(Current_Schema_Div, list, previous_button, next_button, Current_Instance_Div)
+            const state: Schema_Instance = $state({'schema': Complex_Sentence,
+                'root': {}
+            })
+            Add_Event_Map_Elements(
+                Current_Schema_Div, list, previous_button, 
+                next_button, Current_Instance_Div,
+            state)
         }
     });
 </script>

@@ -1,3 +1,4 @@
+import { Make_Schema_Input } from "$lib/utils"
 
 export type Data_Type =
     | 'String'
@@ -80,7 +81,6 @@ type BaseSchema<T extends Data_Type> = {
     elements?: Schema[]
     properties?: Schema_Association[]
     identifiers?: Schema_Association[]
-    instances?: Record<string, Data_Type_Map[T]>
     rules?: string
     logic?: string
     constraints?: Constraint_Map[T]
@@ -145,8 +145,31 @@ type minimum_number = number
 /**
  * Runtime object instance
  */
+interface Instance_Value<
+    S extends Schema = Schema
+> {
+    schema: S
+
+    value?: Schema_Value<S>
+}
+export interface Instance_Node {
+    value?: unknown
+    elements?: Instance_Node[]
+}
+
 export interface Schema_Instance {
     schema: Schema
+    root: Instance_Node
+}
+export interface Schema_Instantiation_State {
+    instances: Schema_Instance[]
+}
 
-    values?: Schema_Association[]
+
+export interface Rendered_Node {
+    schema: Schema
+
+    element: HTMLParagraphElement
+
+    path: number[]
 }

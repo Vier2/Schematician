@@ -14,12 +14,23 @@ implementation:
     2b. Whenever child element is added, read adjacent sibling margin left value
         and adding the margin left value to that, setting it
 */
-import type { Schema, Data_Type } from "./Schema/models";
+import type { Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
 import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./types/types";
 /**
  Apply a Descending Indentation structure to elements currently in, and added to a div element
  */
 
+export function Set_Instance_Value(
+    instance: Schema_Instance,
+    path: number[],
+    value: unknown
+) {
+
+    Get_Instance_Node(
+        instance.root,
+        path
+    ).value = value
+}
 export function Apply_Descending_Indentation(parent: HTMLDivElement, margin: number) {
     Add_Flex_Style(parent, 'column')
    Apply_Incremental_CSS_To_Children(parent, 'marginLeft', margin, 'px')
@@ -68,10 +79,16 @@ async function Add_Popup_Select_Input(Element: HTMLInputElement, option_values: 
     })
 
 }
-export function Handle_Schema_input_rendering(schema: Schema, div: HTMLDivElement) {
-    console.log(`schema ${schema.name} has type
-        ${schema.data_type}`)
-    console.log('handle input function starting')
+export function Handle_Schema_input_rendering(
+    schema: Schema, 
+    div: HTMLDivElement,
+    state: Schema_Instance,
+    path: number[]) {
+    /**
+     * either get current value from state and set value of input or select element
+     * or if theres no value set the value
+     * link the value so if it changes, states will change
+     */
     if (schema.data_type == 'Interface' || schema.data_type == 'Associative_Array')
     {
         console.log('tis interface exiting')
@@ -97,7 +114,32 @@ export function Handle_Schema_input_rendering(schema: Schema, div: HTMLDivElemen
     console.log(`schema has no enums`)
     div.replaceChildren()
     const input = Make_Schema_Input(schema)
+    const current_value =
+        Get_Instance_Value(
+            state,
+            path
+        )
+    input.value =
+        String(
+            current_value ?? ''
+        )
+    input.addEventListener(
+        'input',
+        () => {
+
+            Set_Instance_Value(
+                state,
+                path,
+                input.value
+            )
+        }
+    )
+    /**
+     * set value of viewer element oo
+     */
+    console.log(`path ${path}`)
     const view = Make_Viewer_Element(input)
+    view.textContent = input.value
     div.appendChild(view)
     div.appendChild(input)
     
@@ -209,12 +251,43 @@ export function Convert_Camel_to_Kebab(camel: CSS_Property): string {
 // }
 
 export function Add_Hierarchical_Elements(
-    Map_Div: HTMLDivElement,
-    Top_Level_Schema: Schema
+    map_div: HTMLDivElement,
+    top_level_schema: Schema
 ) {
-    
-    const list = Render_Schema_Node(Top_Level_Schema, Map_Div, 0)
-    return list
+    return Render_Schema_Node(
+        top_level_schema,
+        map_div,
+        0
+    )
+}
+export function Get_Instance_Node(
+    root: Instance_Node,
+    path: number[]
+): Instance_Node {
+
+    let current = root
+
+    for (const index of path) {
+
+        current.elements ??= []
+
+        current.elements[index] ??= {}
+
+        current =
+            current.elements[index]
+    }
+
+    return current
+}
+export function Get_Instance_Value(
+    instance: Schema_Instance,
+    path: number[]
+) {
+
+    return Get_Instance_Node(
+        instance.root,
+        path
+    ).value
 }
 export function Apply_Hover_Highlight(element: HTMLElement, color: string) {
     const original = element.style.backgroundColor
@@ -229,77 +302,101 @@ function Render_Schema_Node(
     schema: Schema,
     parent: HTMLElement,
     depth: number,
-    list: { schema: Schema; element: HTMLParagraphElement }[] = []
-): { schema: Schema; element: HTMLParagraphElement }[] {
+    path: number[] = [],
+    list: Rendered_Node[] = []
+): Rendered_Node[] {
 
     const row = document.createElement('div')
+
     Add_Flex_Style(row, 'row')
     Apply_Length_Value_CSS(row, 'marginLeft', 'px', depth * 20)
-
-    const label = Make_Bold_P_Element(schema.name)
+    const label =Make_Bold_P_Element(schema.name)
     Apply_Hover_Highlight(label, 'red')
     row.appendChild(label)
+
     parent.appendChild(row)
 
-    list.push({ schema, element: label })
+    list.push({
+        schema,
+        element: label,
+        path
+    })
 
-    schema.elements?.forEach(child =>
-        Render_Schema_Node(child, parent, depth + 1, list)
+    schema.elements?.forEach(
+        (child, index) =>
+            Render_Schema_Node(
+                child,
+                parent,
+                depth + 1,
+                [...path, index],
+                list
+            )
     )
 
     return list
 }
 export function Add_Event_Map_Elements(current_schema_div: HTMLDivElement, 
-    list: { schema: Schema; element: HTMLParagraphElement }[],
+    current_schemas: Rendered_Node[],
     previous_button: HTMLButtonElement, 
     next_button: HTMLButtonElement,
-    current_instance_div: HTMLDivElement ) {
-    for (const [index, item] of list.entries()) {
+    current_instance_div: HTMLDivElement,
+    state: Schema_Instance ) {
+    for (const [index, item] of current_schemas.entries()) {
         item.element.addEventListener('click', function() {
             current_schema_div.replaceChildren()
             current_instance_div.replaceChildren()
             Render_Schema_MetaData(item.schema, current_schema_div)
-            Render_Adjacent_Elements(index, list, previous_button, next_button,
+            Render_Adjacent_Elements(
+                index, current_schemas, previous_button, next_button,
                 current_schema_div,
-                current_instance_div
+                current_instance_div,
+                state,
+                item.path
             )
             Handle_Schema_input_rendering(item.schema, 
-                current_instance_div)
+                current_instance_div, state,
+                item.path)
            
         })
     }
 }
 export function Render_Adjacent_Elements(
     current_index: number,
-    list: { schema: Schema; element: HTMLParagraphElement }[],
+    current_schemas: Rendered_Node[],
     previous_button: HTMLButtonElement,
     next_button: HTMLButtonElement,
     current_schema_div: HTMLDivElement,
-    current_instance_div: HTMLDivElement
+    current_instance_div: HTMLDivElement,
+    state: Schema_Instance,
+    path: number[]
 ) {
-    const previous = list[current_index - 1]
-    const next = list[current_index + 1]
+    const previous = current_schemas[current_index - 1]
+    const next = current_schemas[current_index + 1]
 
     Modify_Button_Element(
         previous_button,
         previous?.schema ?? null,
         current_index - 1,
-        list,
+        current_schemas,
         previous_button,
         next_button,
         current_schema_div,
-        current_instance_div
+        current_instance_div,
+        state,
+        previous?.path ?? []
     )
 
     Modify_Button_Element(
         next_button,
         next?.schema ?? null,
         current_index + 1,
-        list,
+        current_schemas,
         previous_button,
         next_button,
         current_schema_div,
-        current_instance_div
+        current_instance_div,
+        state,
+        next?.path ?? []
     )
 }
 
@@ -314,15 +411,20 @@ export function Modify_Button_Element(
     button: HTMLButtonElement,
     schema: Schema | null,
     target_index: number,
-    list: { schema: Schema; element: HTMLParagraphElement }[],
+    current_schemas: Rendered_Node[],
     previous_button: HTMLButtonElement,
     next_button: HTMLButtonElement,
     current_schema_div: HTMLDivElement,
-    current_instance_div: HTMLDivElement
+    current_instance_div: HTMLDivElement,
+    state: Schema_Instance,
+    path: number[]
 ) {
     button.textContent = schema ? schema.name : '—'
     button.disabled = schema === null
-
+    console.log(
+        `Button ${button.textContent} assigned path`,
+        JSON.stringify(path)
+    )
     // Replaces any existing handler — no accumulation
     button.onclick = () => {
         if (!schema) return
@@ -330,13 +432,18 @@ export function Modify_Button_Element(
         Render_Schema_MetaData(schema, current_schema_div)
         Render_Adjacent_Elements(
             target_index,
-            list,
+            current_schemas,
             previous_button,
             next_button,
             current_schema_div,
-            current_instance_div
+            current_instance_div,
+            state,
+            path
         )
-        Handle_Schema_input_rendering(schema, current_instance_div)
+        Handle_Schema_input_rendering(schema, current_instance_div,
+            state, path
+            
+        )
     }
 }
 export function Make_Bold_P_Element(text: string) {
