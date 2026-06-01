@@ -20,6 +20,99 @@ import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./
  Apply a Descending Indentation structure to elements currently in, and added to a div element
  */
 
+
+// export async function Make_Searchable_Select(values: string[], container: HTMLDivElement) {
+//     const search_input: HTMLInputElement = document.createElement('input') as HTMLInputElement
+ 
+//     /**
+//      * add a select element with the options of the values connected to the input
+//      * 
+//      * Add a feature that the text of the search input
+//      * 
+//      * filters and display options of the select that the text is in the value of the option
+//      */
+    
+// }
+
+function Render_Options(
+    values: string[],
+    select: HTMLSelectElement,
+    filter_text: string = ''
+): void {
+    select.innerHTML = '';
+
+    const filtered_values = values.filter(value =>
+        value.toLowerCase().includes(filter_text.toLowerCase())
+    );
+
+    for (const value of filtered_values) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+    }
+}
+
+export async function Make_Searchable_Select(
+    values: string[],
+    container: HTMLDivElement
+): Promise<HTMLSelectElement> {
+    const search_input = document.createElement('input');
+    search_input.type = 'text';
+    search_input.placeholder = 'Search...';
+
+    const select = document.createElement('select');
+    select.size = 10;
+    
+    search_input.addEventListener('input', () => {
+        select.style.display = '';
+        Render_Options(
+            values,
+            select,
+            search_input.value
+        );
+    });
+    search_input.addEventListener('click', () => {
+        select.style.display = ''
+        Render_Options(
+            values,
+            select,
+            search_input.value
+        );
+    })
+    Render_Options(
+        values,
+        select
+    );
+    select.addEventListener('input', function() {
+        // search_input.value = select.value
+        select.style.display = 'none';
+        const p = document.createElement('p')
+        p.textContent = select.value
+        container.appendChild(p)
+    })
+
+    container.appendChild(search_input);
+    container.appendChild(select);
+
+    return select;
+}
+ export function Handle_Data_Type_Select(
+    select: HTMLSelectElement,
+    schemas: string[],
+    container: HTMLDivElement) {
+    select.addEventListener('input', function() {
+        if (this.value == 'Interface') {
+            Make_Searchable_Select(schemas,
+                container
+            )
+            //Add create element UI element
+            //Add existing element UI element
+
+        }
+    })
+ }
+
 export function Set_Instance_Value(
     instance: Schema_Instance,
     path: number[],
@@ -58,7 +151,7 @@ export function Apply_Incremental_CSS_To_Children(parent: HTMLDivElement, proper
 
 }
 
-async function Add_Popup_Select_Input(Element: HTMLInputElement, option_values: string[], Group_Container: HTMLDivElement) {
+async function Add_Popup_Select_Input(Element: HTMLInputElement, option_values: string[], Group_Container: HTMLDivElement): Promise<HTMLSelectElement> {
     const Select: HTMLSelectElement = document.createElement('select');
     option_values.forEach(value => {
         const option = document.createElement('option');
@@ -77,7 +170,7 @@ async function Add_Popup_Select_Input(Element: HTMLInputElement, option_values: 
         Element.dispatchEvent(new Event("input", { bubbles: true })); //notifying element of input
         Select.remove()
     })
-
+    return Select
 }
 export function Handle_Schema_input_rendering(
     schema: Schema, 
@@ -100,12 +193,12 @@ export function Handle_Schema_input_rendering(
     if (schema.enumerations && Is_String_Schema(schema)) {
         //select element
         div.replaceChildren()
-
         console.log('schema as enums')
         const p = document.createElement('p')
         p.textContent = `Enumerations`
         div.appendChild(p)
         const select_element = document.createElement('select')
+        Link_State(select_element, state, path)
         Create_Options_In_Select_From_Array(select_element, schema.enumerations 
         )
         div.appendChild(select_element)
@@ -114,26 +207,7 @@ export function Handle_Schema_input_rendering(
     console.log(`schema has no enums`)
     div.replaceChildren()
     const input = Make_Schema_Input(schema)
-    const current_value =
-        Get_Instance_Value(
-            state,
-            path
-        )
-    input.value =
-        String(
-            current_value ?? ''
-        )
-    input.addEventListener(
-        'input',
-        () => {
-
-            Set_Instance_Value(
-                state,
-                path,
-                input.value
-            )
-        }
-    )
+    Link_State(input, state, path)
     /**
      * set value of viewer element oo
      */
@@ -150,10 +224,35 @@ export function Handle_Schema_input_rendering(
         Add_Popup_Select_Input(input, schema.options,
             div
         )
-        //make input element with select element
     }
     
 
+}
+function Link_State(element: HTMLInputElement | HTMLSelectElement,
+    state: Schema_Instance,
+    path: number[]
+) {
+    const current_value =
+        Get_Instance_Value(
+            state,
+            path
+        )
+    element.value =
+        String(
+            current_value ?? ''
+        )
+    element.addEventListener(
+        'input',
+        () => {
+
+            Set_Instance_Value(
+                state,
+                path,
+                element.value
+            )
+        }
+    )
+    return current_value
 }
 function Is_String_Schema(
     schema: Schema
