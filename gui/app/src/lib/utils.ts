@@ -57,6 +57,8 @@ export async function Make_Searchable_Select(
     values: string[],
     container: HTMLDivElement
 ): Promise<HTMLSelectElement> {
+    const label = document.createElement('p')
+    label.textContent = 'Adding Existing Schema as Element'
     const search_input = document.createElement('input');
     search_input.type = 'text';
     search_input.placeholder = 'Search...';
@@ -80,10 +82,7 @@ export async function Make_Searchable_Select(
             search_input.value
         );
     })
-    Render_Options(
-        values,
-        select
-    );
+   
     select.addEventListener('input', function() {
         // search_input.value = select.value
         select.style.display = 'none';
@@ -91,7 +90,7 @@ export async function Make_Searchable_Select(
         p.textContent = select.value
         container.appendChild(p)
     })
-
+    container.appendChild(label)
     container.appendChild(search_input);
     container.appendChild(select);
 
