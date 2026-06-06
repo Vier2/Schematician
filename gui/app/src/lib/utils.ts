@@ -62,7 +62,8 @@ export async function Make_Searchable_Select(
     const search_input = document.createElement('input');
     search_input.type = 'text';
     search_input.placeholder = 'Search...';
-
+    const element_label: HTMLParagraphElement = document.createElement('p') as HTMLParagraphElement
+    element_label.textContent = 'Elements Added'
     const select = document.createElement('select');
     select.size = 10;
     
@@ -93,6 +94,7 @@ export async function Make_Searchable_Select(
     container.appendChild(label)
     container.appendChild(search_input);
     container.appendChild(select);
+    container.appendChild(element_label)
 
     return select;
 }
