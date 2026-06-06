@@ -83,6 +83,7 @@ export async function Make_Searchable_Select(
             search_input.value
         );
     })
+
    
     select.addEventListener('input', function() {
         // search_input.value = select.value
@@ -91,6 +92,15 @@ export async function Make_Searchable_Select(
         p.textContent = select.value
         container.appendChild(p)
     })
+    document.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+
+        // If click is outside both the input and the select, hide the select
+        if (target !== search_input && !select.contains(target)) {
+            select.style.display = 'none';
+        }
+    });
+
     container.appendChild(label)
     container.appendChild(search_input);
     container.appendChild(select);
