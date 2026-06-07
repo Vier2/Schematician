@@ -33,6 +33,82 @@ import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./
 //      */
     
 // }
+export function Render_Schema_Input(schema: Schema): HTMLDivElement {
+    const div = document.createElement('div')
+    div.style.display = 'flex'
+    div.style.flexDirection = 'row'
+    const label = document.createElement('p')
+    label.textContent = schema.name
+    const value = document.createElement('input')
+    div.appendChild(label)
+    div.appendChild(value)
+    return div
+}
+export function Render_Schema_Value_Recursive(
+    schema: Schema,
+    parents: Schema[] = [],
+    target_container: HTMLDivElement,
+    ancestry_level_visible?: number
+) {
+    /**
+     * ancestry_level_visible: The number of ancestry of a element that will be rendered
+     */
+    const is_container =
+        schema.data_type === 'Interface' ||
+        schema.data_type === 'Associative_Array'
+
+    if (!is_container) {
+
+        const context_div = Render_Parent_Context(
+            parents, ancestry_level_visible)
+
+        const input_div = Render_Schema_Input(schema)
+        target_container.appendChild(context_div)
+        target_container.appendChild(input_div)
+
+        return
+    }
+
+    schema.elements?.forEach(
+        child => {
+
+            Render_Schema_Value_Recursive(
+                child,
+                [...parents, schema], 
+                target_container, ancestry_level_visible
+            )
+        }
+    )
+}
+export function Render_Parent_Context(
+    parents: Schema[],
+    ancestry_level_visible?: number
+): HTMLDivElement {
+/**
+ * ancestry_level_visible: The number of ancestry of a element that will be rendered
+ */
+    const div = document.createElement('div')
+
+    let visible_parents = parents
+
+    if (ancestry_level_visible !== undefined) {
+
+        visible_parents =
+            ancestry_level_visible === 0
+                ? []
+                : parents.slice(-ancestry_level_visible)
+    }
+    visible_parents.forEach(parent => {
+
+        const p = document.createElement('p')
+
+        p.textContent = parent.name
+
+        div.appendChild(p)
+    })
+
+    return div
+}
 
 function Render_Options(
     values: string[],
@@ -108,6 +184,8 @@ export async function Make_Searchable_Select(
 
     return select;
 }
+
+
  export function Handle_Data_Type_Select(
     select: HTMLSelectElement,
     schemas: string[],
@@ -194,7 +272,9 @@ export function Handle_Schema_input_rendering(
      * link the value so if it changes, states will change
      */
     if (schema.data_type == 'Interface' || schema.data_type == 'Associative_Array')
-    {
+        
+        {
+            Render_Schema_Value_Recursive(schema, [], div, 0)
         console.log('tis interface exiting')
         return
         

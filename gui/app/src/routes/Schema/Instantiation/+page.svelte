@@ -59,7 +59,8 @@
     .Center_Column {
         /* Schema Meta Data, Schema Value Box, Schema Instant Data */
         display: grid;
-        grid-template-rows: 20% 40% 20%
+        grid-template-rows: 20% 40% 20%;
+        gap: 10%
     }
     .Right_Column {
         /* Map & Next Element Arrow */
