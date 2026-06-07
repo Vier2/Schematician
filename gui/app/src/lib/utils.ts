@@ -48,7 +48,9 @@ export function Render_Schema_Value_Recursive(
     schema: Schema,
     parents: Schema[] = [],
     target_container: HTMLDivElement,
-    ancestry_level_visible?: number
+    state: Schema_Instance,
+    path: number[],
+    ancestry_level_visible?: number,
 ) {
     /**
      * ancestry_level_visible: The number of ancestry of a element that will be rendered
@@ -61,10 +63,22 @@ export function Render_Schema_Value_Recursive(
 
         const context_div = Render_Parent_Context(
             parents, ancestry_level_visible)
+        const input_div =
+            Make_Schema_Input_View(
+                schema,
+                state,
+                path
+            )
+        const label = Make_Schema_Label(schema)
 
-        const input_div = Render_Schema_Input(schema)
-        target_container.appendChild(context_div)
-        target_container.appendChild(input_div)
+        target_container.appendChild(
+            context_div
+        )
+        target_container.appendChild(label)
+        target_container.appendChild(
+            input_div
+        )
+
 
         return
     }
@@ -75,7 +89,9 @@ export function Render_Schema_Value_Recursive(
             Render_Schema_Value_Recursive(
                 child,
                 [...parents, schema], 
-                target_container, ancestry_level_visible
+                target_container, state,
+                path,
+                ancestry_level_visible
             )
         }
     )
@@ -261,63 +277,120 @@ async function Add_Popup_Select_Input(Element: HTMLInputElement, option_values: 
     })
     return Select
 }
+
+export function Make_Schema_Input_View(
+    schema: Schema,
+    state: Schema_Instance,
+    path: number[]
+): HTMLElement {
+
+    const container = document.createElement('div')
+
+    // Enumeration
+    if (
+        schema.enumerations &&
+        Is_String_Schema(schema)
+    ) {
+        const p = document.createElement('p')
+        p.textContent = 'Enumerations'
+
+        const select = document.createElement('select')
+
+        Create_Options_In_Select_From_Array(
+            select,
+            schema.enumerations
+        )
+
+        Link_State(
+            select,
+            state,
+            path
+        )
+        container.appendChild(p)
+        container.appendChild(select)
+
+        return container
+    }
+
+    // Standard Input
+    const input = Make_Schema_Input(schema)
+
+    Link_State(
+        input,
+        state,
+        path
+    )
+
+    const viewer =
+        Make_Viewer_Element(input)
+
+    viewer.textContent =
+        input.value
+    container.appendChild(viewer)
+    container.appendChild(input)
+
+    // Options popup
+
+    if (
+        schema.options &&
+        Is_String_Schema(schema)
+    ) {
+        const p =
+            document.createElement('p')
+
+        p.textContent =
+            'Options'
+
+        container.appendChild(p)
+
+        Add_Popup_Select_Input(
+            input,
+            schema.options,
+            container
+        )
+    }
+
+    return container
+}
+
+export function Make_Schema_Label(schema: Schema): HTMLElement {
+    const label = document.createElement('p')
+    label.textContent = schema.name
+    return label
+}
 export function Handle_Schema_input_rendering(
-    schema: Schema, 
+    schema: Schema,
     div: HTMLDivElement,
     state: Schema_Instance,
-    path: number[]) {
-    /**
-     * either get current value from state and set value of input or select element
-     * or if theres no value set the value
-     * link the value so if it changes, states will change
-     */
-    if (schema.data_type == 'Interface' || schema.data_type == 'Associative_Array')
-        
-        {
-            Render_Schema_Value_Recursive(schema, [], div, 0)
-        console.log('tis interface exiting')
-        return
-        
-    }
+    path: number[]
+) {
 
-    //handle enumerations and options. Only allow one or the other
-    if (schema.enumerations && Is_String_Schema(schema)) {
-        //select element
-        div.replaceChildren()
-        console.log('schema as enums')
-        const p = document.createElement('p')
-        p.textContent = `Enumerations`
-        div.appendChild(p)
-        const select_element = document.createElement('select')
-        Link_State(select_element, state, path)
-        Create_Options_In_Select_From_Array(select_element, schema.enumerations 
-        )
-        div.appendChild(select_element)
-        return
-    }
-    console.log(`schema has no enums`)
     div.replaceChildren()
-    const input = Make_Schema_Input(schema)
-    Link_State(input, state, path)
-    /**
-     * set value of viewer element oo
-     */
-    console.log(`path ${path}`)
-    const view = Make_Viewer_Element(input)
-    view.textContent = input.value
-    div.appendChild(view)
-    div.appendChild(input)
-    
-    if (schema.options && Is_String_Schema(schema)) {
-        const p = document.createElement('p')
-        p.textContent = `Options`
-        div.appendChild(p)
-        Add_Popup_Select_Input(input, schema.options,
-            div
-        )
-    }
-    
 
+    if (
+        schema.data_type === 'Interface' ||
+        schema.data_type === 'Associative_Array'
+    ) {
+
+        Render_Schema_Value_Recursive(
+            schema,
+            [],
+            div,
+            state,
+            path,
+            0
+        )
+
+        return
+    }
+
+    div.appendChild(
+        Make_Schema_Input_View(
+            schema,
+            state,
+            path
+        )
+    )
 }
 function Link_State(element: HTMLInputElement | HTMLSelectElement,
     state: Schema_Instance,
