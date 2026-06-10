@@ -90,7 +90,10 @@ type EnumPart<T extends Data_Type> = {
     enumerations: Data_Type_Map[T][]
     options?: never
 }
-
+export interface Input_View {
+    input: HTMLSelectElement | HTMLInputElement
+    container: HTMLDivElement
+}
 type OptionsPart<T extends Data_Type> = {
     options: Data_Type_Map[T][]
     enumerations?: never

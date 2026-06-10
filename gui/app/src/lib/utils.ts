@@ -14,7 +14,8 @@ implementation:
     2b. Whenever child element is added, read adjacent sibling margin left value
         and adding the margin left value to that, setting it
 */
-import type { Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
+import { asset } from "$app/paths";
+import type { Input_View, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
 import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./types/types";
 /**
  Apply a Descending Indentation structure to elements currently in, and added to a div element
@@ -63,12 +64,11 @@ export function Render_Schema_Value_Recursive(
 
         const context_div = Render_Parent_Context(
             parents, ancestry_level_visible)
-        const input_div =
+        const input_view =
             Make_Schema_Input_View(
                 schema,
-                state,
-                path
             )
+        Link_Schema_Input_View_To_State(input_view.input, state, path)
         const label = Make_Schema_Label(schema)
 
         target_container.appendChild(
@@ -76,7 +76,7 @@ export function Render_Schema_Value_Recursive(
         )
         target_container.appendChild(label)
         target_container.appendChild(
-            input_div
+            input_view.container
         )
 
 
@@ -248,9 +248,9 @@ export async function Make_Searchable_Select_Schema(
             div.style.flexDirection = 'row'
             div.style.gap = '3px'
             div.appendChild(label)
-            const input = Make_Schema_Input(schema)
-            const viewer_element = Make_Viewer_Element(input)
-            div.appendChild(input)
+            const input_view = Make_Schema_Input_View(schema)
+            const viewer_element = Make_Viewer_Element(input_view.input)
+            div.appendChild(input_view.input)
             div.appendChild(viewer_element)
             container.appendChild(div)
             search_input.style.display = 'none';
@@ -392,15 +392,25 @@ async function Add_Popup_Select_Input(Element: HTMLInputElement, option_values: 
     return Select
 }
 
-export function Make_Schema_Input_View(
-    schema: Schema,
-    state: Schema_Instance,
-    path: number[]
-): HTMLElement {
+export function Render_Enums(schema: Schema) {
+    if (schema.enumerations &&
+        Is_String_Schema(schema)
+    ) {
+    const select = document.createElement('select')
 
+    Create_Options_In_Select_From_Array(
+
+        select,
+        schema.enumerations
+    )
+    return select
+}
+}
+export function Make_Schema_Input_View(
+    schema: Schema
+): Input_View {
     const container = document.createElement('div')
 
-    // Enumeration
     if (
         schema.enumerations &&
         Is_String_Schema(schema)
@@ -408,52 +418,28 @@ export function Make_Schema_Input_View(
         const p = document.createElement('p')
         p.textContent = 'Enumerations'
 
-        const select = document.createElement('select')
+        const select = Render_Enums(schema)
 
-        Create_Options_In_Select_From_Array(
-            select,
-            schema.enumerations
-        )
-
-        Link_State(
-            select,
-            state,
-            path
-        )
         container.appendChild(p)
-        container.appendChild(select)
+        container.appendChild(select!)
 
-        return container
+        return {'container': container, 'input': select!}
     }
 
-    // Standard Input
     const input = Make_Schema_Input(schema)
 
-    Link_State(
-        input,
-        state,
-        path
-    )
+    const viewer = Make_Viewer_Element(input)
+    viewer.textContent = input.value
 
-    const viewer =
-        Make_Viewer_Element(input)
-
-    viewer.textContent =
-        input.value
     container.appendChild(viewer)
     container.appendChild(input)
-
-    // Options popup
 
     if (
         schema.options &&
         Is_String_Schema(schema)
     ) {
-        const p =
-            document.createElement('p')
-
-        p.textContent =
-            'Options'
+        const p = document.createElement('p')
+        p.textContent = 'Options'
 
         container.appendChild(p)
 
@@ -464,7 +450,22 @@ export function Make_Schema_Input_View(
         )
     }
 
-    return container
+    return {'container': container, 'input': input}
+}
+export function Link_Schema_Input_View_To_State(
+    input: HTMLInputElement | HTMLSelectElement,
+    state: Schema_Instance,
+    path: number[]
+) {
+    
+
+    if (!input) return
+
+    Link_State(
+        input,
+        state,
+        path
+    )
 }
 
 export function Make_Schema_Label(schema: Schema): HTMLElement {
@@ -497,13 +498,12 @@ export function Handle_Schema_input_rendering(
 
         return
     }
-
+    const input_view = Make_Schema_Input_View(
+        schema
+    )
+    Link_Schema_Input_View_To_State(input_view.input, state, path)
     div.appendChild(
-        Make_Schema_Input_View(
-            schema,
-            state,
-            path
-        )
+        input_view.container
     )
 }
 function Link_State(element: HTMLInputElement | HTMLSelectElement,
@@ -549,7 +549,7 @@ export function Make_Schema_Input(schema: Schema): HTMLInputElement {
     }
     return input
 }
-export function Make_Viewer_Element(input: HTMLInputElement): HTMLParagraphElement {
+export function Make_Viewer_Element(input: HTMLInputElement | HTMLSelectElement): HTMLParagraphElement {
     const p = document.createElement('p')
     p.style.overflowWrap = 'break-word'
     Link_Viewer_Input(p, input)
@@ -564,7 +564,7 @@ export function Create_Options_In_Select_From_Array(Select_Element: HTMLSelectEl
     })
 }
 
-export function Link_Viewer_Input(viewer: HTMLElement, input: HTMLElement) {
+export function Link_Viewer_Input(viewer: HTMLElement, input: HTMLInputElement | HTMLSelectElement) {
     input.addEventListener('input', (event: Event) => {
         let target = event.target as HTMLInputElement;
         let value = target.value;
