@@ -15,7 +15,12 @@
         <select id="Data_Type_Select"></select>
     </div>
     <div id="center_column_2nd_row">
-        <div> Identifiers</div>
+        <div id="idenitifer_div"> 
+            <button id="identifier_button" >
+                Identifiers
+            </button>
+            
+        </div>
         <div> Properties</div>
         <div> Constraints</div>
     </div>
@@ -42,9 +47,10 @@
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
 import type { Schema, Data_Type } from "$lib/Schema/models";
-import { Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Searchable_Select } from "$lib/utils";
+import { Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Searchable_Select } from "$lib/utils";
   onMount(() => {
         if (browser) {
+            const Definition: Schema = {'name': 'Definition', 'data_type': 'String'}
             const types = [
                 'String',
                 'Number',
@@ -67,14 +73,12 @@ import { Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Sear
             Handle_Data_Type_Select(Data_Type_Select,
                 list, first_row_center_column
             )
-            /**
-             * make a option element for every type in the type
-             * make the value and text content equal to the item
-             * add a event listener of select element
-             * based on selection create or delete other ui elements
-             * 
-             * 
-            */
+            const center_column_2nd_row: HTMLDivElement = document.getElementById('center_column_2nd_row') as HTMLDivElement
+            const identifier_div: HTMLDivElement = document.getElementById('idenitifer_div') as HTMLDivElement
+
+            const Identifiers_Button: HTMLButtonElement = document.getElementById('identifier_button') as HTMLButtonElement
+            Make_Searchable_Select_Schema(Identifiers_Button, [Definition], identifier_div)
+    
 
         }
     });

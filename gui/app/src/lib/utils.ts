@@ -202,6 +202,92 @@ export async function Make_Searchable_Select(
 }
 
 
+
+export async function Make_Searchable_Select_Schema(
+    button: HTMLButtonElement,
+    schemas: Schema[],
+    container: HTMLDivElement
+)  {
+    button.onclick = () => {
+
+        // const label = document.createElement('p')
+        // label.textContent = 'Adding Existing Schema as Element'
+        const search_input = document.createElement('input');
+        search_input.type = 'text';
+        search_input.placeholder = 'Search...';
+        const element_label: HTMLParagraphElement = document.createElement('p') as HTMLParagraphElement
+        const select = document.createElement('select');
+        select.size = 10;
+    
+        search_input.addEventListener('input', () => {
+            select.style.display = '';
+            Render_Options_Schema(
+                schemas,
+                select,
+                search_input.value
+            );
+        });
+        search_input.addEventListener('click', () => {
+            select.style.display = ''
+            Render_Options_Schema(
+                schemas,
+                select,
+                search_input.value
+            );
+        })
+    
+    
+        select.addEventListener('input', (event: Event) => {
+            const Selected_Option = select.options[select.selectedIndex];
+            const schema = JSON.parse(Selected_Option.dataset.schema!)
+            select.style.display = 'none';
+            const label = document.createElement('p')
+            label.textContent = schema.name
+            const div = document.createElement('div')
+            div.style.display = 'flex'
+            div.style.flexDirection = 'row'
+            div.appendChild(label)
+            const input = Make_Schema_Input(schema)
+            div.appendChild(input)
+            container.appendChild(div)
+            search_input.style.display = 'none';
+
+        })
+        document.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+    
+            // If click is outside both the input and the select, hide the select
+            if (target !== search_input && !select.contains(target)) {
+                select.style.display = 'none';
+            }
+        });
+    
+        // container.appendChild(label)
+        container.appendChild(search_input);
+        container.appendChild(select);
+        container.appendChild(element_label)
+    
+    }
+}
+
+export function Render_Options_Schema(schemas: Schema[],
+    select: HTMLSelectElement,
+    filter_text: string,
+) {
+    select.innerHTML = '';
+
+    const filtered_values = schemas.filter(value =>
+        value.name.toLowerCase().includes(filter_text.toLowerCase())
+    );
+
+    for (const value of filtered_values) {
+        const option = document.createElement('option');
+        option.dataset.schema = JSON.stringify(value)
+        option.textContent = value.name;
+        select.appendChild(option);
+    }
+}
+
  export function Handle_Data_Type_Select(
     select: HTMLSelectElement,
     schemas: string[],
@@ -495,23 +581,12 @@ export function Convert_Camel_to_Kebab(camel: CSS_Property): string {
 
 }
 
-// export function Add_Hierarchical_Elements(Map_Div: HTMLDivElement, 
-//     Top_Level_Schema: Schema) {
-//     /**
-//      * Will need to take in state as well
-//      * 1. Recursively, For every element in the schema, make a p element,
-//      * with the text_content = to the schema.name
-//      * and for each hierarchical level, make a indentation
-//      * so for complex sentence
-//      *      Complex_Sentence
-//      *          Independent_Clause
-//      *          Subordinating_Conjunction
-//      *          Dependent_Clause
-//      * 
-//      * 3. 
-//      */
-   
-// }
+
+export function Make_Schema_Association_Function(div: HTMLDivElement,
+
+) {
+
+}
 
 export function Add_Hierarchical_Elements(
     map_div: HTMLDivElement,
