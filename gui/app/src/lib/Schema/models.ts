@@ -106,6 +106,8 @@ BaseSchema<T> & (EnumPart<T> | OptionsPart<T> | EmptyPart)
 interface Number_Constraints {
     minimum_number?: number
     maximum_number?: number
+    can_be_positive?: boolean
+    can_be_negative?: boolean
 }
 
 interface String_Constraints {

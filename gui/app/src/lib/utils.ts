@@ -273,6 +273,31 @@ export async function Make_Searchable_Select_Schema(
     }
 }
 
+export function Make_Collapsible(control_element: HTMLElement, div: HTMLDivElement) {
+    let close: boolean = true;
+    control_element.addEventListener('click', function() {
+        close = !close
+        if (close) {
+            div.style.display = 'none'
+        }
+        else {
+            div.style.display = ''
+        }
+    })
+}
+export function Add_Schema_Constraints_UI(schema: Schema,
+    div: HTMLDivElement) {
+
+        /**
+         * add constraint elements based on data type
+         * string: 
+         *  range element for max and minimum chars
+         * number:
+         *  range element for max and minimum number
+         * 
+         */
+    }
+
 export function Render_Options_Schema(schemas: Schema[],
     select: HTMLSelectElement,
     filter_text: string,
