@@ -331,6 +331,12 @@ export function Add_Schema_Constraints_UI(data_type: Data_Type,
         )
         div.appendChild(minimum_characters.container)
 
+    } 
+    if (data_type === 'Interface') {
+        /**
+         * maybe constraints like: instances may or may not add additional elements
+         * 
+         */
     }
         /**
          * add constraint elements based on data type
