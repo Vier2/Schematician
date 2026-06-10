@@ -14,12 +14,12 @@ implementation:
     2b. Whenever child element is added, read adjacent sibling margin left value
         and adding the margin left value to that, setting it
 */
-import { asset } from "$app/paths";
+
 import type { Input_View, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
 import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./types/types";
 /**
  Apply a Descending Indentation structure to elements currently in, and added to a div element
- */
+*/
 
 
 // export async function Make_Searchable_Select(values: string[], container: HTMLDivElement) {
@@ -283,9 +283,55 @@ export function Make_Collapsible(control_element: HTMLElement, div: HTMLDivEleme
         }
     })
 }
-export function Add_Schema_Constraints_UI(schema: Schema,
+function Make_Labeled_Input(name: string, type: 'number' | 'string'): Input_View {
+    const input = document.createElement('input')
+    input.type = type
+    const label = document.createElement('p')
+    label.textContent = name
+    const viewer = Make_Viewer_Element(input)
+    const container = document.createElement('div')
+    container.appendChild(label)
+    container.appendChild(input)
+    container.appendChild(viewer)
+    return {'container': container,
+        'input': input
+    }
+}
+function Make_Boolean_Select(label: string): Input_View{
+    const div = document.createElement('div')
+    const p = document.createElement('p') as HTMLParagraphElement
+    p.textContent = label
+    const select = document.createElement('select')
+    select.value = ''
+    const options = Create_Options_In_Select_From_Array(select, ['True', 'False'])
+    div.appendChild(p)
+    div.appendChild(select)
+    return {'container': div, 'input': select}
+}
+export function Add_Schema_Constraints_UI(data_type: Data_Type,
     div: HTMLDivElement) {
+    if (data_type === 'Number') {
+        const minimum_number = Make_Labeled_Input('Minimum Number?', 'number')
+        div.appendChild(minimum_number.container)
+        const maximum_number = Make_Labeled_Input('Maximum Number?', 'number')
+        div.appendChild(maximum_number.container)
+        const can_be_positive = Make_Boolean_Select('Can be Positive?')
+        div.appendChild(can_be_positive.container)
+        const can_be_negative = Make_Boolean_Select('Can be Negative?')
+        div.appendChild(can_be_negative.container)
+        
+    } 
+    if (data_type === 'String') {
+        const maximum_characters = Make_Labeled_Input('Maximum Characters?',
+            'number'
+        )
+        div.appendChild(maximum_characters.container)
+        const minimum_characters = Make_Labeled_Input('Mininum Characters', 
+            'number'
+        )
+        div.appendChild(minimum_characters.container)
 
+    }
         /**
          * add constraint elements based on data type
          * string: 
@@ -314,16 +360,31 @@ export function Render_Options_Schema(schemas: Schema[],
     }
 }
 
+
+
  export function Handle_Data_Type_Select(
     select: HTMLSelectElement,
     schemas: string[],
-    container: HTMLDivElement) {
+    container: HTMLDivElement,
+    constraint_container: HTMLDivElement) {
+    select.value = ''
+    const data_types = ['String',
+        'Number',
+        'Boolean',
+        'Interface',
+        'Associative_Array'
+    ] as const
     select.addEventListener('input', function() {
+        
         if (this.value == 'Interface') {
             Make_Searchable_Select(schemas,
                 container
             )
-        
+        }
+        if (this.value === 'String' ||
+            this.value === 'Number'
+        ) {
+            Add_Schema_Constraints_UI(this.value, constraint_container)
 
         }
     })

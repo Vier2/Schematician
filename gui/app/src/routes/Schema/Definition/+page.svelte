@@ -28,15 +28,20 @@
 
         </div>
         <div id="property_div"></div>
-        <p id="property_label">
-            Properties
-        </p>
-            <div id="sub_property_div"> 
-                <button id="property_button" >
-                    +
-                </button>
+            <p id="property_label">
+                Properties
+            </p>
+                <div id="sub_property_div"> 
+                    <button id="property_button" >
+                        +
+                    </button>
+                </div>
+        <div> 
+            <p> Constraints</p>
+            <div id="sub_constraint_div">
+
             </div>
-        <div> Constraints</div>
+        </div>
     </div>
     <div id="right_column">
         
@@ -192,9 +197,12 @@ import { Make_Collapsible, Make_Searchable_Select_Schema, Handle_Data_Type_Selec
             Create_Options_In_Select_From_Array(Data_Type_Select,
                 types
             )
+            const constraint_container: HTMLDivElement = document.getElementById('sub_constraint_div') as HTMLDivElement
             Handle_Data_Type_Select(Data_Type_Select,
-                list, first_row_center_column
+                list, first_row_center_column,
+                constraint_container
             )
+
             const center_column_2nd_row: HTMLDivElement = document.getElementById('center_column_2nd_row') as HTMLDivElement
             const identifier_div: HTMLDivElement = document.getElementById('sub_identifier_div') as HTMLDivElement
 
