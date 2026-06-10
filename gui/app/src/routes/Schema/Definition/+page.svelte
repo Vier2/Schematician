@@ -16,12 +16,22 @@
     </div>
     <div id="center_column_2nd_row">
         <div id="idenitifer_div"> 
-            <button id="identifier_button" >
+            <label for="identifier_button">
                 Identifiers
+            </label>
+            <button id="identifier_button" >
+                +
             </button>
             
         </div>
-        <div> Properties</div>
+        <div id="property_div"> 
+            <label for="property_button">
+                Properties
+            </label>
+            <button id="property_button" >
+                +
+            </button>
+        </div>
         <div> Constraints</div>
     </div>
     <div id="right_column">
@@ -78,7 +88,9 @@ import { Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_
 
             const Identifiers_Button: HTMLButtonElement = document.getElementById('identifier_button') as HTMLButtonElement
             Make_Searchable_Select_Schema(Identifiers_Button, [Definition], identifier_div)
-    
+            const property_div: HTMLDivElement = document.getElementById('property_div') as HTMLDivElement
+            const property_button: HTMLButtonElement = document.getElementById('property_button')
+            Make_Searchable_Select_Schema(property_button, [Definition], property_div)
 
         }
     });
