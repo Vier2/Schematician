@@ -89,7 +89,7 @@ import { Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_
             const Identifiers_Button: HTMLButtonElement = document.getElementById('identifier_button') as HTMLButtonElement
             Make_Searchable_Select_Schema(Identifiers_Button, [Definition], identifier_div)
             const property_div: HTMLDivElement = document.getElementById('property_div') as HTMLDivElement
-            const property_button: HTMLButtonElement = document.getElementById('property_button')
+            const property_button: HTMLButtonElement = document.getElementById('property_button') as HTMLButtonElement
             Make_Searchable_Select_Schema(property_button, [Definition], property_div)
 
         }

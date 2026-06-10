@@ -246,9 +246,12 @@ export async function Make_Searchable_Select_Schema(
             const div = document.createElement('div')
             div.style.display = 'flex'
             div.style.flexDirection = 'row'
+            div.style.gap = '3px'
             div.appendChild(label)
             const input = Make_Schema_Input(schema)
+            const viewer_element = Make_Viewer_Element(input)
             div.appendChild(input)
+            div.appendChild(viewer_element)
             container.appendChild(div)
             search_input.style.display = 'none';
 
