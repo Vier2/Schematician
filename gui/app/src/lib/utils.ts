@@ -83,18 +83,16 @@ export function Render_Schema_Value_Recursive(
         return
     }
 
-    schema.elements?.forEach(
-        child => {
-
-            Render_Schema_Value_Recursive(
-                child,
-                [...parents, schema], 
-                target_container, state,
-                path,
-                ancestry_level_visible
-            )
-        }
-    )
+    schema.elements?.forEach((child, index) => {
+        Render_Schema_Value_Recursive(
+            child,
+            [...parents, schema],
+            target_container,
+            state,
+            [...path, index],
+            ancestry_level_visible
+        )
+    })
 }
 export function Render_Parent_Context(
     parents: Schema[],
@@ -325,8 +323,7 @@ export function Render_Options_Schema(schemas: Schema[],
             Make_Searchable_Select(schemas,
                 container
             )
-            //Add create element UI element
-            //Add existing element UI element
+        
 
         }
     })
@@ -506,30 +503,38 @@ export function Handle_Schema_input_rendering(
         input_view.container
     )
 }
-function Link_State(element: HTMLInputElement | HTMLSelectElement,
+function Link_State(
+    element: HTMLInputElement | HTMLSelectElement,
     state: Schema_Instance,
     path: number[]
 ) {
+    const stable_path = [...path]
+
     const current_value =
         Get_Instance_Value(
             state,
-            path
+            stable_path
         )
-    element.value =
-        String(
-            current_value ?? ''
-        )
-    element.addEventListener(
-        'input',
-        () => {
 
+    element.value =
+        String(current_value ?? '')
+
+    const event_type =
+        element instanceof HTMLSelectElement
+            ? 'change'
+            : 'input'
+
+    element.addEventListener(
+        event_type,
+        () => {
             Set_Instance_Value(
                 state,
-                path,
+                stable_path,
                 element.value
             )
         }
     )
+
     return current_value
 }
 function Is_String_Schema(
@@ -717,7 +722,6 @@ export function Add_Event_Map_Elements(current_schema_div: HTMLDivElement,
                 current_schema_div,
                 current_instance_div,
                 state,
-                item.path
             )
             Handle_Schema_input_rendering(item.schema, 
                 current_instance_div, state,
@@ -734,7 +738,6 @@ export function Render_Adjacent_Elements(
     current_schema_div: HTMLDivElement,
     current_instance_div: HTMLDivElement,
     state: Schema_Instance,
-    path: number[]
 ) {
     const previous = current_schemas[current_index - 1]
     const next = current_schemas[current_index + 1]
@@ -804,7 +807,6 @@ export function Modify_Button_Element(
             current_schema_div,
             current_instance_div,
             state,
-            path
         )
         Handle_Schema_input_rendering(schema, current_instance_div,
             state, path
