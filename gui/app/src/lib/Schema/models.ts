@@ -15,6 +15,7 @@ type Data_Type_Map = {
     Associative_Array: Record<string, unknown>
 }
 
+
 interface Interaction_Element {
     element: Schema
     /**
@@ -81,6 +82,10 @@ type BaseSchema<T extends Data_Type> = {
     elements?: Schema[]
     properties?: Schema_Association[]
     identifiers?: Schema_Association[]
+    /**
+     * Graphic representing schema
+     */
+    image?: string
     rules?: string
     logic?: string
     constraints?: Constraint_Map[T]

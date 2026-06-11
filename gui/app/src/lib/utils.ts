@@ -17,24 +17,23 @@ implementation:
 
 import type { Input_View, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
 import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./types/types";
-/**
- Apply a Descending Indentation structure to elements currently in, and added to a div element
-*/
+function Make_Create_Element_UI(types: Data_Type[]) {
+    //make form
+    //collect name
+    //collect data type
+    //press enter to save and add
+    const name = document.createElement('input')
+    const data_type_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
+    Create_Options_In_Select_From_Array(data_type_select, types)
+    const form = document.createElement('form')
+    form.appendChild(name)
+    form.appendChild(data_type_select)
+    return form
+}
 
 
-// export async function Make_Searchable_Select(values: string[], container: HTMLDivElement) {
-//     const search_input: HTMLInputElement = document.createElement('input') as HTMLInputElement
- 
-//     /**
-//      * add a select element with the options of the values connected to the input
-//      * 
-//      * Add a feature that the text of the search input
-//      * 
-//      * filters and display options of the select that the text is in the value of the option
-//      */
-    
-// }
-export function Render_Schema_Input(schema: Schema): HTMLDivElement {
+
+function Render_Schema_Input(schema: Schema): HTMLDivElement {
     const div = document.createElement('div')
     div.style.display = 'flex'
     div.style.flexDirection = 'row'
@@ -142,6 +141,15 @@ function Render_Options(
         select.appendChild(option);
     }
 }
+export function Link_Element_to_State(state: Record<string, any>, key: string,
+    element: HTMLInputElement | HTMLSelectElement) {
+
+        element.addEventListener('input', () => {
+            state[key] = element.value
+            console.log(`state ${JSON.stringify(state)}`)
+        })
+    }
+    
 
 export async function Make_Searchable_Select(
     values: string[],
