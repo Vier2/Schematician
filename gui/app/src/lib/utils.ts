@@ -153,7 +153,8 @@ export function Link_Element_to_State(state: Record<string, any>, key: string,
 
 export async function Make_Searchable_Select(
     schemas: Schema[],
-    container: HTMLDivElement
+    container: HTMLDivElement,
+    state: Schema
 ): Promise<HTMLSelectElement> {
     const label = document.createElement('p')
     label.textContent = 'Adding Existing Schema as Element'
@@ -188,8 +189,15 @@ export async function Make_Searchable_Select(
         select.style.display = 'none';
         const p = document.createElement('p')
         p.textContent = this.textContent
+        const delete_button = document.createElement('button')
+        delete_button.textContent = 'x'
+        Make_Delete_Function(p, delete_button, state, 'elements',
+            'string'
+         )
         console.log(`schema select, selected`)
+
         container.appendChild(p)
+        container.appendChild(delete_button)
     })
     document.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
@@ -394,7 +402,7 @@ export function Render_Options_Schema(schemas: Schema[],
         
         if (this.value == 'Interface') {
             const select = await Make_Searchable_Select(schemas,
-                container
+                container, state
             )
             Connect_Select_To_List_State(select, state, 'elements')
         }
