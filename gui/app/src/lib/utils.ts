@@ -124,20 +124,20 @@ export function Render_Parent_Context(
 }
 
 function Render_Options(
-    values: string[],
+    schemas: Schema[],
     select: HTMLSelectElement,
     filter_text: string = ''
 ): void {
     select.innerHTML = '';
 
-    const filtered_values = values.filter(value =>
-        value.toLowerCase().includes(filter_text.toLowerCase())
+    const filtered_values = schemas.filter(schema =>
+        schema.name.toLowerCase().includes(filter_text.toLowerCase())
     );
 
     for (const value of filtered_values) {
         const option = document.createElement('option');
-        option.value = value;
-        option.textContent = value;
+        option.value = JSON.stringify(value);
+        option.textContent = value.name;
         select.appendChild(option);
     }
 }
@@ -152,7 +152,7 @@ export function Link_Element_to_State(state: Record<string, any>, key: string,
     
 
 export async function Make_Searchable_Select(
-    values: string[],
+    schemas: Schema[],
     container: HTMLDivElement
 ): Promise<HTMLSelectElement> {
     const label = document.createElement('p')
@@ -168,7 +168,7 @@ export async function Make_Searchable_Select(
     search_input.addEventListener('input', () => {
         select.style.display = '';
         Render_Options(
-            values,
+            schemas,
             select,
             search_input.value
         );
@@ -176,7 +176,7 @@ export async function Make_Searchable_Select(
     search_input.addEventListener('click', () => {
         select.style.display = ''
         Render_Options(
-            values,
+            schemas,
             select,
             search_input.value
         );
@@ -187,7 +187,8 @@ export async function Make_Searchable_Select(
         // search_input.value = select.value
         select.style.display = 'none';
         const p = document.createElement('p')
-        p.textContent = select.value
+        p.textContent = this.textContent
+        console.log(`schema select, selected`)
         container.appendChild(p)
     })
     document.addEventListener('click', (e) => {
@@ -378,9 +379,10 @@ export function Render_Options_Schema(schemas: Schema[],
 
  export function Handle_Data_Type_Select(
     select: HTMLSelectElement,
-    schemas: string[],
+    schemas: Schema[],
     container: HTMLDivElement,
-    constraint_container: HTMLDivElement) {
+    constraint_container: HTMLDivElement, 
+    state: Schema) {
     select.value = ''
     const data_types = ['String',
         'Number',
@@ -388,12 +390,13 @@ export function Render_Options_Schema(schemas: Schema[],
         'Interface',
         'Associative_Array'
     ] as const
-    select.addEventListener('input', function() {
+    select.addEventListener('input', async function() {
         
         if (this.value == 'Interface') {
-            Make_Searchable_Select(schemas,
+            const select = await Make_Searchable_Select(schemas,
                 container
             )
+            Connect_Select_To_List_State(select, state, 'elements')
         }
         if (this.value === 'String' ||
             this.value === 'Number'
@@ -577,6 +580,60 @@ export function Handle_Schema_input_rendering(
     div.appendChild(
         input_view.container
     )
+}
+
+export async function Make_Delete_Function(element: HTMLElement, delete_button: HTMLButtonElement, State: Record<string, any>, key: string, type: 'number' | 'string') {
+    delete_button.addEventListener("click", () => {
+        console.log(`key ${key}`)
+        console.log(`state ${JSON.stringify(State)}`)
+        let index = 0
+        if (type == 'number') {
+            index = State[key].indexOf(Number(element.textContent))
+
+        }
+        if (type == 'string') {
+            console.log(`key ${key}`)
+            index = State[key].indexOf(element.textContent)
+
+        }
+        console.log(`index ${index}`)
+        State[key].splice(index, index + 1)
+        console.log(`new state after deleting ${State[key]}`)
+        element.remove();
+        delete_button.remove() //self destruct, lol
+        //remove element from list
+
+    });
+}
+
+export async function Add_Element_and_Delete_Button(name: string, Parent_Container: HTMLDivElement, State: Record<string, any>, key: string, type: 'number' | 'string') {
+    const delete_button = document.createElement('button')
+    delete_button.textContent = 'x'
+    const text_element = document.createElement('p')
+    text_element.textContent = name
+    const div = document.createElement('div')
+    div.style.display = 'flex'
+    div.style.flexDirection = 'row'
+    div.style.gap = '5px'
+    div.appendChild(text_element)
+    div.appendChild(delete_button)
+    Make_Delete_Function(text_element, delete_button, State, key, type)
+    Parent_Container.appendChild(div)
+}
+export function Connect_Select_To_List_State(select: HTMLSelectElement,
+    state: Record<string, any>,
+    key: string
+) {
+    if (!state[key]) {
+        state[key] = []
+    }
+    select.addEventListener('input', function() {
+        const schema = JSON.parse(this.value)
+        console.log(`key ${key}`)
+        state[key].push(schema)
+        select.value = ''
+
+    })
 }
 function Link_State(
     element: HTMLInputElement | HTMLSelectElement,

@@ -66,7 +66,7 @@
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
 import type { Schema, Schema_Association, Data_Type } from "$lib/Schema/models";
-import { Link_Element_to_State, Make_Collapsible, Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Searchable_Select } from "$lib/utils";
+import {Connect_Select_To_List_State, Link_Element_to_State, Make_Collapsible, Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Searchable_Select } from "$lib/utils";
   onMount(() => {
       if (browser) {
             const state: Schema = $state({'name': '', 'data_type': 'Interface'})
@@ -202,8 +202,8 @@ import { Link_Element_to_State, Make_Collapsible, Make_Searchable_Select_Schema,
             const constraint_label = document.getElementById('Constraint_Label')
             const constraint_container: HTMLDivElement = document.getElementById('sub_constraint_div') as HTMLDivElement
             Handle_Data_Type_Select(Data_Type_Select,
-                list, first_row_center_column,
-                constraint_container
+                [Engine], first_row_center_column,
+                constraint_container, state
             )
             
             Make_Collapsible(constraint_label!, constraint_container)
@@ -223,7 +223,6 @@ import { Link_Element_to_State, Make_Collapsible, Make_Searchable_Select_Schema,
             Make_Collapsible(identifier_label!, identifier_div)
             const Schema_Name_Input: HTMLInputElement = document.getElementById('Schema_Name_Input') as HTMLInputElement
             Link_Element_to_State(state, 'name', Schema_Name_Input)
-            
         }
     });
 </script>
