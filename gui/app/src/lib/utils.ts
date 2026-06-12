@@ -45,6 +45,7 @@ function Make_Create_Element_UI(types: Data_Type[],
     data_type_div.appendChild(data_type_select)
     const form = document.createElement('form')
     const submit_button = document.createElement('button')
+    submit_button.textContent = 'create'
     form.appendChild(name_div)
     form.appendChild(data_type_div)
     form.appendChild(submit_button)
