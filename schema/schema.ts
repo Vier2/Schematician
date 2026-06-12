@@ -74,18 +74,7 @@ type Exclusive<
     | (A & { [P in keyof B]?: never })
     | (B & { [P in keyof A]?: never });
 
-type BaseSchema<T extends Data_Type> = {
-    name: string
-    data_type: T
-    elements?: Schema[]
-    properties?: Schema_Association[]
-    identifiers?: Schema_Association[]
-    instances?: Record<string, Data_Type_Map[T]>
-    rules?: string
-    logic?: string
-    constraints?: Constraint_Map[T]
-    relationships?: string
-}
+
 type EnumPart<T extends Data_Type> = {
     enumerations: Data_Type_Map[T][]
     options?: never
@@ -99,6 +88,18 @@ type OptionsPart<T extends Data_Type> = {
 type EmptyPart = {
     enumerations?: never
     options?: never
+}
+type BaseSchema<T extends Data_Type> = {
+    name: string
+    data_type: T
+    elements?: Schema[]
+    properties?: Schema_Association[]
+    identifiers?: Schema_Association[]
+    instances?: Record<string, Data_Type_Map[T]>
+    rules?: string
+    logic?: string
+    constraints?: Constraint_Map[T]
+    relationships?: string
 }
 export type Schema<T extends Data_Type = Data_Type> =
     BaseSchema<T> & (EnumPart<T> | OptionsPart<T> | EmptyPart)

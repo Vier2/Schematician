@@ -191,8 +191,7 @@ export async function Make_Searchable_Select(
         p.textContent = this.textContent
         const delete_button = document.createElement('button')
         delete_button.textContent = 'x'
-        Make_Delete_Function(p, delete_button, state, 'elements',
-            'string'
+        Make_Delete_Function_Schema(p, delete_button, state
          )
         console.log(`schema select, selected`)
 
@@ -590,6 +589,34 @@ export function Handle_Schema_input_rendering(
     )
 }
 
+
+export function Make_Delete_Function_Schema(
+    element: HTMLElement,
+    delete_button: HTMLButtonElement,
+    State: Schema
+) {
+    delete_button.addEventListener("click", () => {
+
+        const list = State.elements;
+        if (!list) return; // nothing to delete
+
+        const text = element.textContent?.trim();
+        if (!text) return;
+
+        // Find the schema whose name matches the text
+        const index = list.findIndex(item => item?.name === text);
+
+        if (index !== -1) {
+            list.splice(index, 1);   // remove the schema
+        }
+
+        // Remove DOM elements
+        element.remove();
+        delete_button.remove();
+        console.log(`state after deleting ${JSON.stringify(State)}`)
+    });
+}
+
 export async function Make_Delete_Function(element: HTMLElement, delete_button: HTMLButtonElement, State: Record<string, any>, key: string, type: 'number' | 'string') {
     delete_button.addEventListener("click", () => {
         console.log(`key ${key}`)
@@ -640,7 +667,7 @@ export function Connect_Select_To_List_State(select: HTMLSelectElement,
         console.log(`key ${key}`)
         state[key].push(schema)
         select.value = ''
-
+        console.log(`new state ${JSON.stringify(state)}`)
     })
 }
 function Link_State(
