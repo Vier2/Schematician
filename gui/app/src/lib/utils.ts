@@ -15,7 +15,7 @@ implementation:
         and adding the margin left value to that, setting it
 */
 
-import type { Input_View, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
+import type {Schema_Association,  Selection, Input_View, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
 import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./types/types";
 function Make_Create_Element_UI(types: Data_Type[]) {
     //make form
@@ -220,7 +220,9 @@ export async function Make_Searchable_Select(
 export async function Make_Searchable_Select_Schema(
     button: HTMLButtonElement,
     schemas: Schema[],
-    container: HTMLDivElement
+    container: HTMLDivElement,
+    state: Schema,
+    selection: Selection
 )  {
     button.onclick = () => {
 
@@ -264,6 +266,7 @@ export async function Make_Searchable_Select_Schema(
             div.appendChild(label)
             const input_view = Make_Schema_Input_View(schema)
             const viewer_element = Make_Viewer_Element(input_view.input)
+            Connect_Input_View_To_State(input_view.input, state, schema, selection)
             div.appendChild(input_view.input)
             div.appendChild(viewer_element)
             container.appendChild(div)
@@ -284,6 +287,51 @@ export async function Make_Searchable_Select_Schema(
         container.appendChild(select);
         container.appendChild(element_label)
     
+    }
+}
+
+/**
+ * Access the selection property of schema
+ * create instantiate array if it doesn't already exist
+ * push a new element to the array
+ * link the value of the input to that instance of the array
+ */
+export function Connect_Input_View_To_State(
+    input: HTMLInputElement | HTMLSelectElement,
+    state: Schema,
+    selectedSchema: Schema,
+    selection: Selection
+) {
+    // Ensure the array exists
+    if (!state[selection]) {
+        state[selection] = [];
+    }
+
+    // Create the association
+    const association: Schema_Association = {
+        schema: selectedSchema,               // <-- THIS is the fix
+        value: resolveValue(selectedSchema, input.value)
+    };
+
+    state[selection]!.push(association);
+    const index = state[selection]!.length - 1;
+    input.addEventListener("input", () => {
+        state[selection]![index].value = input.value
+    });
+}
+
+
+
+
+function resolveValue(schema: Schema, raw: string) {
+    switch (schema.data_type) {
+        case 'Number':
+            return Number(raw);
+        case 'Boolean':
+            return raw === 'true';
+        case 'String':
+        default:
+            return raw;
     }
 }
 
@@ -539,7 +587,9 @@ export function Link_Schema_Input_View_To_State(
     state: Schema_Instance,
     path: number[]
 ) {
-    
+    /**
+     * Uses path for nested schemas in instantiation, in definition use other function
+     */
 
     if (!input) return
 
@@ -667,7 +717,6 @@ export function Connect_Select_To_List_State(select: HTMLSelectElement,
         console.log(`key ${key}`)
         state[key].push(schema)
         select.value = ''
-        console.log(`new state ${JSON.stringify(state)}`)
     })
 }
 function Link_State(

@@ -211,12 +211,12 @@ import {Connect_Select_To_List_State, Link_Element_to_State, Make_Collapsible, M
             const identifier_div: HTMLDivElement = document.getElementById('sub_identifier_div') as HTMLDivElement
 
             const Identifiers_Button: HTMLButtonElement = document.getElementById('identifier_button') as HTMLButtonElement
-            Make_Searchable_Select_Schema(Identifiers_Button, [Definition], identifier_div)
+            Make_Searchable_Select_Schema(Identifiers_Button, [Definition], identifier_div, state, 'identifiers')
             const sub_property_div: HTMLDivElement = document.getElementById('sub_property_div') as HTMLDivElement
             const property_button: HTMLButtonElement = document.getElementById('property_button') as HTMLButtonElement
             Make_Searchable_Select_Schema(property_button, [Pedal_Effort,
                 PRNDL, Valve_Angle,
-            Airflow_Rate, ], sub_property_div)
+            Airflow_Rate, ], sub_property_div, state, 'properties')
             const property_label = document.getElementById('property_label')
             Make_Collapsible(property_label!, sub_property_div)
             const identifier_label = document.getElementById('identifier_label')
