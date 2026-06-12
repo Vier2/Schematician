@@ -17,20 +17,87 @@ implementation:
 
 import type {Schema_Association,  Selection, Input_View, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
 import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./types/types";
-function Make_Create_Element_UI(types: Data_Type[]) {
+function Make_Create_Element_UI(types: Data_Type[],
+    state: Schema,
+    element_container: HTMLDivElement
+) {
     //make form
     //collect name
     //collect data type
     //press enter to save and add
+    const name_div = document.createElement('div')
+    name_div.style.display = 'flex'
+    name_div.style.flexDirection = 'row'
     const name = document.createElement('input')
+    const name_label = document.createElement('p')
+    name_label.textContent = 'name'
+    name_div.appendChild(name_label)
+    name_div.appendChild(name)
+
+    const data_type_div = document.createElement('div')
+    data_type_div.style.display = 'flex'
+    data_type_div.style.flexDirection = 'row'
+    const data_type_select_label: HTMLParagraphElement = document.createElement('p') as HTMLParagraphElement
+    data_type_select_label.textContent = 'Data Type'
     const data_type_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
     Create_Options_In_Select_From_Array(data_type_select, types)
+    data_type_div.appendChild(data_type_select_label)
+    data_type_div.appendChild(data_type_select)
     const form = document.createElement('form')
-    form.appendChild(name)
-    form.appendChild(data_type_select)
+    const submit_button = document.createElement('button')
+    form.appendChild(name_div)
+    form.appendChild(data_type_div)
+    form.appendChild(submit_button)
+    form.addEventListener('keydown', Handle_Create_Schema_Form(form,
+        name, data_type_select, state, element_container
+    ))
     return form
 }
 
+export function Handle_Create_Schema_Form(
+    form: HTMLFormElement, name_input: HTMLInputElement,
+    data_type_select: HTMLSelectElement, state: Schema,
+    element_container: HTMLDivElement) {
+    const handle_key_down = (event: KeyboardEvent): void => {
+        if (event.key === 'Enter') {
+            //save element, add element, close
+            //make sure name has value
+            form.remove()
+            const name = name_input.value
+            const data_type: Data_Type = data_type_select.value as Data_Type
+            const schema: Schema = {'name': name, 'data_type': data_type}
+            state.elements?.push(schema)
+            const p = document.createElement('p')
+            p.textContent = schema.name
+            p.dataset.schema = JSON.stringify(schema)
+            const delete_button = document.createElement('button') as HTMLButtonElement
+            delete_button.textContent = 'x'
+            Make_Delete_Function_Schema(p, delete_button, state)
+            const div = document.createElement('div')
+            div.appendChild(p)
+            div.appendChild(delete_button)
+            element_container.appendChild(div)
+            //4. add element to container with delete button
+            //close
+
+            event.preventDefault();
+        }
+    }
+    return handle_key_down
+}
+
+export function Handle_Create_New_Schema(
+    div: HTMLDivElement, types: Data_Type[],
+    state: Schema, element_container: HTMLDivElement
+) {
+    const button = document.createElement('button')
+    button.textContent = 'Create New Element'
+    div.appendChild(button)
+    button.addEventListener('click', function() {
+        const form = Make_Create_Element_UI(types, state, element_container)
+        div.appendChild(form)
+    })
+}
 
 
 function Render_Schema_Input(schema: Schema): HTMLDivElement {
@@ -290,6 +357,7 @@ export async function Make_Searchable_Select_Schema(
     }
 }
 
+
 /**
  * Access the selection property of schema
  * create instantiate array if it doesn't already exist
@@ -437,9 +505,10 @@ export function Render_Options_Schema(schemas: Schema[],
     schemas: Schema[],
     container: HTMLDivElement,
     constraint_container: HTMLDivElement, 
-    state: Schema) {
+    state: Schema,
+    ) {
     select.value = ''
-    const data_types = ['String',
+    const data_types: Data_Type[]= ['String',
         'Number',
         'Boolean',
         'Interface',
@@ -452,6 +521,9 @@ export function Render_Options_Schema(schemas: Schema[],
                 container, state
             )
             Connect_Select_To_List_State(select, state, 'elements')
+
+            Handle_Create_New_Schema(container, data_types, state, container)
+
         }
         if (this.value === 'String' ||
             this.value === 'Number'

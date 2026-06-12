@@ -76,6 +76,8 @@ type Exclusive<
     | (A & { [P in keyof B]?: never })
     | (B & { [P in keyof A]?: never });
 
+
+export type Selection = 'identifiers' | 'properties'
 type BaseSchema<T extends Data_Type> = {
     name: string
     data_type: T

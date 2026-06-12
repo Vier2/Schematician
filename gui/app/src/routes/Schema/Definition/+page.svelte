@@ -13,6 +13,7 @@
         </div>
         <label for="Data_Type_Select"> Select Data Type</label>
         <select id="Data_Type_Select"></select>
+        <!-- <button id="create_new_schema">Create New Schema</button> -->
     </div>
     <div id="center_column_2nd_row">
         <div id="identifier_div">
@@ -66,7 +67,7 @@
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
 import type { Schema, Schema_Association, Data_Type } from "$lib/Schema/models";
-import {Connect_Select_To_List_State, Link_Element_to_State, Make_Collapsible, Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Searchable_Select } from "$lib/utils";
+import {Handle_Create_New_Schema, Link_Element_to_State, Make_Collapsible, Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Searchable_Select } from "$lib/utils";
   onMount(() => {
       if (browser) {
             const state: Schema = $state({'name': '', 'data_type': 'Interface'})
@@ -177,7 +178,7 @@ import {Connect_Select_To_List_State, Link_Element_to_State, Make_Collapsible, M
                                         'elements': [Powertrain,  Chassis], 'identifiers': Road_Vehicle_Identifiers}
 
 
-            const types = [
+            const types: Data_Type[] = [
                 'String',
                 'Number',
                 'Boolean',
