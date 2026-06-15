@@ -20,7 +20,11 @@ builder.queryFields(t => ({
     schemas: t.field({
         type: [Schema_Ref],
         nullable: true,
-        resolve: (root, args, context) =>
-            db_get_all_schemas(context.driver, context.user.id)
+        resolve: (root, args, context) => {
+            if (!context.user) {
+                throw new Error('Unauthorized')
+            }
+            return db_get_all_schemas(context.driver, context.user.id)
+        }
     })
 }))

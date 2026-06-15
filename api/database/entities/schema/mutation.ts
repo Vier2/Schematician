@@ -19,11 +19,15 @@ builder.mutationFields(t => ({
             name: t.arg.string({ required: true }),
             data_type: t.arg({ type: Data_Type, required: true })
         },
-        resolve: (root, args, context) =>
-            db_create_schema(context.driver, context.user.id, {
+        resolve: (root, args, context) => {
+            if (!context.user) {
+                throw new Error('Unauthorized')
+            }
+            return db_create_schema(context.driver, context.user.id, {
                 ...args,
                 uid: uuidv4()
             } as any)
+        }
     }),
 
     update_schema: t.field({
@@ -35,6 +39,9 @@ builder.mutationFields(t => ({
             data_type: t.arg({ type: Data_Type })
         },
         resolve: (root, args, context) => {
+            if (!context.user) {
+                throw new Error('Unauthorized')
+            }
             const { uid, ...updates } = args
             return db_update_schema(context.driver, uid, updates as any)
         }

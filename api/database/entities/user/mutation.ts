@@ -53,6 +53,10 @@ builder.mutationFields(t => ({
             uid: t.arg.string({ required: true })
         },
         resolve: async (root, args, context) => {
+            if (!context.user) {
+                throw new Error('no user in context')
+
+            }
             if (context.user.id !== args.uid) {
                 throw new Error('Unauthorized')
             }
