@@ -12,3 +12,15 @@
  *     - example: To list all notes: list all schemas will have tag==note
  * 
  */
+
+import { builder } from '../../builder.js'
+import { Schema_Ref } from '../../schema.js'
+import { db_get_all_schemas } from './repository.js'
+builder.queryFields(t => ({
+    schemas: t.field({
+        type: [Schema_Ref],
+        nullable: true,
+        resolve: (root, args, context) =>
+            db_get_all_schemas(context.driver, context.user.id)
+    })
+}))

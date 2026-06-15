@@ -1,6 +1,5 @@
-import { builder } from "./schema.js"
-import { Schema_Ref } from './schema.js'
-
+import { builder } from "../database/builder.js"
+import { Schema_Ref } from "../database/schema.js"
 builder.queryType({
     fields: t => ({
         schema: t.field({
