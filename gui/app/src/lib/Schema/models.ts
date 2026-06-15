@@ -1,21 +1,5 @@
 import { Make_Schema_Input } from "$lib/utils"
 
-export type Data_Type =
-    | 'String'
-    | 'Number'
-    | 'Boolean'
-    | 'Interface'
-    | 'Associative_Array'
-
-type Data_Type_Map = {
-    String: string
-    Number: number
-    Boolean: boolean
-    Interface: Schema_Instance
-    Associative_Array: Record<string, unknown>
-}
-
-
 interface Interaction_Element {
     element: Schema
     /**
@@ -32,6 +16,22 @@ interface Interaction {
     elements: Interaction_Element[]
 
 }
+export type Data_Type =
+    | 'String'
+    | 'Number'
+    | 'Boolean'
+    | 'Interface'
+    | 'Associative_Array'
+
+type Data_Type_Map = {
+    String: string
+    Number: number
+    Boolean: boolean
+    Interface: Schema_Instance
+    Associative_Array: Record<string, unknown>
+}
+
+
 /**
  * I need a interface which will receive 
  * any number of interaction properties
@@ -42,6 +42,20 @@ interface Interaction {
 
 
 
+
+
+
+
+type Exclusive<
+A,
+B,
+K extends keyof any = keyof (A & B)
+> =
+| (A & { [P in keyof B]?: never })
+| (B & { [P in keyof A]?: never });
+
+
+export type Selection = 'identifiers' | 'properties'
 /**
  * Value resolved from schema data type
  */
@@ -64,20 +78,6 @@ export interface Schema_Association<
     schema: S
     value: Schema_Value<S>
 }
-
-
-
-
-type Exclusive<
-    A,
-    B,
-    K extends keyof any = keyof (A & B)
-> =
-    | (A & { [P in keyof B]?: never })
-    | (B & { [P in keyof A]?: never });
-
-
-export type Selection = 'identifiers' | 'properties'
 type BaseSchema<T extends Data_Type> = {
     name: string
     data_type: T
@@ -136,6 +136,10 @@ type Constraint_Map = {
     Associative_Array: Associative_Array_Constraints
 }
 
+type character_limit = number
+type character_minimum = number
+type max_number = number
+type minimum_number = number
 interface Boolean_Constraints {
 
 }
@@ -147,10 +151,6 @@ interface Associative_Array_Constraints {
 
 }
 
-type character_limit = number
-type character_minimum = number
-type max_number = number
-type minimum_number = number
 
 
 
