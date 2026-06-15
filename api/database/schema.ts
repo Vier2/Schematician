@@ -1,29 +1,4 @@
-import SchemaBuilder from '@pothos/core'
-import { GraphQLJSON } from 'graphql-scalars'
-
-  // registers the query type on the builder
-export const builder = new SchemaBuilder<{
-    Scalars: {
-        JSON: {
-            Input: unknown
-            Output: unknown
-        }
-    }
-}>({})
-
-builder.addScalarType('JSON', GraphQLJSON)
-
-export enum Data_Type {
-    String = 'String',
-    Number = 'Number',
-    Boolean = 'Boolean',
-    Interface = 'Interface',
-    Associative_Array = 'Associative_Array'
-}
-
-builder.enumType(Data_Type, {
-    name: 'Data_Type'
-})
+import { builder, Data_Type } from './builder.js'
 
 export interface GraphQL_Constraints {
     minimum_number?: number
@@ -130,9 +105,6 @@ Schema_Ref.implement({
             resolve: schema => schema.constraints
         }),
 
-        // Note: enumerations and options are mutually exclusive in the app schema
-        // (EnumPart | OptionsPart | EmptyPart) but cannot be enforced structurally
-        // in GraphQL without a union — both are exposed as nullable here
         enumerations: t.field({
             type: ['JSON'],
             nullable: true,
@@ -146,9 +118,3 @@ Schema_Ref.implement({
         })
     })
 })
-import './entities/user/query.js'
-import './entities/user/mutation.js'
-import './entities/schema/query.js'
-import './entities/schema/mutation.js'
-
-export const graphql_schema = builder.toSchema()
