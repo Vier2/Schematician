@@ -1,4 +1,5 @@
 import 'dotenv/config'   // ESM style — must be first import
+console.log('JWT_SECRET loaded:', !!process.env.JWT_SECRET)
 import Fastify from 'fastify'
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { yoga } from '../query/request_handler.js'

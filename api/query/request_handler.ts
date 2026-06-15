@@ -1,8 +1,7 @@
 import { createYoga } from 'graphql-yoga'
 import type { FastifyRequest, FastifyReply } from 'fastify'
-import { graphql_schema } from '../database/schema.js'
 import { build_context } from '../database/context.js'
-
+import { graphql_schema } from '../database/schema.js'
 export const yoga = createYoga<{
     req: FastifyRequest
     reply: FastifyReply

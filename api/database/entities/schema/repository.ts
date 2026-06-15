@@ -1,7 +1,6 @@
 
 import { Driver } from 'neo4j-driver'
-import type { GraphQL_Schema } from './schema.js'
-
+import type { GraphQL_Schema } from '../../schema.js'
 export async function db_get_all_schemas(driver: Driver, user_uid: string): Promise<GraphQL_Schema[]> {
     const session = driver.session()
     try {

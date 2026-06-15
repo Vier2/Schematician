@@ -7,11 +7,10 @@
  */
 
 import { builder } from '../../builder.js'
-import { Schema_Ref } from '../../schema.js'
 import { db_create_schema, db_update_schema } from './repository.js'
-import { Data_Type } from '../../schema.js'
 import { v4 as uuidv4 } from 'uuid'
-
+import { Data_Type } from '../../schema.js'
+import { Schema_Ref } from '../../schema.js'
 builder.mutationFields(t => ({
     create_schema: t.field({
         type: Schema_Ref,
