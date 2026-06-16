@@ -151,3 +151,34 @@ export interface Schema_Instance {
 
     values?: Schema_Association[]
 }
+
+type Search_Target = 'schemas' | 'instances' | 'activity'
+
+type Filter_Operator =
+    | 'equals'
+    | 'contains'
+    | 'greater_than'
+    | 'less_than'
+    | 'has_field'
+    | 'has_element'
+    | 'has_property'
+
+interface Search_Filter {
+    field: string
+    operator: Filter_Operator
+    value?: unknown
+}
+/**
+ * Could do union type later for different schemas based on search filter
+ * list instances of schema
+ */
+
+interface Search_Query {
+    target: Search_Target
+    filters?: Search_Filter[]
+    logic?: 'and' | 'or'
+    sort?: {
+        field: string
+        direction: 'asc' | 'desc'
+    }
+}

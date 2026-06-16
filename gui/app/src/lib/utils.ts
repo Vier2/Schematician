@@ -14,7 +14,7 @@ implementation:
     2b. Whenever child element is added, read adjacent sibling margin left value
         and adding the margin left value to that, setting it
 */
-
+import { goto } from "$app/navigation";
 import type {Schema_Association,  Selection, Input_View, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
 import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./types/types";
 function Make_Create_Element_UI(types: Data_Type[],
@@ -55,6 +55,11 @@ function Make_Create_Element_UI(types: Data_Type[],
     return form
 }
 
+export function Make_Button_Goto_URL(button: HTMLButtonElement, url: string) {
+    button.addEventListener('click', function () {
+        goto(url)
+    })
+}
 export function Handle_Create_Schema_Form(
     form: HTMLFormElement, name_input: HTMLInputElement,
     data_type_select: HTMLSelectElement, state: Schema,
@@ -191,7 +196,7 @@ export function Render_Parent_Context(
     return div
 }
 
-function Render_Options(
+export function Render_Options(
     schemas: Schema[],
     select: HTMLSelectElement,
     filter_text: string = ''
