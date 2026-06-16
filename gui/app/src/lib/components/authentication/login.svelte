@@ -68,7 +68,7 @@
             localStorage.setItem('token', result.data.login.token)
             localStorage.setItem('user_uid', result.data.login.user_uid)
             console.log(`Successful login: ${result.data.login.user_uid}`)
-            goto('/Home/Oracle')
+            goto('/Chronicle')
         } else if (result.errors) {
             console.log(`Login failed: ${result.errors}`)
             Make_Error_Message_Element('Login failed.... Try again', document.getElementById('Login_Element')!)
