@@ -12,9 +12,10 @@
 
 <script lang="ts">
 import { Render_Search_Schema_Value_Recursive, Render_Options_Schema, Make_Schema_Input_View, Make_Viewer_Element } from "$lib/utils";
-import type { Schema , Schema_Association} from "$lib/Schema/models"; 
+import type { Filter_Operator, Search_Filter, Search_Query, Schema ,Schema_Association} from "$lib/Schema/models"; 
 function Handle_Search_Target_Select(select: HTMLSelectElement,
-    container: HTMLDivElement
+    container: HTMLDivElement,
+    search_query_state: Search_Query
 ) {
     select.value = ''
     select.addEventListener('input', function() {
@@ -30,6 +31,9 @@ function Handle_Search_Target_Select(select: HTMLSelectElement,
          * operator (dropdown)
          * value (show existent value but allow to enter)
         */
+        const Selected_Option = select.options[select.selectedIndex];
+        search_query_state.target = Selected_Option.value as Search_Target
+
         const Definition: Schema = {'name': 'Definition', 'data_type': 'String'}
 
        const Independent_Clause: Schema = {'name': 'Independent Clause', 
@@ -98,18 +102,108 @@ function Handle_Search_Target_Select(select: HTMLSelectElement,
             const schemas: Schema[] = [{'name': 'Color', 'data_type': 'String'},
                     {'name': 'Age', 'data_type': 'Number'}, Complex_Sentence, Address
             ] /**Make to api call*/
-            Make_Searchable_Select(schemas, container, 'Field')
+            Make_Searchable_Select(schemas, container, 'Field', search_query_state)
             const add_filter_button = document.createElement('button') as HTMLButtonElement
     
     })
 }
 
+function Add_Search_Filter_Row(
+    schema: Schema,
+    container: HTMLDivElement,
+    search_query_state: Search_Query
+) {
+    const filter: Search_Filter = {
+        field_schema: schema,
+        operator: 'equals'
+    }
+
+    search_query_state.filters ??= []
+    search_query_state.filters.push(filter)
+
+    const row = document.createElement('div')
+
+    const field_operator = ['equals',
+                            'contains',
+                            'greater_than',
+                            'less_than',
+                            'has_field',
+                            'has_element',
+                            'has_property']
+    const field_operator_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
+        
+    Create_Options_In_Select_From_Array(field_operator_select, field_operator)
+    
+    const rendered_values =
+    Render_Search_Schema_Value_Recursive(
+        schema,
+        row,
+        [],
+        0
+        )
+        
+        rendered_values.forEach(rendered => {
+            rendered.input.addEventListener(
+            'input',
+            () => {
+                filter.values =
+                    rendered_values.map(item => ({
+                        schema: item.schema,
+                        value: item.input.value
+                    }))
+            }
+        )
+    })
+    row.appendChild(field_operator_select)
+
+
+    container.appendChild(row)
+}
+function Get_Operators_For_Schema(
+    schema: Schema
+): Filter_Operator[] {
+
+    if (schema.data_type === 'Number') {
+        return [
+            'equals',
+            'greater_than',
+            'less_than',
+            'has_field'
+        ]
+    }
+
+    if (schema.data_type === 'String') {
+        return [
+            'equals',
+            'contains',
+            'has_field'
+        ]
+    }
+
+    if (
+        schema.data_type === 'Interface' ||
+        schema.data_type === 'Associative_Array'
+    ) {
+        return [
+            'has_element',
+            'has_property',
+            'has_field'
+        ]
+    }
+
+    return [
+        'equals',
+        'has_field'
+    ]
+}
 export async function Make_Searchable_Select(
     schemas: Schema[],
     container: HTMLDivElement,
-    select_label: string
+    select_label: string,
+    search_query_state: Search_Query
 ): Promise<HTMLSelectElement> {
-    
+   
+
     const search_input = document.createElement('input');
     search_input.type = 'text';
     search_input.placeholder = 'Search...';
@@ -139,26 +233,37 @@ export async function Make_Searchable_Select(
 
    
     select.addEventListener('input', function() {
+       
         select.style.display = 'none';
         const Selected_Option = select.options[select.selectedIndex];
         const schema: Schema = JSON.parse(Selected_Option.dataset.schema!)
         select.style.display = 'none';
-        const label = document.createElement('p')
-        label.textContent = schema.name
-        const div = document.createElement('div')
-        div.style.display = 'flex'
-        div.style.flexDirection = 'row'
-        div.style.gap = '3px'
-        div.appendChild(label)
-        const input_div = Render_Search_Schema_Value_Recursive(schema, div,
-            [], 0
-        )
-        container.appendChild(div)
-        // const viewer_element = Make_Viewer_Element(input_view.input)
-        // div.appendChild(input_view.input)
-        // div.appendChild(input_div)
-        // container.appendChild(input_div)
+        // const label = document.createElement('p')
+        // label.textContent = schema.name
+        // const div = document.createElement('div')
+        // div.style.display = 'flex'
+        // div.style.flexDirection = 'row'
+        // div.style.gap = '3px'
+        // div.appendChild(label)
+    //     const rendered_values = Render_Search_Schema_Value_Recursive(
+    //     schema,
+    //     div,
+    //     [],
+    //     0
+    // )
+        /**
+         * if field operator vary according to data type, differinate them
+         * 
+        */
+      
+        
         search_input.style.display = 'none';
+        Add_Search_Filter_Row(
+        schema,
+        container,
+        search_query_state
+        )
+        console.log(`state ${JSON.stringify(search_query_state)}`)
     })
     document.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
@@ -198,6 +303,7 @@ function Handle_Add_Filter(button: HTMLButtonElement) {
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
 import { Make_Button_Goto_URL } from "$lib/utils";
+import type { Search_Target } from "$lib/Schema/models";
 import { Create_Options_In_Select_From_Array } from "$lib/utils";
     onMount(() => {
       if (browser) {
@@ -209,7 +315,8 @@ import { Create_Options_In_Select_From_Array } from "$lib/utils";
             const Search_Target: HTMLSelectElement = document.getElementById('Search_Target') as HTMLSelectElement
             Create_Options_In_Select_From_Array(Search_Target, Search_Targets)
             const facted_search_container: HTMLDivElement = document.getElementById('faceted_search') as HTMLDivElement
-            Handle_Search_Target_Select(Search_Target, facted_search_container)
+            const search_query_state: Search_Query = $state({'target': 'schemas'})
+            Handle_Search_Target_Select(Search_Target, facted_search_container, search_query_state)
            });
 </script>
 

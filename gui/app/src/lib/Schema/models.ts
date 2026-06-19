@@ -150,8 +150,46 @@ interface Interface_Constraints {
 interface Associative_Array_Constraints {
 
 }
+export interface Rendered_Search_Value {
+    schema: Schema
+    input: HTMLInputElement | HTMLSelectElement
+    parents: Schema[]
+}
+export type Search_Target = 'schemas' | 'instances' | 'activity'
+
+export type Filter_Operator =
+    | 'equals'
+    | 'contains'
+    | 'greater_than'
+    | 'less_than'
+    | 'has_field'
+    | 'has_element'
+    | 'has_property'
 
 
+export interface Search_Filter {
+    field_schema: Schema
+    operator: Filter_Operator
+    value?: unknown
+    values?: {
+        schema: Schema
+        value: unknown
+    }[]
+}
+/**
+ * Could do union type later for different schemas based on search filter
+ * list instances of schema
+ */
+
+export interface Search_Query {
+    target: Search_Target 
+    filters?: Search_Filter[]
+    logic?: 'and' | 'or'
+    sort?: {
+        field: string
+        direction: 'asc' | 'desc'
+    }
+}
 
 
 /**

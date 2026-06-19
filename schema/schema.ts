@@ -163,6 +163,7 @@ type Filter_Operator =
     | 'has_element'
     | 'has_property'
 
+
 interface Search_Filter {
     field: string
     operator: Filter_Operator
@@ -173,7 +174,7 @@ interface Search_Filter {
  * list instances of schema
  */
 
-interface Search_Query {
+export interface Search_Query {
     target: Search_Target
     filters?: Search_Filter[]
     logic?: 'and' | 'or'

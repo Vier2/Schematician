@@ -15,7 +15,7 @@ implementation:
         and adding the margin left value to that, setting it
 */
 import { goto } from "$app/navigation";
-import type {Schema_Association,  Selection, Input_View, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
+import type { Rendered_Search_Value, Schema_Association,  Selection, Input_View, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
 import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./types/types";
 function Make_Create_Element_UI(types: Data_Type[],
     state: Schema,
@@ -620,8 +620,10 @@ export function Render_Search_Schema_Value_Recursive(
     schema: Schema,
     target_container: HTMLDivElement,
     parents: Schema[] = [],
-    ancestry_level_visible?: number
-) {
+    ancestry_level_visible?: number,
+    rendered_values: Rendered_Search_Value[] = []
+): Rendered_Search_Value[] {
+
     const is_container =
         schema.data_type === 'Interface' ||
         schema.data_type === 'Associative_Array'
@@ -643,7 +645,13 @@ export function Render_Search_Schema_Value_Recursive(
         target_container.appendChild(label)
         target_container.appendChild(input_view.container)
 
-        return
+        rendered_values.push({
+            schema,
+            input: input_view.input,
+            parents
+        })
+
+        return rendered_values
     }
 
     schema.elements?.forEach(child => {
@@ -651,9 +659,12 @@ export function Render_Search_Schema_Value_Recursive(
             child,
             target_container,
             [...parents, schema],
-            ancestry_level_visible
+            ancestry_level_visible,
+            rendered_values
         )
     })
+
+    return rendered_values
 }
 export function Make_Schema_Input_View(
     schema: Schema
