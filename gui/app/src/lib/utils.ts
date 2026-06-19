@@ -131,9 +131,9 @@ export function Render_Schema_Value_Recursive(
     const is_container =
         schema.data_type === 'Interface' ||
         schema.data_type === 'Associative_Array'
-
+    console.log(`running recursive`)
     if (!is_container) {
-
+        console.log(`schema aint container ${schema}`)
         const context_div = Render_Parent_Context(
             parents, ancestry_level_visible)
         const input_view =
@@ -613,6 +613,47 @@ export function Render_Enums(schema: Schema) {
     )
     return select
 }
+
+
+}
+export function Render_Search_Schema_Value_Recursive(
+    schema: Schema,
+    target_container: HTMLDivElement,
+    parents: Schema[] = [],
+    ancestry_level_visible?: number
+) {
+    const is_container =
+        schema.data_type === 'Interface' ||
+        schema.data_type === 'Associative_Array'
+
+    if (!is_container) {
+        const context_div =
+            Render_Parent_Context(
+                parents,
+                ancestry_level_visible
+            )
+
+        const label =
+            Make_Schema_Label(schema)
+
+        const input_view =
+            Make_Schema_Input_View(schema)
+
+        target_container.appendChild(context_div)
+        target_container.appendChild(label)
+        target_container.appendChild(input_view.container)
+
+        return
+    }
+
+    schema.elements?.forEach(child => {
+        Render_Search_Schema_Value_Recursive(
+            child,
+            target_container,
+            [...parents, schema],
+            ancestry_level_visible
+        )
+    })
 }
 export function Make_Schema_Input_View(
     schema: Schema
@@ -696,7 +737,7 @@ export function Handle_Schema_input_rendering(
         schema.data_type === 'Interface' ||
         schema.data_type === 'Associative_Array'
     ) {
-
+        console.log(`callling render schema value recursive`)
         Render_Schema_Value_Recursive(
             schema,
             [],
@@ -1017,6 +1058,7 @@ export function Add_Event_Map_Elements(current_schema_div: HTMLDivElement,
                 current_instance_div,
                 state,
             )
+            console.log(`calling handle schema input rendering`)
             Handle_Schema_input_rendering(item.schema, 
                 current_instance_div, state,
                 item.path)
@@ -1084,10 +1126,7 @@ export function Modify_Button_Element(
 ) {
     button.textContent = schema ? schema.name : '—'
     button.disabled = schema === null
-    console.log(
-        `Button ${button.textContent} assigned path`,
-        JSON.stringify(path)
-    )
+  
     // Replaces any existing handler — no accumulation
     button.onclick = () => {
         if (!schema) return

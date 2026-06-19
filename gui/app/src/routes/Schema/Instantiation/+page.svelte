@@ -97,7 +97,7 @@ import type { Schema, Schema_Association, Schema_Instance } from "$lib/Schema/mo
     onMount(() => {
         if (browser) {
             const Definition: Schema = {'name': 'Definition', 'data_type': 'String'}
-const Throttle_Body_Identifier: Schema_Association[] = [{'schema': Definition,
+            const Throttle_Body_Identifier: Schema_Association[] = [{'schema': Definition,
                 'value': `valve in an engine's air intake system that regulates the volume
                 of air entering the combustion chamber. `
             }]
@@ -136,10 +136,12 @@ const Throttle_Body_Identifier: Schema_Association[] = [{'schema': Definition,
             const Engine_Identifier: Schema_Association[] = [{'schema': Definition, 'value': `a machine designed 
                 to convert one or more forms of enery into mechanical force 
                 and motion`}]
+            const Test: Schema = {'name': 'Test', 'data_type': 'Number'}
             const Engine: Schema = {'name': 'Engine', 'data_type': 'Interface', 
                 'identifiers': Engine_Identifier,
-                'elements': [Intake_System]
+                'elements': [Intake_System, Test]
             }
+
             const Electric_Motor_Idenitifier: Schema_Association[] = [{'schema': Definition, 'value': `
                 an electromechanical device that converts electrical energy into mechanical energy, typically generating
                 rotational motion`}]
