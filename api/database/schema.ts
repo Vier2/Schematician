@@ -1,5 +1,5 @@
 import { builder, Data_Type } from './builder.js'
-
+import { db_get_schema_elements, db_get_schema_properties, db_get_schema_identifiers } from './entities/schema/repository.js'
 export interface GraphQL_Constraints {
     minimum_number?: number
     maximum_number?: number
@@ -14,6 +14,7 @@ export interface GraphQL_Constraints {
 
 export interface GraphQL_Schema {
     name: string
+    uid: string
     data_type: Data_Type
     image?: string
     rules?: string
@@ -64,13 +65,16 @@ Schema_Association_Ref.implement({
         value: t.field({
             type: 'JSON',
             resolve: association => association.value
-        })
+        }),
+       
+
     })
 })
 
 Schema_Ref.implement({
     fields: t => ({
         name: t.exposeString('name'),
+        uid: t.exposeString('uid'),
 
         data_type: t.expose('data_type', {
             type: Data_Type
@@ -84,19 +88,37 @@ Schema_Ref.implement({
         elements: t.field({
             type: [Schema_Ref],
             nullable: true,
-            resolve: schema => schema.elements
+            resolve: (schema, _args, context) => {
+                return db_get_schema_elements(
+                    context.driver,
+                    context.user!.id,
+                    schema.uid
+                )
+            }
         }),
 
         properties: t.field({
             type: [Schema_Association_Ref],
             nullable: true,
-            resolve: schema => schema.properties
+            resolve: (schema, _args, context) => {
+                return db_get_schema_properties(
+                    context.driver,
+                    context.user!.id,
+                    schema.uid!
+                )
+            }
         }),
 
         identifiers: t.field({
             type: [Schema_Association_Ref],
             nullable: true,
-            resolve: schema => schema.identifiers
+            resolve: (schema, _args, context) => {
+                return db_get_schema_identifiers(
+                    context.driver,
+                    context.user!.id,
+                    schema.uid
+                )
+            }
         }),
 
         constraints: t.field({

@@ -60,3 +60,67 @@ export async function db_delete_user(driver: Driver, uid: string): Promise<boole
         await session.close()
     }
 }
+
+export async function db_get_schema_elements(driver: Driver, user_uid: string, schema_uid: string) {
+    const session = driver.session()
+
+    try {
+        const result = await session.run(
+            `
+            MATCH (u:User {uid: $user_uid})-[:OWNS]->(s:Schema {uid: $schema_uid})
+            MATCH (s)-[r:HAS_ELEMENT]->(child:Schema)
+            RETURN child
+            ORDER BY r.index
+            `,
+            { user_uid, schema_uid }
+        )
+
+        return result.records.map(record => record.get('child').properties)
+    } finally {
+        await session.close()
+    }
+}
+
+export async function db_get_schema_properties(driver: Driver, user_uid: string, schema_uid: string) {
+    const session = driver.session()
+
+    try {
+        const result = await session.run(
+            `
+            MATCH (u:User {uid: $user_uid})-[:OWNS]->(s:Schema {uid: $schema_uid})
+            MATCH (s)-[:HAS_PROPERTY]->(child:Schema)
+            RETURN child
+            `,
+            { user_uid, schema_uid }
+        )
+
+        return result.records.map(record => ({
+            schema: record.get('child').properties,
+            value: null
+        }))
+    } finally {
+        await session.close()
+    }
+}
+
+export async function db_get_schema_identifiers(driver: Driver, user_uid: string, schema_uid: string) {
+    const session = driver.session()
+
+    try {
+        const result = await session.run(
+            `
+            MATCH (u:User {uid: $user_uid})-[:OWNS]->(s:Schema {uid: $schema_uid})
+            MATCH (s)-[r:HAS_IDENTIFIER]->(child:Schema)
+            RETURN child, r
+            `,
+            { user_uid, schema_uid }
+        )
+
+        return result.records.map(record => ({
+            schema: record.get('child').properties,
+            value: record.get('r').properties.value ?? null
+        }))
+    } finally {
+        await session.close()
+    }
+}

@@ -15,7 +15,7 @@
 
 import { builder } from '../../builder.js'
 import { Schema_Ref } from '../../schema.js'
-import { db_get_all_schemas } from './repository.js'
+import { db_get_all_schemas, db_get_schema_by_uid} from './repository.js'
 builder.queryFields(t => ({
     schemas: t.field({
         type: [Schema_Ref],
@@ -25,6 +25,22 @@ builder.queryFields(t => ({
                 throw new Error('Unauthorized')
             }
             return db_get_all_schemas(context.driver, context.user.id)
+        }
+    }),
+    schema: t.field({
+        type: Schema_Ref,
+        nullable: true,
+        args: {
+            uid: t.arg.string({ required: true })
+        },
+        resolve: (_root, args, context) => {
+            if (!context.user) throw new Error('Unauthorized')
+
+            return db_get_schema_by_uid(
+                context.driver,
+                context.user.id,
+                args.uid
+            )
         }
     })
 }))
