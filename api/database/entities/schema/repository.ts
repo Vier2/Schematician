@@ -1,6 +1,6 @@
 import { Driver } from 'neo4j-driver'
 import type { GraphQL_Schema } from '../../schema.js'
-
+import type { Search_Query, Field_Role } from './types.js'
 export type Schema_Link_Role =
     | 'HAS_ELEMENT'
     | 'HAS_PROPERTY'
@@ -100,7 +100,8 @@ export async function db_create_schema_link(
     parent_schema_uid: string,
     child_schema_uid: string,
     role: Schema_Link_Role,
-    index?: number
+    index?: number,
+    value?: unknown
 ): Promise<GraphQL_Schema | null> {
     const session = driver.session()
 
@@ -110,19 +111,20 @@ export async function db_create_schema_link(
             MATCH (u:User {uid: $user_uid})-[:OWNS]->(parent:Schema {uid: $parent_schema_uid})
             MATCH (u)-[:OWNS]->(child:Schema {uid: $child_schema_uid})
             MERGE (parent)-[r:${role}]->(child)
-            SET r.index = $index
+            SET r.index = $index,
+                r.value = $value
             RETURN parent
             `,
             {
                 user_uid,
                 parent_schema_uid,
                 child_schema_uid,
-                index: index ?? null
+                index: index ?? null,
+                value: value ?? null
             }
         )
 
         const record = result.records[0]
-
         return record ? record.get('parent').properties : null
     } finally {
         await session.close()
@@ -147,38 +149,20 @@ export async function db_get_schema_elements(driver: Driver, user_uid: string, s
         await session.close()
     }
 }
-
-export async function db_get_schema_properties(driver: Driver, user_uid: string, schema_uid: string) {
+export async function db_get_schema_properties(
+    driver: Driver,
+    user_uid: string,
+    schema_uid: string
+) {
     const session = driver.session()
 
     try {
         const result = await session.run(
             `
             MATCH (u:User {uid: $user_uid})-[:OWNS]->(s:Schema {uid: $schema_uid})
-            MATCH (s)-[:HAS_PROPERTY]->(child:Schema)
-            RETURN child
-            `,
-            { user_uid, schema_uid }
-        )
-
-        return result.records.map(record => ({
-            schema: record.get('child').properties,
-            value: null
-        }))
-    } finally {
-        await session.close()
-    }
-}
-
-export async function db_get_schema_identifiers(driver: Driver, user_uid: string, schema_uid: string) {
-    const session = driver.session()
-
-    try {
-        const result = await session.run(
-            `
-            MATCH (u:User {uid: $user_uid})-[:OWNS]->(s:Schema {uid: $schema_uid})
-            MATCH (s)-[r:HAS_IDENTIFIER]->(child:Schema)
+            MATCH (s)-[r:HAS_PROPERTY]->(child:Schema)
             RETURN child, r
+            ORDER BY coalesce(r.index, 999999)
             `,
             { user_uid, schema_uid }
         )
@@ -187,6 +171,128 @@ export async function db_get_schema_identifiers(driver: Driver, user_uid: string
             schema: record.get('child').properties,
             value: record.get('r').properties.value ?? null
         }))
+    } finally {
+        await session.close()
+    }
+}
+
+export async function db_get_schema_identifiers(
+    driver: Driver,
+    user_uid: string,
+    schema_uid: string
+) {
+    const session = driver.session()
+
+    try {
+        const result = await session.run(
+            `
+            MATCH (u:User {uid: $user_uid})-[:OWNS]->(s:Schema {uid: $schema_uid})
+            MATCH (s)-[r:HAS_IDENTIFIER]->(child:Schema)
+            RETURN child, r
+            ORDER BY coalesce(r.index, 999999)
+            `,
+            { user_uid, schema_uid }
+        )
+
+        return result.records.map(record => ({
+            schema: record.get('child').properties,
+            value: record.get('r').properties.value ?? null
+        }))
+    } finally {
+        await session.close()
+    }
+}
+
+
+function Get_Relationship_Types(role: Field_Role = 'any'): string {
+    if (role === 'element') return 'HAS_ELEMENT'
+    if (role === 'property') return 'HAS_PROPERTY'
+    if (role === 'identifier') return 'HAS_IDENTIFIER'
+
+    return 'HAS_ELEMENT|HAS_PROPERTY|HAS_IDENTIFIER'
+}
+
+export async function db_search_schemas(
+    driver: Driver,
+    user_uid: string,
+    search_query: Search_Query
+): Promise<GraphQL_Schema[]> {
+    const session = driver.session()
+
+    const filters = search_query.filters ?? []
+    const logic = search_query.logic === 'or' ? 'OR' : 'AND'
+
+    const where_parts: string[] = []
+    const match_parts: string[] = []
+    const params: Record<string, unknown> = { user_uid }
+
+    filters.forEach((filter, index) => {
+        const relationship_types = Get_Relationship_Types(filter.field_role)
+
+        const field_uid_param = `field_uid_${index}`
+        const value_param = `value_${index}`
+
+        params[field_uid_param] = filter.field_schema_uid
+        params[value_param] = filter.value
+
+        match_parts.push(`
+            OPTIONAL MATCH (s)-[:${relationship_types}]->(field_${index}:Schema {uid: $${field_uid_param}})
+        `)
+
+        if (
+            filter.operator === 'has_field' ||
+            filter.operator === 'has_element' ||
+            filter.operator === 'has_property' ||
+            filter.operator === 'has_identifier'
+        ) {
+            where_parts.push(`field_${index} IS NOT NULL`)
+            return
+        }
+
+        if (filter.operator === 'equals') {
+            where_parts.push(`field_${index} IS NOT NULL AND field_${index}.value = $${value_param}`)
+            return
+        }
+
+        if (filter.operator === 'contains') {
+            where_parts.push(`
+                field_${index} IS NOT NULL
+                AND toLower(toString(field_${index}.value))
+                CONTAINS toLower(toString($${value_param}))
+            `)
+            return
+        }
+
+        if (filter.operator === 'greater_than') {
+            where_parts.push(`field_${index} IS NOT NULL AND field_${index}.value > $${value_param}`)
+            return
+        }
+
+        if (filter.operator === 'less_than') {
+            where_parts.push(`field_${index} IS NOT NULL AND field_${index}.value < $${value_param}`)
+            return
+        }
+    })
+
+    const where_clause =
+        where_parts.length > 0
+            ? `WHERE ${where_parts.join(` ${logic} `)}`
+            : ''
+
+    try {
+        const result = await session.run(
+            `
+            MATCH (u:User {uid: $user_uid})-[:OWNS]->(s:Schema)
+            ${match_parts.join('\n')}
+            ${where_clause}
+            RETURN DISTINCT s
+            `,
+            params
+        )
+
+        return result.records.map(
+            record => record.get('s').properties
+        )
     } finally {
         await session.close()
     }

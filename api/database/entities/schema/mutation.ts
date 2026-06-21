@@ -70,12 +70,11 @@ builder.mutationFields(t => ({
                 type: Schema_Link_Role_Ref,
                 required: true
             }),
-            index: t.arg.int()
+            index: t.arg.int(),
+            value: t.arg({ type: 'JSON' })
         },
         resolve: (_root, args, context) => {
-            if (!context.user) {
-                throw new Error('Unauthorized')
-            }
+            if (!context.user) throw new Error('Unauthorized')
 
             return db_create_schema_link(
                 context.driver,
@@ -83,7 +82,8 @@ builder.mutationFields(t => ({
                 args.parent_schema_uid,
                 args.child_schema_uid,
                 args.role as Schema_Link_Role,
-                args.index ?? undefined
+                args.index ?? undefined,
+                args.value ?? undefined
             )
         }
     })

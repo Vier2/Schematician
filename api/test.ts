@@ -13,10 +13,12 @@ async function Create_Schema(
                 data_type
             }
         }
-    `, {
-        name,
-        data_type
-    }, token)
+    `, { name, data_type }, token)
+
+    if (result.errors) {
+        console.error('GraphQL Errors:', JSON.stringify(result.errors, null, 2))
+        return null
+    }
 
     return result.data.create_schema
 }
@@ -26,20 +28,23 @@ async function Create_Schema_Link(
     child_schema_uid: string,
     role: 'HAS_ELEMENT' | 'HAS_PROPERTY' | 'HAS_IDENTIFIER',
     token: string,
-    index?: number
+    index?: number,
+    value?: unknown
 ) {
     const result = await gql(`
         mutation CreateSchemaLink(
             $parent_schema_uid: String!,
             $child_schema_uid: String!,
             $role: Schema_Link_Role!,
-            $index: Int
+            $index: Int,
+            $value: JSON
         ) {
             create_schema_link(
                 parent_schema_uid: $parent_schema_uid,
                 child_schema_uid: $child_schema_uid,
                 role: $role,
-                index: $index
+                index: $index,
+                value: $value
             ) {
                 uid
                 name
@@ -50,11 +55,108 @@ async function Create_Schema_Link(
         parent_schema_uid,
         child_schema_uid,
         role,
-        index
+        index,
+        value
     }, token)
+
+    if (result.errors) {
+        console.error('GraphQL Errors:', JSON.stringify(result.errors, null, 2))
+        return null
+    }
 
     return result.data.create_schema_link
 }
+async function Get_Schema(
+    uid: string,
+    token: string
+) {
+    const result = await gql(`
+        query GetSchema($uid: String!) {
+            schema(uid: $uid) {
+                uid
+                name
+                data_type
+
+                elements {
+                    uid
+                    name
+                    data_type
+                }
+
+                properties {
+                    schema {
+                        uid
+                        name
+                        data_type
+                    }
+                    value
+                }
+
+                identifiers {
+                    schema {
+                        uid
+                        name
+                        data_type
+                    }
+                    value
+                }
+
+                constraints {
+                    minimum_number
+                    maximum_number
+                    can_be_positive
+                    can_be_negative
+                    minimum_characters
+                    maximum_characters
+                    regex
+                    lowercase
+                    uppercase
+                }
+
+                enumerations
+                options
+            }
+        }
+    `, { uid }, token)
+
+    if (result.errors) {
+        console.error(
+            'GraphQL Errors:',
+            JSON.stringify(result.errors, null, 2)
+        )
+        return null
+    }
+
+    return result.data.schema
+}
+async function Get_query(uid: string, token: any) {
+    const  query = await gql(`
+        query GetSchema($uid: String!) {
+        schema(uid: $uid) {
+            uid
+            name
+            data_type
+            elements {
+            uid
+            name
+            data_type
+            }
+            identifiers {
+            schema {
+                uid
+                name
+                data_type
+            }
+            value
+            }
+        }
+        }
+`, {
+        uid: uid
+    }, token)
+    return query
+}
+
 async function gql(query: string, variables: Record<string, unknown> = {}, token?: string) {
     const response = await fetch(BASE_URL, {
         method: 'POST',
@@ -84,128 +186,78 @@ async function run() {
     })
 
     const token = login.data.login.token
+    
 
-    // console.log(token)
-    // console.log('\n--- Create Base Schemas ---')
+    console.log(token)
+    console.log('\n--- Create Base Schemas ---')
 
-    // const Definition =
-    //     await Create_Schema('Definition', 'String', token)
+    const Definition =
+        await Create_Schema('Definition', 'String', token)
 
-    // const Independent_Clause =
-    //     await Create_Schema('Independent Clause', 'String', token)
+    const Independent_Clause =
+        await Create_Schema('Independent Clause', 'String', token)
 
-    // const Dependent_Clause =
-    //     await Create_Schema('Dependent Clause', 'String', token)
+    const Dependent_Clause =
+        await Create_Schema('Dependent Clause', 'String', token)
 
-    // const Subordinating_Conjunction =
-    //     await Create_Schema('Subordinating Conjunction', 'String', token)
+    const Subordinating_Conjunction =
+        await Create_Schema('Subordinating Conjunction', 'String', token)
 
-    // const Coordinating_Conjunction =
-    //     await Create_Schema('Coordinating Conjunction', 'String', token)
+    const Coordinating_Conjunction =
+        await Create_Schema('Coordinating Conjunction', 'String', token)
 
-    // const Complex_Sentence =
-    //     await Create_Schema('Complex Sentence', 'Interface', token)
+    const Complex_Sentence =
+        await Create_Schema('Complex Sentence', 'Interface', token)
 
-    // console.log({
-    //     Definition,
-    //     Independent_Clause,
-    //     Dependent_Clause,
-    //     Subordinating_Conjunction,
-    //     Coordinating_Conjunction,
-    //     Complex_Sentence
-    // })
+    console.log({
+        Definition,
+        Independent_Clause,
+        Dependent_Clause,
+        Subordinating_Conjunction,
+        Coordinating_Conjunction,
+        Complex_Sentence
+    })
 
-    // console.log('\n--- Create Complex Sentence Elements ---')
+    console.log('\n--- Create Complex Sentence Elements ---')
+    await Create_Schema_Link(
+        Complex_Sentence.uid,
+        Definition.uid,
+        'HAS_IDENTIFIER',
+        token,
+        undefined,
+        'a sentence that combines one independent clause with at least one dependent clause'
+    )
 
-    // await Create_Schema_Link(
-    //     Complex_Sentence.uid,
-    //     Independent_Clause.uid,
-    //     'HAS_ELEMENT',
-    //     token,
-    //     0
-    // )
+    await Create_Schema_Link(
+        Dependent_Clause.uid,
+        Definition.uid,
+        'HAS_IDENTIFIER',
+        token,
+        undefined,
+        'a group of words that contains a subject and a verb but cannot stand alone as a complete sentence'
+    )
 
-    // await Create_Schema_Link(
-    //     Complex_Sentence.uid,
-    //     Subordinating_Conjunction.uid,
-    //     'HAS_ELEMENT',
-    //     token,
-    //     1
-    // )
-
-    // await Create_Schema_Link(
-    //     Complex_Sentence.uid,
-    //     Dependent_Clause.uid,
-    //     'HAS_ELEMENT',
-    //     token,
-    //     2
-    // )
-
-    // await Create_Schema_Link(
-    //     Complex_Sentence.uid,
-    //     Coordinating_Conjunction.uid,
-    //     'HAS_ELEMENT',
-    //     token,
-    //     3
-    // )
-
-    // console.log('\n--- Create Identifier Links ---')
-
-    // await Create_Schema_Link(
-    //     Complex_Sentence.uid,
-    //     Definition.uid,
-    //     'HAS_IDENTIFIER',
-    //     token
-    // )
-
-    // await Create_Schema_Link(
-    //     Dependent_Clause.uid,
-    //     Definition.uid,
-    //     'HAS_IDENTIFIER',
-    //     token
-    // )
-
-    // await Create_Schema_Link(
-    //     Subordinating_Conjunction.uid,
-    //     Definition.uid,
-    //     'HAS_IDENTIFIER',
-    //     token
-    // )
-
-    // await Create_Schema_Link(
-    //     Coordinating_Conjunction.uid,
-    //     Definition.uid,
-    //     'HAS_IDENTIFIER',
-    //     token
-    // )
+    await Create_Schema_Link(
+        Subordinating_Conjunction.uid,
+        Definition.uid,
+        'HAS_IDENTIFIER',
+        token,
+        undefined,
+        'a word or phrase that connects a dependent clause to an independent clause'
+    )
+    
+    await Create_Schema_Link(
+        Coordinating_Conjunction.uid,
+        Definition.uid,
+        'HAS_IDENTIFIER',
+        token,
+        undefined,
+        'a word that connects words, phrases, or clauses of equal grammatical rank'
+    )
 
     console.log('\n--- Query Complex Sentence Relationships ---')
 
-    const complex_sentence_query = await gql(`
-        query GetSchema($uid: String!) {
-        schema(uid: $uid) {
-            uid
-            name
-            data_type
-            elements {
-            uid
-            name
-            data_type
-            }
-            identifiers {
-            schema {
-                uid
-                name
-                data_type
-            }
-            value
-            }
-        }
-        }
-`, {
-        uid: "1911529b-da2a-4c68-9887-72d4425a0bb5"
-    }, token)
-
+    const complex_sentence_query = await Get_query(Complex_Sentence.uid, token)
     console.log(JSON.stringify(complex_sentence_query.data, null, 2))
 
     console.log('\n--- Get All Schemas ---')
