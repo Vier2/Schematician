@@ -15,8 +15,9 @@ implementation:
         and adding the margin left value to that, setting it
 */
 import { goto } from "$app/navigation";
+import type { GraphQL_Schema } from "./Schema/models";
 import type { Rendered_Search_Value, Schema_Association,  Selection, Input_View, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
-import type { CSS_Property, CSS_Unit, Element_Handler, Value_Computer } from "./types/types";
+import type { CSS_Property,  Schemas_Query_Response, CSS_Unit, GraphQL_Response, Element_Handler, Value_Computer } from "./types/types";
 function Make_Create_Element_UI(types: Data_Type[],
     state: Schema,
     element_container: HTMLDivElement
@@ -1215,7 +1216,101 @@ export function Apply_Length_Value_CSS(Element: HTMLElement, property: CSS_Prope
     const kebab_property: string = Convert_Camel_to_Kebab(property)
     Element.style.setProperty(kebab_property, `${value}${unit}`)
 }
+export async function Send_Post_Request<
+    Request_Interface,
+    Response_Interface
+>(
+    path_url: string,
+    data: Request_Interface,
+): Promise<Response_Interface> {
 
+    const token = localStorage.getItem('token')
+    console.log(localStorage.getItem('token'))
+    const Response = await fetch(path_url, {
+        method: 'POST',
+
+        headers: {
+            'Content-Type': 'application/json',
+
+            ...(token
+                ? {
+                    Authorization: `Bearer ${token}`
+                }
+                : {})
+        },
+        body: JSON.stringify(data)
+    })
+
+    return await Response.json() as Response_Interface
+}
+
+export function Convert_GraphQL_Schema_To_Schema(
+    graphql_schema: GraphQL_Schema
+): Schema {
+    const schema: Schema = {
+        name: graphql_schema.name,
+        data_type: graphql_schema.data_type,
+
+        elements: graphql_schema.elements?.map(
+            Convert_GraphQL_Schema_To_Schema
+        ),
+
+        properties: graphql_schema.properties?.map(association => ({
+            schema: Convert_GraphQL_Schema_To_Schema(association.schema),
+            value: association.value as any
+        })),
+
+        identifiers: graphql_schema.identifiers?.map(association => ({
+            schema: Convert_GraphQL_Schema_To_Schema(association.schema),
+            value: association.value as any
+        })),
+
+        rules: graphql_schema.rules,
+        logic: graphql_schema.logic,
+        relationships: graphql_schema.relationships,
+
+        constraints: graphql_schema.constraints as any,
+
+        enumerations: graphql_schema.enumerations as any,
+        options: graphql_schema.options as any
+    }
+
+    return schema
+}
+
+export async function Get_All_Schemas(
+    api_url: string
+): Promise<GraphQL_Schema[]> {
+
+    const response =
+        await Send_Post_Request<
+            { query: string },
+            GraphQL_Response<Schemas_Query_Response>
+        >(
+            api_url,
+            {
+                query: `
+                    query {
+                        schemas {
+                            uid
+                            name
+                            data_type
+                        }
+                    }
+                `
+            },
+        )
+
+    if (response.errors) {
+        throw new Error(
+            response.errors
+                .map(error => error.message)
+                .join('\n')
+        )
+    }
+
+    return response.data.schemas
+}
 /* as I'm pondering how to make the function singular resposibility and abstract, I kept going higher.
  to explain I wanted to make a function to incrementally add a margin value to a list of html element
  Then I considered if I should make a function to apply a margin, then I realized I should make the 

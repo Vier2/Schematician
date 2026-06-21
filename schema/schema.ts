@@ -155,17 +155,19 @@ export interface Schema_Instance {
 type Search_Target = 'schemas' | 'instances' | 'activity'
 
 type Filter_Operator =
-    | 'equals'
-    | 'contains'
-    | 'greater_than'
-    | 'less_than'
-    | 'has_field'
-    | 'has_element'
-    | 'has_property'
+| 'equals'
+| 'contains'
+| 'greater_than'
+| 'less_than'
+| 'has_field'
+| 'has_element'
+| 'has_property'
+| 'has_identifier'
 
-
+type Field_Role_Ref = 'any' | 'element' | 'property' | 'identifier'
 interface Search_Filter {
-    field: string
+    field_schema_uid: string
+    field_role: Field_Role_Ref
     operator: Filter_Operator
     value?: unknown
 }
@@ -175,11 +177,10 @@ interface Search_Filter {
  */
 
 export interface Search_Query {
-    target: Search_Target
     filters?: Search_Filter[]
     logic?: 'and' | 'or'
-    sort?: {
-        field: string
-        direction: 'asc' | 'desc'
-    }
+    // sort?: {
+    //     field: string
+    //     direction: 'asc' | 'desc'
+    // }
 }

@@ -3,6 +3,7 @@
         <button id="new_schema_button"> New Schema</button>
         <div id="faceted_search" class="faceted_search"> Faceted Search 
             <select id="Search_Target"> Search Target</select>
+            <button id="submit_search"> Search</button>
         </div>
         <button> Settings </button>
     </div>
@@ -11,99 +12,23 @@
 </div>
 
 <script lang="ts">
-import { Render_Search_Schema_Value_Recursive, Render_Options_Schema, Make_Schema_Input_View, Make_Viewer_Element } from "$lib/utils";
-import type { Filter_Operator, Search_Filter, Search_Query, Schema ,Schema_Association} from "$lib/Schema/models"; 
+import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Search_Schema_Value_Recursive, Render_Options_Schema, Make_Schema_Input_View, Make_Viewer_Element } from "$lib/utils";
+import type { Filter_Operator, GraphQL_Schema, Search_Filter, Search_Query, Schema ,Schema_Association} from "$lib/Schema/models"; 
+import { PUBLIC_SERVER_API_URL } from "$env/static/public";
 function Handle_Search_Target_Select(select: HTMLSelectElement,
     container: HTMLDivElement,
     search_query_state: Search_Query
 ) {
     select.value = ''
-    select.addEventListener('input', function() {
-        /**
-         * 
-         * press enter to search
-         * button to add filter
-         * co
-         *  filter creates element which can be deleted or edited
-         *  
-         * form appears with:
-         * field (dropdown but allow to type)
-         * operator (dropdown)
-         * value (show existent value but allow to enter)
-        */
-        const Selected_Option = select.options[select.selectedIndex];
-        search_query_state.target = Selected_Option.value as Search_Target
+    select.addEventListener('input', async function() {
+        
+        
+     const graphql_schemas = await Get_All_Schemas(PUBLIC_SERVER_API_URL)
 
-        const Definition: Schema = {'name': 'Definition', 'data_type': 'String'}
-
-       const Independent_Clause: Schema = {'name': 'Independent Clause', 
-                'data_type': 'String'}
-            const Dependent_Clause_Identifier: Schema_Association[] = [
-                {'schema': Definition,
-                'value': `a group of words that contains a subject and a verb but cannot stand alone as a complete sentence`
-                }
-            ]
-            const Dependent_Clause: Schema = {'name': 'Dependent Clause', 
-                'data_type': 'String',
-            'identifiers': Dependent_Clause_Identifier
-        }
-            const Subordinating_Conjunction_identifiers: Schema_Association[] = 
-            [{'schema': Definition, 'value': ` a word or phrase that connects a dependent clause (a fragment that cannot stand alone) to an independent clause (a complete thought)`}]
-            const Subordinating_Conjunction: Schema  = {
-                'name': 'Subordinating Conjunction',
-                'data_type': 'String',
-                'identifiers': Subordinating_Conjunction_identifiers,
-                'constraints': {
-                    'maximum_characters': 8
-                },
-                'enumerations': [
-                    'because',
-                    'since',
-                    'until',
-                    'once',
-                    'although'
-                    
-                ],}
-            const Coordinating_Conjunction_identifiers: Schema_Association[] = 
-            [{"schema": Definition, 'value': `
-            a word that connects words, phrases, or clauses of equal grammatical rank`}]
-            const Coordinating_Conjunction: Schema = {
-                'name': 'Coordinating Conjunction',
-                'data_type': 'String',
-                'options': [
-                    'For',
-                    'And',
-                    'Nor',
-                    'But',
-                    'Or',
-                    'Yet',
-                    'So'
-                ],
-                'constraints': {
-                    'maximum_characters': 3
-                },
-                'identifiers': Coordinating_Conjunction_identifiers
-            }
-            const Complex_Sentence_Identifiers: Schema_Association[] = [{'schema': Definition, 'value': `
-             a sentence that combines one independent clause with at least one dependent clause`}]
-            const Complex_Sentence: Schema = {'name': 'Complex Sentence', 'data_type': 'Interface', 
-                'elements': [Independent_Clause, 
-                Subordinating_Conjunction,
-                Dependent_Clause, Coordinating_Conjunction],
-                'identifiers': Complex_Sentence_Identifiers
-            }
-            const city: Schema = {'name': 'City', 'data_type': 'String'}
-            const state: Schema = {'name': 'State', 'data_type': 'String'}
-            const postal_code: Schema = {'name': 'Postal Code', 'data_type': 'String'}
-            const Address: Schema = {'name': 'Address', 'data_type': 'Interface',
-                'elements': [city, state, postal_code]
-            }
-            
-            const schemas: Schema[] = [{'name': 'Color', 'data_type': 'String'},
-                    {'name': 'Age', 'data_type': 'Number'}, Complex_Sentence, Address
-            ] /**Make to api call*/
-            Make_Searchable_Select(schemas, container, 'Field', search_query_state)
-            const add_filter_button = document.createElement('button') as HTMLButtonElement
+            const schemas: Schema[] =
+            graphql_schemas.map(Convert_GraphQL_Schema_To_Schema)
+        Make_Searchable_Select(schemas, container, 'Field', search_query_state)
+        const add_filter_button = document.createElement('button') as HTMLButtonElement
     
     })
 }
@@ -122,14 +47,19 @@ function Add_Search_Filter_Row(
     search_query_state.filters.push(filter)
 
     const row = document.createElement('div')
-
+    const field_roles = ['element', 'property', 'identifier', 'any']
+    const field_role_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
+    container.appendChild(field_role_select)
+    Create_Options_In_Select_From_Array(field_role_select, field_roles)
+    
     const field_operator = ['equals',
                             'contains',
                             'greater_than',
                             'less_than',
                             'has_field',
                             'has_element',
-                            'has_property']
+                            'has_property',
+                            'has_identifier']
     const field_operator_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
         
     Create_Options_In_Select_From_Array(field_operator_select, field_operator)
@@ -300,6 +230,53 @@ function Handle_Add_Filter(button: HTMLButtonElement) {
     })
 }
 
+export function Handle_Submit_Search(
+    button: HTMLButtonElement,
+    search_query_state: Search_Query,
+    api_url: string
+) {
+    button.addEventListener('click', async function () {
+
+        const query = `
+            query Search($query: Search_Query_Input!) {
+                search(query: $query) {
+                    uid
+                    name
+                    data_type
+                }
+            }
+        `
+
+        const response = await fetch(`${api_url}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`
+            },
+            body: JSON.stringify({
+                query,
+                variables: {
+                    query: search_query_state
+                }
+            })
+        })
+
+        const result = await response.json()
+
+        if (result.errors) {
+            console.error(
+                'GraphQL Errors:',
+                JSON.stringify(result.errors, null, 2)
+            )
+            return
+        }
+
+        console.log('Search Results:', result.data.search)
+
+        return result.data.search
+    })
+}
+
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
 import { Make_Button_Goto_URL } from "$lib/utils";
@@ -317,6 +294,8 @@ import { Create_Options_In_Select_From_Array } from "$lib/utils";
             const facted_search_container: HTMLDivElement = document.getElementById('faceted_search') as HTMLDivElement
             const search_query_state: Search_Query = $state({'target': 'schemas'})
             Handle_Search_Target_Select(Search_Target, facted_search_container, search_query_state)
+            const submit_search_button: HTMLButtonElement = document.getElementById('submit_search') as HTMLButtonElement
+            Handle_Submit_Search(submit_search_button, search_query_state, PUBLIC_SERVER_API_URL)
            });
 </script>
 

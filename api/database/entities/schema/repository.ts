@@ -212,7 +212,7 @@ function Get_Relationship_Types(role: Field_Role = 'any'): string {
     return 'HAS_ELEMENT|HAS_PROPERTY|HAS_IDENTIFIER'
 }
 
-export async function db_search_schemas(
+export async function db_search(
     driver: Driver,
     user_uid: string,
     search_query: Search_Query
@@ -236,8 +236,7 @@ export async function db_search_schemas(
         params[value_param] = filter.value
 
         match_parts.push(`
-            OPTIONAL MATCH (s)-[:${relationship_types}]->(field_${index}:Schema {uid: $${field_uid_param}})
-        `)
+            OPTIONAL MATCH (s)-[r_${index}:${relationship_types}]->(field_${index}:Schema {uid: $${field_uid_param}})        `)
 
         if (
             filter.operator === 'has_field' ||
@@ -250,26 +249,34 @@ export async function db_search_schemas(
         }
 
         if (filter.operator === 'equals') {
-            where_parts.push(`field_${index} IS NOT NULL AND field_${index}.value = $${value_param}`)
+            where_parts.push(`
+        field_${index} IS NOT NULL
+        AND r_${index}.value = $${value_param}
+    `)
             return
         }
 
         if (filter.operator === 'contains') {
             where_parts.push(`
-                field_${index} IS NOT NULL
-                AND toLower(toString(field_${index}.value))
-                CONTAINS toLower(toString($${value_param}))
-            `)
+        field_${index} IS NOT NULL
+        AND toLower(toString(r_${index}.value))
+            CONTAINS toLower(toString($${value_param}))
+    `)
             return
         }
 
         if (filter.operator === 'greater_than') {
-            where_parts.push(`field_${index} IS NOT NULL AND field_${index}.value > $${value_param}`)
+            where_parts.push(`
+        field_${index} IS NOT NULL
+        AND r_${index}.value > $${value_param}
+    `)
             return
         }
-
         if (filter.operator === 'less_than') {
-            where_parts.push(`field_${index} IS NOT NULL AND field_${index}.value < $${value_param}`)
+            where_parts.push(`
+        field_${index} IS NOT NULL
+        AND r_${index}.value < $${value_param}
+    `)
             return
         }
     })

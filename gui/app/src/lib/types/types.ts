@@ -3,7 +3,7 @@ import type { DataKey } from "$lib/interfaces/ElementObject";
 export type Cleanup = () => void;
 export type Key_Value_Container_Creation = () => HTMLElement
 export type Create_Element_Method = (ElementObject: ElementObject, Base_Url: string, Parent_Container: HTMLElement, location: string, category: DataKey, Secondary_Container?: HTMLElement ) => HTMLElement
-
+import type { GraphQL_Schema } from "$lib/Schema/models";
 
 
 export type CSS_Property = {
@@ -19,3 +19,15 @@ export type Value_Computer = () => number
 */
 type Index = string | number
 export type Index_Set = Set<Index>
+
+
+export interface GraphQL_Response<T> {
+    data: T
+    errors?: {
+        message: string
+    }[]
+}
+
+export interface Schemas_Query_Response {
+    schemas: GraphQL_Schema[]
+}
