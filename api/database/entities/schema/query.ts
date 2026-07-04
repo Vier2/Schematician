@@ -61,8 +61,19 @@ const Search_Logic_Ref = builder.enumType('Search_Logic', {
         or: { value: 'or' }
     } as const
 })
+const Search_Target_Ref = builder.enumType('Search_Target', {
+    values: {
+        schemas: {value: 'schemas'},
+        instances: {value: 'instances'}
+    }
+})
 const Search_Query_Input = builder.inputType('Search_Query_Input', {
     fields: t => ({
+
+        search_target: t.field({
+            type: Search_Target_Ref,
+            required: true
+        }),
         filters: t.field({
             type: [Search_Filter_Input],
             required: false

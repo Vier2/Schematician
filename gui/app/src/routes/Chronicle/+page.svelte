@@ -13,20 +13,18 @@
 
 <script lang="ts">
 import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Search_Schema_Value_Recursive, Render_Options_Schema, Make_Schema_Input_View, Make_Viewer_Element } from "$lib/utils";
-import type { Filter_Operator, GraphQL_Schema, Search_Filter, Search_Query, Schema ,Schema_Association} from "$lib/Schema/models"; 
+import type { Filter_Operator, GraphQL_Schema, Search_Filter_Input, Search_Query_Input, Schema ,Schema_Association} from "$lib/Schema/models"; 
 import { PUBLIC_SERVER_API_URL } from "$env/static/public";
 function Handle_Search_Target_Select(select: HTMLSelectElement,
     container: HTMLDivElement,
-    search_query_state: Search_Query
+    search_query_state: Search_Query_Input
 ) {
     select.value = ''
     select.addEventListener('input', async function() {
         
         
-     const graphql_schemas = await Get_All_Schemas(PUBLIC_SERVER_API_URL)
-
-            const schemas: Schema[] =
-            graphql_schemas.map(Convert_GraphQL_Schema_To_Schema)
+        const graphql_schemas = await Get_All_Schemas(PUBLIC_SERVER_API_URL)
+        const schemas: Schema[] = graphql_schemas.map(Convert_GraphQL_Schema_To_Schema)
         Make_Searchable_Select(schemas, container, 'Field', search_query_state)
         const add_filter_button = document.createElement('button') as HTMLButtonElement
     
@@ -36,11 +34,12 @@ function Handle_Search_Target_Select(select: HTMLSelectElement,
 function Add_Search_Filter_Row(
     schema: Schema,
     container: HTMLDivElement,
-    search_query_state: Search_Query
+    search_query_state: Search_Query_Input
 ) {
-    const filter: Search_Filter = {
-        field_schema: schema,
-        operator: 'equals'
+    const filter: Search_Filter_Input = {
+        field_schema_uid: schema.uid!,
+        operator: 'equals',
+        field_role: 'any'
     }
 
     search_query_state.filters ??= []
@@ -49,6 +48,9 @@ function Add_Search_Filter_Row(
     const row = document.createElement('div')
     const field_roles = ['element', 'property', 'identifier', 'any']
     const field_role_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
+    /**
+     * connect state of field role select, and operator to search_query_state
+    */
     container.appendChild(field_role_select)
     Create_Options_In_Select_From_Array(field_role_select, field_roles)
     
@@ -61,7 +63,6 @@ function Add_Search_Filter_Row(
                             'has_property',
                             'has_identifier']
     const field_operator_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
-        
     Create_Options_In_Select_From_Array(field_operator_select, field_operator)
     
     const rendered_values =
@@ -130,7 +131,7 @@ export async function Make_Searchable_Select(
     schemas: Schema[],
     container: HTMLDivElement,
     select_label: string,
-    search_query_state: Search_Query
+    search_query_state: Search_Query_Input
 ): Promise<HTMLSelectElement> {
    
 
@@ -232,7 +233,7 @@ function Handle_Add_Filter(button: HTMLButtonElement) {
 
 export function Handle_Submit_Search(
     button: HTMLButtonElement,
-    search_query_state: Search_Query,
+    search_query_state: Search_Query_Input,
     api_url: string
 ) {
     button.addEventListener('click', async function () {
@@ -292,7 +293,7 @@ import { Create_Options_In_Select_From_Array } from "$lib/utils";
             const Search_Target: HTMLSelectElement = document.getElementById('Search_Target') as HTMLSelectElement
             Create_Options_In_Select_From_Array(Search_Target, Search_Targets)
             const facted_search_container: HTMLDivElement = document.getElementById('faceted_search') as HTMLDivElement
-            const search_query_state: Search_Query = $state({'target': 'schemas'})
+            const search_query_state: Search_Query_Input = $state({'target': 'schemas'})
             Handle_Search_Target_Select(Search_Target, facted_search_container, search_query_state)
             const submit_search_button: HTMLButtonElement = document.getElementById('submit_search') as HTMLButtonElement
             Handle_Submit_Search(submit_search_button, search_query_state, PUBLIC_SERVER_API_URL)

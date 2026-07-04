@@ -1248,6 +1248,7 @@ export function Convert_GraphQL_Schema_To_Schema(
     graphql_schema: GraphQL_Schema
 ): Schema {
     const schema: Schema = {
+        uid: graphql_schema.uid,
         name: graphql_schema.name,
         data_type: graphql_schema.data_type,
 

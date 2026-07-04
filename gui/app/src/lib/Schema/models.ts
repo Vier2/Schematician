@@ -79,6 +79,7 @@ export interface Schema_Association<
     value: Schema_Value<S>
 }
 type BaseSchema<T extends Data_Type> = {
+    uid?: string
     name: string
     data_type: T
     elements?: Schema[]
@@ -167,8 +168,15 @@ export type Filter_Operator =
     | 'has_property'
 
 
-export interface Search_Filter {
-    field_schema: Schema
+export type Field_Role =
+    | 'any'
+    | 'element'
+    | 'property'
+    | 'identifier'
+
+export interface Search_Filter_Input {
+    field_schema_uid: string
+    field_role:Field_Role
     operator: Filter_Operator
     value?: unknown
     values?: {
@@ -181,9 +189,9 @@ export interface Search_Filter {
  * list instances of schema
  */
 
-export interface Search_Query {
+export interface Search_Query_Input {
     target: Search_Target 
-    filters?: Search_Filter[]
+    filters?: Search_Filter_Input[]
     logic?: 'and' | 'or'
     sort?: {
         field: string
