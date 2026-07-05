@@ -15,8 +15,10 @@
 
 import { builder } from '../../builder.js'
 import { Schema_Ref } from '../../schema.js'
-import { db_get_all_schemas, db_get_schema_by_uid, db_search} from './repository.js'
+import { db_get_all_schemas, db_get_schema_by_uid, db_search_schemas} from './repository.js'
+import { db_search_instances } from '../instance/repository.js'
 
+import { Instance_Ref } from '../instance/schema.js'
 const Field_Role_Ref = builder.enumType('Field_Role', {
     values: {
         any: { value: 'any' },
@@ -112,8 +114,28 @@ builder.queryFields(t => ({
             )
         }
     }),
-    search: t.field({
-        type: [Schema_Ref],
+
+     search_schemas: t.field({
+         type: [Schema_Ref],
+         args: {
+             query: t.arg({
+                 type: Search_Query_Input,
+                 required: true
+             })
+         },
+         resolve: (_root, args, context) => {
+             if (!context.user) throw new Error('Unauthorized')
+
+             return db_search_schemas(
+                 context.driver,
+                 context.user.id,
+                 args.query as any
+             )
+         }
+     }),
+
+    search_instances: t.field({
+        type: [Instance_Ref],
         args: {
             query: t.arg({
                 type: Search_Query_Input,
@@ -121,11 +143,9 @@ builder.queryFields(t => ({
             })
         },
         resolve: (_root, args, context) => {
-            if (!context.user) {
-                throw new Error('Unauthorized')
-            }
+            if (!context.user) throw new Error('Unauthorized')
 
-            return db_search(
+            return db_search_instances(
                 context.driver,
                 context.user.id,
                 args.query as any

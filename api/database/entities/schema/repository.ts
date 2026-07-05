@@ -212,7 +212,7 @@ function Get_Relationship_Types(role: Field_Role = 'any'): string {
     return 'HAS_ELEMENT|HAS_PROPERTY|HAS_IDENTIFIER'
 }
 
-export async function db_search(
+export async function db_search_schemas(
     driver: Driver,
     user_uid: string,
     search_query: Search_Query
@@ -229,14 +229,12 @@ export async function db_search(
     filters.forEach((filter, index) => {
         const relationship_types = Get_Relationship_Types(filter.field_role)
 
-        const field_uid_param = `field_uid_${index}`
-        const value_param = `value_${index}`
-
-        params[field_uid_param] = filter.field_schema_uid
-        params[value_param] = filter.value
+        params[`field_uid_${index}`] = filter.field_schema_uid
+        params[`value_${index}`] = filter.value
 
         match_parts.push(`
-            OPTIONAL MATCH (s)-[r_${index}:${relationship_types}]->(field_${index}:Schema {uid: $${field_uid_param}})        `)
+            OPTIONAL MATCH (s)-[r_${index}:${relationship_types}]->(field_${index}:Schema {uid: $field_uid_${index}})
+        `)
 
         if (
             filter.operator === 'has_field' ||
@@ -249,34 +247,26 @@ export async function db_search(
         }
 
         if (filter.operator === 'equals') {
-            where_parts.push(`
-        field_${index} IS NOT NULL
-        AND r_${index}.value = $${value_param}
-    `)
+            where_parts.push(`field_${index} IS NOT NULL AND r_${index}.value = $value_${index}`)
             return
         }
 
         if (filter.operator === 'contains') {
             where_parts.push(`
-        field_${index} IS NOT NULL
-        AND toLower(toString(r_${index}.value))
-            CONTAINS toLower(toString($${value_param}))
-    `)
+                field_${index} IS NOT NULL
+                AND toLower(toString(r_${index}.value))
+                    CONTAINS toLower(toString($value_${index}))
+            `)
             return
         }
 
         if (filter.operator === 'greater_than') {
-            where_parts.push(`
-        field_${index} IS NOT NULL
-        AND r_${index}.value > $${value_param}
-    `)
+            where_parts.push(`field_${index} IS NOT NULL AND r_${index}.value > $value_${index}`)
             return
         }
+
         if (filter.operator === 'less_than') {
-            where_parts.push(`
-        field_${index} IS NOT NULL
-        AND r_${index}.value < $${value_param}
-    `)
+            where_parts.push(`field_${index} IS NOT NULL AND r_${index}.value < $value_${index}`)
             return
         }
     })
@@ -297,9 +287,7 @@ export async function db_search(
             params
         )
 
-        return result.records.map(
-            record => record.get('s').properties
-        )
+        return result.records.map(record => record.get('s').properties)
     } finally {
         await session.close()
     }
