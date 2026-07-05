@@ -22,7 +22,43 @@ async function Create_Schema(
 
     return result.data.create_schema
 }
+async function Create_Instance(
+    schema_uid: string,
+    objects: {
+        field_schema_uid: string
+        value: unknown
+    }[],
+    token: string
+) {
+    const result = await gql(`
+        mutation CreateInstance(
+            $schema_uid: String!,
+            $objects: [Instance_Value_Input!]!
+        ) {
+            create_instance(
+                schema_uid: $schema_uid,
+                objects: $objects
+            ) {
+                uid
+                schema_uid
+                objects {
+                    field_schema_uid
+                    value
+                }
+            }
+        }
+    `, {
+        schema_uid,
+        objects
+    }, token)
 
+    if (result.errors) {
+        console.error('GraphQL Errors:', JSON.stringify(result.errors, null, 2))
+        return null
+    }
+
+    return result.data.create_instance
+}
 async function Create_Schema_Link(
     parent_schema_uid: string,
     child_schema_uid: string,
@@ -186,92 +222,114 @@ async function run() {
     })
 
     const token = login.data.login.token
+    const complex_sentence_instance = await Create_Instance(
+         "b62116df-5d96-480d-b834-d34d5f909a2f",
+        [
+            {
+                field_schema_uid: "8046e3fb-1d3d-4e6a-b198-b70cc82025fe",
+                value: 'The dog barked'
+            },
+            {
+                field_schema_uid: "3a830c15-c818-4e1d-b3e4-204f6e326efc",
+                value: 'because'
+            },
+            {
+                field_schema_uid: "bfa11b5c-96d4-4033-803c-dbec748376e2",
+                value: 'the stranger knocked'
+            },
+            {
+                field_schema_uid: "93588e2a-5577-4ba1-a0a9-048630b94a05",
+                value: 'and'
+            }
+        ],
+        token
+    )
+
+    console.log(JSON.stringify(complex_sentence_instance, null, 2))
+
+    // console.log(token)
+    // console.log('\n--- Create Base Schemas ---')
+
+    // const Definition =
+    //     await Create_Schema('Definition', 'String', token)
+
+    // const Independent_Clause =
+    //     await Create_Schema('Independent Clause', 'String', token)
+
+    // const Dependent_Clause =
+    //     await Create_Schema('Dependent Clause', 'String', token)
+
+    // const Subordinating_Conjunction =
+    //     await Create_Schema('Subordinating Conjunction', 'String', token)
+
+    // const Coordinating_Conjunction =
+    //     await Create_Schema('Coordinating Conjunction', 'String', token)
+
+    // const Complex_Sentence =
+    //     await Create_Schema('Complex Sentence', 'Interface', token)
+
+    // console.log({
+    //     Definition,
+    //     Independent_Clause,
+    //     Dependent_Clause,
+    //     Subordinating_Conjunction,
+    //     Coordinating_Conjunction,
+    //     Complex_Sentence
+    // })
+
+    // console.log('\n--- Create Complex Sentence Elements ---')
+    // await Create_Schema_Link(
+    //     Complex_Sentence.uid,
+    //     Definition.uid,
+    //     'HAS_IDENTIFIER',
+    //     token,
+    //     undefined,
+    //     'a sentence that combines one independent clause with at least one dependent clause'
+    // )
+
+    // await Create_Schema_Link(
+    //     Dependent_Clause.uid,
+    //     Definition.uid,
+    //     'HAS_IDENTIFIER',
+    //     token,
+    //     undefined,
+    //     'a group of words that contains a subject and a verb but cannot stand alone as a complete sentence'
+    // )
+
+    // await Create_Schema_Link(
+    //     Subordinating_Conjunction.uid,
+    //     Definition.uid,
+    //     'HAS_IDENTIFIER',
+    //     token,
+    //     undefined,
+    //     'a word or phrase that connects a dependent clause to an independent clause'
+    // )
     
-
-    console.log(token)
-    console.log('\n--- Create Base Schemas ---')
-
-    const Definition =
-        await Create_Schema('Definition', 'String', token)
-
-    const Independent_Clause =
-        await Create_Schema('Independent Clause', 'String', token)
-
-    const Dependent_Clause =
-        await Create_Schema('Dependent Clause', 'String', token)
-
-    const Subordinating_Conjunction =
-        await Create_Schema('Subordinating Conjunction', 'String', token)
-
-    const Coordinating_Conjunction =
-        await Create_Schema('Coordinating Conjunction', 'String', token)
-
-    const Complex_Sentence =
-        await Create_Schema('Complex Sentence', 'Interface', token)
-
-    console.log({
-        Definition,
-        Independent_Clause,
-        Dependent_Clause,
-        Subordinating_Conjunction,
-        Coordinating_Conjunction,
-        Complex_Sentence
-    })
-
-    console.log('\n--- Create Complex Sentence Elements ---')
-    await Create_Schema_Link(
-        Complex_Sentence.uid,
-        Definition.uid,
-        'HAS_IDENTIFIER',
-        token,
-        undefined,
-        'a sentence that combines one independent clause with at least one dependent clause'
-    )
-
-    await Create_Schema_Link(
-        Dependent_Clause.uid,
-        Definition.uid,
-        'HAS_IDENTIFIER',
-        token,
-        undefined,
-        'a group of words that contains a subject and a verb but cannot stand alone as a complete sentence'
-    )
-
-    await Create_Schema_Link(
-        Subordinating_Conjunction.uid,
-        Definition.uid,
-        'HAS_IDENTIFIER',
-        token,
-        undefined,
-        'a word or phrase that connects a dependent clause to an independent clause'
-    )
-    
-    await Create_Schema_Link(
-        Coordinating_Conjunction.uid,
-        Definition.uid,
-        'HAS_IDENTIFIER',
-        token,
-        undefined,
-        'a word that connects words, phrases, or clauses of equal grammatical rank'
-    )
+    // await Create_Schema_Link(
+    //     Coordinating_Conjunction.uid,
+    //     Definition.uid,
+    //     'HAS_IDENTIFIER',
+    //     token,
+    //     undefined,
+    //     'a word that connects words, phrases, or clauses of equal grammatical rank'
+    // )
 
     console.log('\n--- Query Complex Sentence Relationships ---')
 
-    const complex_sentence_query = await Get_query(Complex_Sentence.uid, token)
-    console.log(JSON.stringify(complex_sentence_query.data, null, 2))
+    // const complex_sentence_query = await Get_query(Complex_Sentence.uid, token)
+    // console.log(JSON.stringify(complex_sentence_query.data, null, 2))
 
-    console.log('\n--- Get All Schemas ---')
+    // console.log('\n--- Get All Schemas ---')
 
-    const schemas = await gql(`
-        query {
-            schemas {
-                uid
-                name
-                data_type
-            }
-        }
-    `, {}, token)
+    // const schemas = await gql(`
+    //     query {
+    //         schemas {
+    //             uid
+    //             name
+    //             data_type
+    //         }
+    //     }
+    // `, {}, token)
 
-    console.log(JSON.stringify(schemas.data, null, 2))
 }
 run()

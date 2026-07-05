@@ -1,18 +1,25 @@
 import { Driver } from 'neo4j-driver'
-import type { GraphQL_Instance } from './schema.js'
+import type { GraphQL_Instance, GraphQL_Instance_Value } from './schema.js'
 
 export async function db_get_all_instances(
     driver: Driver,
     user_uid: string
 ): Promise<GraphQL_Instance[]> {
     const session = driver.session()
+
     try {
         const result = await session.run(
-            `MATCH (u:User {uid: $user_uid})-[:OWNS]->(s:instance) RETURN s`,
+            `
+            MATCH (u:User {uid: $user_uid})-[:OWNS]->(i:Instance)
+            RETURN i
+            `,
             { user_uid }
         )
 
-        return result.records.map(record => record.get('s').properties)
+        return result.records.map(record => ({
+            ...record.get('i').properties,
+            objects: []
+        }))
     } finally {
         await session.close()
     }
@@ -41,7 +48,9 @@ export async function db_create_instance(
             CREATE (i)-[:INSTANCE_OF]->(schema)
 
             WITH i
-            UNWIND $objects AS object
+            CALL {
+                WITH i
+                UNWIND $objects AS object
                 MATCH (field:Schema {uid: object.field_schema_uid})
                 CREATE (v:InstanceValue {
                     value: object.value,
@@ -49,6 +58,8 @@ export async function db_create_instance(
                 })
                 CREATE (i)-[:HAS_VALUE]->(v)
                 CREATE (v)-[:FOR_FIELD]->(field)
+                RETURN count(*) AS created_values
+            }
 
             RETURN i
             `,
@@ -60,9 +71,17 @@ export async function db_create_instance(
             }
         )
 
+        const record = result.records[0]
+
+        if (!record) {
+            throw new Error(
+                `Instance creation returned no record. Check user_uid=${user_uid} and schema_uid=${instance.schema_uid}`
+            )
+        }
+
         return {
-            ...result.records[0]!.get('i').properties,
-            objects: instance.objects
+            ...record.get('i').properties,
+            objects: instance.objects ?? []
         }
     } finally {
         await session.close()
@@ -79,25 +98,19 @@ export async function db_get_instance_by_uid(
         const result = await session.run(
             `
             MATCH (u:User {uid: $user_uid})-[:OWNS]->(i:Instance {uid: $instance_uid})
-            OPTIONAL MATCH (i)-[:HAS_VALUE]->(v:InstanceValue)-[:FOR_FIELD]->(field:Schema)
-
-            RETURN i, collect({
-                field_schema_uid: field.uid,
-                value: v.value
-            }) AS objects
+            RETURN i
             `,
             { user_uid, instance_uid }
         )
 
         const record = result.records[0]
-        if (!record) return null
 
-        return {
-            ...record.get('i').properties,
-            objects: record.get('objects').filter(
-                (object: any) => object.field_schema_uid !== null
-            )
-        }
+        return record
+            ? {
+                ...record.get('i').properties,
+                objects: []
+            }
+            : null
     } finally {
         await session.close()
     }
@@ -122,6 +135,35 @@ export async function db_update_instance(
         const record = result.records[0]
 
         return record ? record.get('s').properties : null
+    } finally {
+        await session.close()
+    }
+} export async function db_get_instance_values(
+    driver: Driver,
+    user_uid: string,
+    instance_uid: string
+): Promise<GraphQL_Instance_Value[]> {
+    const session = driver.session()
+
+    try {
+        const result = await session.run(
+            `
+            MATCH (u:User {uid: $user_uid})-[:OWNS]->(i:Instance {uid: $instance_uid})
+            OPTIONAL MATCH (i)-[:HAS_VALUE]->(v:InstanceValue)-[:FOR_FIELD]->(field:Schema)
+            RETURN collect({
+                field_schema_uid: field.uid,
+                value: v.value
+            }) AS objects
+            `,
+            { user_uid, instance_uid }
+        )
+
+        const objects = result.records[0]?.get('objects') ?? []
+
+        return objects.filter(
+            (object: GraphQL_Instance_Value) =>
+                object.field_schema_uid !== null
+        )
     } finally {
         await session.close()
     }
