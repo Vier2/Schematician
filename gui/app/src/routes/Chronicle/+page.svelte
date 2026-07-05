@@ -7,14 +7,30 @@
         </div>
         <button> Settings </button>
     </div>
-    <div id="Chronicle"> Chronicle</div>
+    <div id="Chronicle" class="chronicle"> 
+        <div>
+
+        </div>
+        <div>
+
+        </div>
+        <div id="results_container">
+
+        </div>
+    </div>
+
 
 </div>
 
 <script lang="ts">
 import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Search_Schema_Value_Recursive, Render_Options_Schema, Make_Schema_Input_View, Make_Viewer_Element } from "$lib/utils";
-import type { Filter_Operator, Search_Filter_Input, Search_Query_Input, Schema} from "$lib/Schema/models"; 
-import { PUBLIC_SERVER_API_URL } from "$env/static/public";
+import type { 
+    Filter_Operator,
+     GraphQL_Response, 
+     Search_Schema_Result,
+      Search_Result,  
+      Search_Instance_Result, GraphQl_Instance, Search_Filter_Input, Search_Query_Input, Schema, GraphQL_Schema} from "$lib/Schema/models"; 
+import { PUBLIC_SERVER_API_URL, PUBLIC_CLIENT_API_URL } from "$env/static/public";
 function Handle_Search_Target_Select(select: HTMLSelectElement,
     container: HTMLDivElement,
     search_query_state: Search_Query_Input
@@ -231,42 +247,25 @@ function Handle_Add_Filter(button: HTMLButtonElement) {
     })
 }
 
-export function Handle_Submit_Search(
-    button: HTMLButtonElement,
+export async function Submit_Search(
     search_query_state: Search_Query_Input,
     api_url: string
-) {
-    button.addEventListener('click', async function () {
-
-        let query = ``
-        if (search_query_state.search_target == 'instances') {
-            query = `
-                query Search($query: Search_Query_Input!) {
-                    search_instances(query: $query) {
-                        uid
-                        schema_uid
-                        objects {
-                            field_schema_uid
-                            value
-                        }
+): Promise<Search_Result | undefined> {
+    if (search_query_state.search_target === 'instances') {
+        const query = `
+            query Search($query: Search_Query_Input!) {
+                search_instances(query: $query) {
+                    uid
+                    schema_uid
+                    objects {
+                        field_schema_uid
+                        value
                     }
                 }
-            `
+            }
+        `
 
-        } else if (search_query_state.search_target == 'schemas') {
-            console.log(` schemas`)
-               query = `
-                query Search($query: Search_Query_Input!) {
-                    search_schemas(query: $query) {
-                        uid
-                        name
-                        data_type
-                    }
-                }
-            `
-        }
-
-        const response = await fetch(`${api_url}`, {
+        const response = await fetch(api_url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -274,28 +273,126 @@ export function Handle_Submit_Search(
             },
             body: JSON.stringify({
                 query,
-                variables: {
-                    query: search_query_state
-                }
+                variables: { query: search_query_state }
             })
         })
 
-        const result = await response.json()
+        const result =
+            (await response.json()) as GraphQL_Response<{
+                search_instances: Search_Instance_Result[]
+            }>
 
         if (result.errors) {
-            console.error(
-                'GraphQL Errors:',
-                JSON.stringify(result.errors, null, 2)
-            )
+            console.error('GraphQL Errors:', result.errors)
             return
         }
 
-        console.log('Search Results:', result.data)
+        return {
+            search_target: 'instances',
+            results: result.data?.search_instances ?? []
+        }
+    }
 
-        return result.data.search
+    const query = `
+        query Search($query: Search_Query_Input!) {
+            search_schemas(query: $query) {
+                uid
+                name
+                data_type
+            }
+        }
+    `
+
+    const response = await fetch(api_url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`
+        },
+        body: JSON.stringify({
+            query,
+            variables: { query: search_query_state }
+        })
     })
+
+    const result =
+        (await response.json()) as GraphQL_Response<{
+            search_schemas: Search_Schema_Result[]
+        }>
+
+    if (result.errors) {
+        console.error('GraphQL Errors:', result.errors)
+        return
+    }
+
+    return {
+        search_target: 'schemas',
+        results: result.data?.search_schemas ?? []
+    }
 }
 
+export function Handle_Submit_Search(
+    button: HTMLButtonElement,
+    search_query_state: Search_Query_Input,
+    api_url: string, 
+    results_container: HTMLDivElement,
+    client_url: string
+) {
+    button.addEventListener('click', async function () {
+
+        const search_result = await Submit_Search(search_query_state, api_url)
+        if (search_result?.search_target == "schemas") {
+            search_result.results.forEach(schema => {
+                const schema_container = Render_Schema_Result(schema, client_url)
+                results_container.appendChild(schema_container)
+            });
+        }
+    })
+}
+/**Type Cast the Results
+ * 
+*/
+
+function Render_Schema_Result(
+    schema: GraphQL_Schema,
+    client_url: string) {
+    const container = document.createElement('div')
+    container.style.border = '2px solid black'
+    const name = document.createElement('p')
+    name.textContent = schema.name
+
+    const data_type = document.createElement('p')
+    data_type.textContent = schema.data_type
+
+    const edit_url: HTMLAnchorElement = document.createElement('a') as HTMLAnchorElement
+    edit_url.href = `${client_url}/Schema/Definition/${schema.uid}` /**TODO:Add id dir later*/
+
+    /**TODO:Add Delete Button*/
+    container.appendChild(name)
+    container.appendChild(data_type)
+    container.appendChild(edit_url)
+    return container
+}
+
+function Render_Instance_Results(
+    instance: GraphQl_Instance,
+    client_url: string
+) {
+    const container = document.createElement('div')
+
+    const name = document.createElement('p')
+    /**query schema name using uid*/
+    // name.textContent = instance.
+
+    const schema_url: HTMLAnchorElement = document.createElement('a') as HTMLAnchorElement
+    schema_url.href = `${client_url}/Schema/Definition/${instance.schema_uid}`
+    /**
+     * TODO: add delete button
+    */
+    const edit_url: HTMLAnchorElement = document.createElement('a') as HTMLAnchorElement
+    edit_url.href = `${client_url}/Schema/Instantiation/${instance.uid}` /**TODO:Add id dir later*/
+
+}
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
 import { Make_Button_Goto_URL } from "$lib/utils";
@@ -314,7 +411,14 @@ import { Create_Options_In_Select_From_Array } from "$lib/utils";
             const search_query_state: Search_Query_Input = $state({'search_target': 'schemas'})
             Handle_Search_Target_Select(Search_Target, facted_search_container, search_query_state)
             const submit_search_button: HTMLButtonElement = document.getElementById('submit_search') as HTMLButtonElement
-            Handle_Submit_Search(submit_search_button, search_query_state, PUBLIC_SERVER_API_URL)
+            const results_container: HTMLDivElement = document.getElementById('results_container') as HTMLDivElement
+            Handle_Submit_Search
+            (submit_search_button, 
+            search_query_state, 
+            PUBLIC_SERVER_API_URL,
+            results_container,
+            PUBLIC_CLIENT_API_URL,
+         )
            });
 </script>
 
@@ -333,5 +437,11 @@ import { Create_Options_In_Select_From_Array } from "$lib/utils";
     }
     .faceted_search {
         overflow-y: scroll;
+    }
+   
+    .chronicle {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
     }
 </style>
