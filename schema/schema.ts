@@ -152,7 +152,7 @@ export interface Schema_Instance {
     values?: Schema_Association[]
 }
 
-type Search_Target = 'schemas' | 'instances' | 'activity'
+type Search_Target = 'schemas' | 'instances'
 
 type Filter_Operator =
 | 'equals'

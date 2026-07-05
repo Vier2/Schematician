@@ -156,7 +156,7 @@ export interface Rendered_Search_Value {
     input: HTMLInputElement | HTMLSelectElement
     parents: Schema[]
 }
-export type Search_Target = 'schemas' | 'instances' | 'activity'
+export type Search_Target = 'schemas' | 'instances' 
 
 export type Filter_Operator =
     | 'equals'
@@ -190,7 +190,7 @@ export interface Search_Filter_Input {
  */
 
 export interface Search_Query_Input {
-    target: Search_Target 
+    search_target: Search_Target 
     filters?: Search_Filter_Input[]
     logic?: 'and' | 'or'
     sort?: {

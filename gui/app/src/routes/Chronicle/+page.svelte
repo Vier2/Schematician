@@ -13,7 +13,7 @@
 
 <script lang="ts">
 import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Search_Schema_Value_Recursive, Render_Options_Schema, Make_Schema_Input_View, Make_Viewer_Element } from "$lib/utils";
-import type { Filter_Operator, GraphQL_Schema, Search_Filter_Input, Search_Query_Input, Schema ,Schema_Association} from "$lib/Schema/models"; 
+import type { Filter_Operator, Search_Filter_Input, Search_Query_Input, Schema} from "$lib/Schema/models"; 
 import { PUBLIC_SERVER_API_URL } from "$env/static/public";
 function Handle_Search_Target_Select(select: HTMLSelectElement,
     container: HTMLDivElement,
@@ -22,7 +22,7 @@ function Handle_Search_Target_Select(select: HTMLSelectElement,
     select.value = ''
     select.addEventListener('input', async function() {
         
-        
+        search_query_state.search_target = select.value as Search_Target
         const graphql_schemas = await Get_All_Schemas(PUBLIC_SERVER_API_URL)
         const schemas: Schema[] = graphql_schemas.map(Convert_GraphQL_Schema_To_Schema)
         Make_Searchable_Select(schemas, container, 'Field', search_query_state)
@@ -238,15 +238,33 @@ export function Handle_Submit_Search(
 ) {
     button.addEventListener('click', async function () {
 
-        const query = `
-            query Search($query: Search_Query_Input!) {
-                search(query: $query) {
-                    uid
-                    name
-                    data_type
+        let query = ``
+        if (search_query_state.search_target == 'instances') {
+            query = `
+                query Search($query: Search_Query_Input!) {
+                    search_instances(query: $query) {
+                        uid
+                        schema_uid
+                        objects {
+                            field_schema_uid
+                            value
+                        }
+                    }
                 }
-            }
-        `
+            `
+
+        } else if (search_query_state.search_target == 'schemas') {
+            console.log(` schemas`)
+               query = `
+                query Search($query: Search_Query_Input!) {
+                    search_schemas(query: $query) {
+                        uid
+                        name
+                        data_type
+                    }
+                }
+            `
+        }
 
         const response = await fetch(`${api_url}`, {
             method: 'POST',
@@ -272,7 +290,7 @@ export function Handle_Submit_Search(
             return
         }
 
-        console.log('Search Results:', result.data.search)
+        console.log('Search Results:', result.data)
 
         return result.data.search
     })
@@ -293,7 +311,7 @@ import { Create_Options_In_Select_From_Array } from "$lib/utils";
             const Search_Target: HTMLSelectElement = document.getElementById('Search_Target') as HTMLSelectElement
             Create_Options_In_Select_From_Array(Search_Target, Search_Targets)
             const facted_search_container: HTMLDivElement = document.getElementById('faceted_search') as HTMLDivElement
-            const search_query_state: Search_Query_Input = $state({'target': 'schemas'})
+            const search_query_state: Search_Query_Input = $state({'search_target': 'schemas'})
             Handle_Search_Target_Select(Search_Target, facted_search_container, search_query_state)
             const submit_search_button: HTMLButtonElement = document.getElementById('submit_search') as HTMLButtonElement
             Handle_Submit_Search(submit_search_button, search_query_state, PUBLIC_SERVER_API_URL)
