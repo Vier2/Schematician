@@ -23,13 +23,14 @@
 </div>
 
 <script lang="ts">
-import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Search_Schema_Value_Recursive, Render_Options_Schema, Make_Schema_Input_View, Make_Viewer_Element } from "$lib/utils";
+import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Search_Schema_Value_Recursive, Render_Options_Schema, Make_Schema_Input_View, Make_Viewer_Element, Link_Element_to_State } from "$lib/utils";
+import type { GraphQL_Response, GraphQl_Instance, GraphQL_Schema} from "$lib/graphql/types";
+import { Create_Schema_Modal } from "$lib/utils";
 import type { 
     Filter_Operator,
-     GraphQL_Response, 
      Search_Schema_Result,
       Search_Result,  
-      Search_Instance_Result, GraphQl_Instance, Search_Filter_Input, Search_Query_Input, Schema, GraphQL_Schema} from "$lib/Schema/models"; 
+      Search_Instance_Result, Search_Filter_Input, Search_Query_Input, Schema} from "$lib/Schema/models"; 
 import { PUBLIC_SERVER_API_URL, PUBLIC_CLIENT_API_URL } from "$env/static/public";
 function Handle_Search_Target_Select(select: HTMLSelectElement,
     container: HTMLDivElement,
@@ -80,7 +81,6 @@ function Add_Search_Filter_Row(
                             'has_identifier']
     const field_operator_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
     Create_Options_In_Select_From_Array(field_operator_select, field_operator)
-    
     const rendered_values =
     Render_Search_Schema_Value_Recursive(
         schema,
@@ -339,7 +339,7 @@ export function Handle_Submit_Search(
     client_url: string
 ) {
     button.addEventListener('click', async function () {
-
+        console.log(`search query state ${JSON.stringify(search_query_state)}`)
         const search_result = await Submit_Search(search_query_state, api_url)
         if (search_result?.search_target == "schemas") {
             search_result.results.forEach(schema => {
@@ -401,8 +401,10 @@ import { Create_Options_In_Select_From_Array } from "$lib/utils";
     onMount(() => {
       if (browser) {
             const new_schema_button: HTMLButtonElement = document.getElementById('new_schema_button') as HTMLButtonElement
-
-            Make_Button_Goto_URL(new_schema_button, 'Schema/Definition')
+            new_schema_button.addEventListener('click', function() {
+                Create_Schema_Modal()
+            })
+            // Make_Button_Goto_URL(new_schema_button, 'Schema/Definition')
         }
             const Search_Targets = ['schemas', 'instances', 'activity']
             const Search_Target: HTMLSelectElement = document.getElementById('Search_Target') as HTMLSelectElement

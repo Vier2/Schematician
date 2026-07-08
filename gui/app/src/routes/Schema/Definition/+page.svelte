@@ -44,9 +44,9 @@
             </div>
         </div>
     </div>
-    <div id="right_column">
-        
-    </div>
+</div>
+<div id="right_column">
+    <button> Save Schema</button>
 </div>
 </div>
 

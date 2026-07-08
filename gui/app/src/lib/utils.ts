@@ -15,7 +15,9 @@ implementation:
         and adding the margin left value to that, setting it
 */
 import { goto } from "$app/navigation";
-import type { GraphQL_Schema } from "./Schema/models";
+import type { GraphQL_Schema } from "./graphql/types";
+import { Send_GraphQL_Request } from "./graphql/utils";
+import type { Create_Schema_Input, Create_Schema_Response} from "./graphql/types";
 import type { Rendered_Search_Value, Schema_Association,  Selection, Input_View, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
 import type { CSS_Property,  Schemas_Query_Response, CSS_Unit, GraphQL_Response, Element_Handler, Value_Computer } from "./types/types";
 function Make_Create_Element_UI(types: Data_Type[],
@@ -106,6 +108,98 @@ export function Handle_Create_New_Schema(
     })
 }
 
+
+export function Create_Schema_Modal(
+) {
+    /**Create popup window to create a schema */
+    
+    const data_type_array = ['String', 'Interface', 'Number', 'Boolean', 'Associative_Array']
+    const container = document.createElement('div')
+    const overlay = document.createElement('div')
+
+    overlay.style.position = 'fixed'
+    overlay.style.inset = '0'
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.4)'
+    overlay.style.display = 'flex'
+    overlay.style.justifyContent = 'center'
+    overlay.style.alignItems = 'center'
+    overlay.style.zIndex = '1000'
+
+    container.style.backgroundColor = 'white'
+    container.style.padding = '20px'
+    container.style.borderRadius = '8px'
+    container.style.display = 'flex'
+    container.style.flexDirection = 'column'
+    container.style.gap = '8px'
+    container.style.minWidth = '300px'
+    container.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.25)'
+
+    overlay.appendChild(container)
+    document.body.appendChild(overlay)
+    const name: HTMLInputElement = document.createElement('input') as HTMLInputElement
+    const name_label = document.createElement('p')
+    name_label.textContent = 'Name'
+    const data_type: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
+    const data_type_label = document.createElement('p')
+    data_type_label.textContent = 'Data Type'
+    Create_Options_In_Select_From_Array(data_type, data_type_array)
+    const submit: HTMLButtonElement = document.createElement('button') as HTMLButtonElement
+    submit.textContent = 'submit'
+    container.appendChild(name_label)
+    container.appendChild(name)
+    container.appendChild(data_type_label)
+    container.appendChild(data_type)
+    container.appendChild(submit)
+    submit.addEventListener('click', async function() {
+        /**Create Schema */
+        const name_value = name.value
+        const data_type_value = data_type.value as Data_Type
+        const result =
+            await Send_GraphQL_Request<
+                Create_Schema_Response,
+                Create_Schema_Input
+            >({
+                api_url: 'http://localhost:3000',
+                operation_type: 'mutation',
+                operation_name: 'Create_Schema',
+                field_name: 'create_schema',
+                variables: [
+                    { name: 'name', type: 'String!' },
+                    { name: 'data_type', type: 'Data_Type!' }
+                ],
+                input_data: {
+                    name: name_value,
+                    data_type: data_type_value,
+                },
+                selection: [
+                    'uid',
+                    'name',
+                    'data_type'
+                ]
+            })
+
+        console.log(result.create_schema)
+
+    }
+
+    )
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay) {
+            overlay.remove()
+        }
+    })
+}
+function Handle_Save_Schema_Button(
+    button: HTMLButtonElement,
+    state: Schema) {
+    button.addEventListener('click', function() {
+
+        /** */
+        /**
+         * send create schema mutation
+         */
+    })
+}
 
 function Render_Schema_Input(schema: Schema): HTMLDivElement {
     const div = document.createElement('div')
@@ -915,7 +1009,6 @@ export function Create_Options_In_Select_From_Array(Select_Element: HTMLSelectEl
         Select_Element.append(option)
     })
 }
-
 export function Link_Viewer_Input(viewer: HTMLElement, input: HTMLInputElement | HTMLSelectElement) {
     input.addEventListener('input', (event: Event) => {
         let target = event.target as HTMLInputElement;
