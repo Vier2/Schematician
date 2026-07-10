@@ -368,7 +368,7 @@ function Render_Schema_Result(
 
     const edit_url: HTMLAnchorElement = document.createElement('a') as HTMLAnchorElement
     edit_url.href = `${client_url}/Schema/Definition/${schema.uid}` /**TODO:Add id dir later*/
-
+    edit_url.textContent = 'Edit'
     /**TODO:Add Delete Button*/
     const delete_button = document.createElement('button')
     delete_button.textContent = 'x'

@@ -1,6 +1,7 @@
-import { Driver } from 'neo4j-driver'
+import { Driver, ManagedTransaction } from 'neo4j-driver'
 import type { GraphQL_Schema } from '../../schema.js'
-import type { Search_Query, Field_Role } from './types.js'
+import type { Search_Query, Field_Role, Update_Schema_Data } from './types.js'
+import type { Delete_Schema_Result, Schema_Association_Update } from './types.js'
 export type Schema_Link_Role =
     | 'HAS_ELEMENT'
     | 'HAS_PROPERTY'
@@ -70,29 +71,6 @@ export async function db_create_schema(
     }
 }
 
-export async function db_update_schema(
-    driver: Driver,
-    uid: string,
-    updates: Partial<GraphQL_Schema>
-): Promise<GraphQL_Schema | null> {
-    const session = driver.session()
-    try {
-        const result = await session.run(
-            `
-            MATCH (s:Schema {uid: $uid})
-            SET s += $updates
-            RETURN s
-            `,
-            { uid, updates }
-        )
-
-        const record = result.records[0]
-
-        return record ? record.get('s').properties : null
-    } finally {
-        await session.close()
-    }
-}
 
 export async function db_create_schema_link(
     driver: Driver,
@@ -289,6 +267,246 @@ export async function db_search_schemas(
 
         return result.records.map(record => record.get('s').properties)
     } finally {
+        await session.close()
+    }
+}
+
+
+async function Replace_Schema_Links(
+    transaction: ManagedTransaction,
+    user_uid: string,
+    parent_schema_uid: string,
+    relationship_type:
+        | 'HAS_ELEMENT'
+        | 'HAS_PROPERTY'
+        | 'HAS_IDENTIFIER',
+    associations: Schema_Association_Update[]
+): Promise<void> {
+    /*
+     * Relationship types cannot be passed as Cypher parameters.
+     * The type is safe here because it is restricted by the union.
+     */
+
+    await transaction.run(
+        `
+        MATCH
+            (u:User {uid: $user_uid})
+            -[:OWNS]->
+            (parent:Schema {
+                uid: $parent_schema_uid
+            })
+
+        OPTIONAL MATCH
+            (parent)-[old:${relationship_type}]->()
+
+        DELETE old
+        `,
+        {
+            user_uid,
+            parent_schema_uid
+        }
+    )
+
+    if (associations.length === 0) {
+        return
+    }
+
+    await transaction.run(
+        `
+        UNWIND $associations AS association
+
+        MATCH
+            (u:User {uid: $user_uid})
+            -[:OWNS]->
+            (parent:Schema {
+                uid: $parent_schema_uid
+            })
+
+        MATCH
+            (u)-[:OWNS]->
+            (child:Schema {
+                uid: association.schema_uid
+            })
+
+        CREATE
+            (parent)-[link:${relationship_type}]->(child)
+
+        SET
+            link.index = association.index,
+            link.value = association.value
+        `,
+        {
+            user_uid,
+            parent_schema_uid,
+            associations
+        }
+    )
+}
+
+export async function db_update_schema(
+    driver: Driver,
+    user_uid: string,
+    schema: Update_Schema_Data
+): Promise<GraphQL_Schema | null> {
+    const session = driver.session()
+
+    try {
+        return await session.executeWrite(
+            async transaction => {
+                const {
+                    uid,
+                    elements = [],
+                    properties = [],
+                    identifiers = [],
+                    constraints,
+                    enumerations,
+                    options,
+                    ...flat_schema_fields
+                } = schema
+
+                /*
+                 * Neo4j node properties cannot directly contain arbitrary
+                 * nested JavaScript objects.
+                 *
+                 * JSON fields are serialized here. You could instead create
+                 * dedicated nodes later.
+                 */
+                const node_updates = {
+                    ...flat_schema_fields,
+
+                    constraints_json:
+                        constraints === undefined
+                            ? null
+                            : JSON.stringify(
+                                constraints
+                            ),
+
+                    enumerations_json:
+                        enumerations === undefined
+                            ? null
+                            : JSON.stringify(
+                                enumerations
+                            ),
+
+                    options_json:
+                        options === undefined
+                            ? null
+                            : JSON.stringify(
+                                options
+                            )
+                }
+
+                const update_result =
+                    await transaction.run(
+                        `
+                        MATCH
+                            (u:User {
+                                uid: $user_uid
+                            })
+                            -[:OWNS]->
+                            (schema:Schema {
+                                uid: $uid
+                            })
+
+                        SET schema += $updates
+
+                        RETURN schema
+                        `,
+                        {
+                            user_uid,
+                            uid,
+                            updates: node_updates
+                        }
+                    )
+
+                if (
+                    update_result.records.length === 0
+                ) {
+                    return null
+                }
+
+                await Replace_Schema_Links(
+                    transaction,
+                    user_uid,
+                    uid,
+                    'HAS_ELEMENT',
+                    elements
+                )
+
+                await Replace_Schema_Links(
+                    transaction,
+                    user_uid,
+                    uid,
+                    'HAS_PROPERTY',
+                    properties
+                )
+
+                await Replace_Schema_Links(
+                    transaction,
+                    user_uid,
+                    uid,
+                    'HAS_IDENTIFIER',
+                    identifiers
+                )
+
+                return update_result.records[0]!
+                    .get('schema')
+                    .properties as GraphQL_Schema
+            }
+        )
+    }
+    finally {
+        await session.close()
+    }
+}
+
+export async function db_delete_schema(
+    driver: Driver,
+    user_uid: string,
+    schema_uid: string
+): Promise<Delete_Schema_Result> {
+    const session = driver.session()
+
+    try {
+        const result = await session.run(
+            `
+            MATCH
+                (u:User {uid: $user_uid})
+                -[:OWNS]->
+                (schema:Schema {
+                    uid: $schema_uid
+                })
+
+            WITH schema, schema.uid AS deleted_uid
+
+            DETACH DELETE schema
+
+            RETURN deleted_uid
+            `,
+            {
+                user_uid,
+                schema_uid
+            }
+        )
+
+        const record = result.records[0]
+
+        if (!record) {
+            return {
+                success: false,
+                message:
+                    'Schema was not found or is not owned by the current user.'
+            }
+        }
+
+        return {
+            success: true,
+            message: 'Schema deleted successfully.',
+            deleted_uid:
+                record.get('deleted_uid')
+        }
+    }
+    finally {
         await session.close()
     }
 }
