@@ -110,6 +110,7 @@ export function Handle_Create_New_Schema(
 
 
 export function Create_Schema_Modal(
+    api_url: string
 ) {
     /**Create popup window to create a schema */
     
@@ -133,7 +134,6 @@ export function Create_Schema_Modal(
     container.style.gap = '8px'
     container.style.minWidth = '300px'
     container.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.25)'
-
     overlay.appendChild(container)
     document.body.appendChild(overlay)
     const name: HTMLInputElement = document.createElement('input') as HTMLInputElement
@@ -159,7 +159,7 @@ export function Create_Schema_Modal(
                 Create_Schema_Response,
                 Create_Schema_Input
             >({
-                api_url: 'http://localhost:3000',
+                api_url: api_url,
                 operation_type: 'mutation',
                 operation_name: 'Create_Schema',
                 field_name: 'create_schema',
@@ -177,6 +177,8 @@ export function Create_Schema_Modal(
                     'data_type'
                 ]
             })
+            const edit_button: HTMLButtonElement = document.createElement('button')
+            edit_button.textContent = `edit schema`
 
         console.log(result.create_schema)
 

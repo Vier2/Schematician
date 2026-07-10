@@ -26,6 +26,7 @@
 import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Search_Schema_Value_Recursive, Render_Options_Schema, Make_Schema_Input_View, Make_Viewer_Element, Link_Element_to_State } from "$lib/utils";
 import type { GraphQL_Response, GraphQl_Instance, GraphQL_Schema} from "$lib/graphql/types";
 import { Create_Schema_Modal } from "$lib/utils";
+import { Delete_Schema } from "$lib/graphql/utils";
 import type { 
     Filter_Operator,
      Search_Schema_Result,
@@ -343,7 +344,7 @@ export function Handle_Submit_Search(
         const search_result = await Submit_Search(search_query_state, api_url)
         if (search_result?.search_target == "schemas") {
             search_result.results.forEach(schema => {
-                const schema_container = Render_Schema_Result(schema, client_url)
+                const schema_container = Render_Schema_Result(schema, client_url, api_url)
                 results_container.appendChild(schema_container)
             });
         }
@@ -355,7 +356,8 @@ export function Handle_Submit_Search(
 
 function Render_Schema_Result(
     schema: GraphQL_Schema,
-    client_url: string) {
+    client_url: string,
+    api_url: string) {
     const container = document.createElement('div')
     container.style.border = '2px solid black'
     const name = document.createElement('p')
@@ -368,9 +370,21 @@ function Render_Schema_Result(
     edit_url.href = `${client_url}/Schema/Definition/${schema.uid}` /**TODO:Add id dir later*/
 
     /**TODO:Add Delete Button*/
+    const delete_button = document.createElement('button')
+    delete_button.textContent = 'x'
+    delete_button.addEventListener('click', async function() {
+        await Delete_Schema(
+            api_url,
+            schema.uid,
+            localStorage.getItem('token') ?? undefined
+        )
+        container.remove()
+    }
+    )
     container.appendChild(name)
     container.appendChild(data_type)
     container.appendChild(edit_url)
+    container.appendChild(delete_button)
     return container
 }
 
@@ -402,7 +416,9 @@ import { Create_Options_In_Select_From_Array } from "$lib/utils";
       if (browser) {
             const new_schema_button: HTMLButtonElement = document.getElementById('new_schema_button') as HTMLButtonElement
             new_schema_button.addEventListener('click', function() {
-                Create_Schema_Modal()
+                Create_Schema_Modal(
+                    PUBLIC_SERVER_API_URL
+                )
             })
             // Make_Button_Goto_URL(new_schema_button, 'Schema/Definition')
         }

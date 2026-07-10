@@ -56,6 +56,26 @@ export interface Create_Schema_Input {
 export interface Create_Schema_Response {
     create_schema: GraphQL_Schema
 }
+export interface Get_Schema_By_UID_Input {
+    uid: string
+}
+
+export interface Get_Schema_By_UID_Response {
+    schema: GraphQL_Schema | null
+}
+export interface Delete_Schema_Input {
+    uid: string
+}
+
+export interface Delete_Schema_Payload {
+    success: boolean
+    message: string
+    deleted_uid?: string | null
+}
+
+export interface Delete_Schema_Response {
+    delete_schema: Delete_Schema_Payload
+}
 
 export type GraphQL_Variable_Type =
     | 'String'
