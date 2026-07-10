@@ -14,7 +14,7 @@
         <div>
 
         </div>
-        <div id="results_container">
+        <div id="results_container" class="results_container">
 
         </div>
     </div>
@@ -440,7 +440,10 @@ import { Create_Options_In_Select_From_Array } from "$lib/utils";
     .faceted_search {
         overflow-y: scroll;
     }
-   
+    .results_container {
+        overflow-y: scroll;
+    }
+
     .chronicle {
         display: flex;
         flex-direction: row;
