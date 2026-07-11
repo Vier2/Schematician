@@ -97,25 +97,63 @@ export async function db_get_instance_by_uid(
     try {
         const result = await session.run(
             `
-            MATCH (u:User {uid: $user_uid})-[:OWNS]->(i:Instance {uid: $instance_uid})
-            RETURN i
+            MATCH
+                (u:User {uid: $user_uid})
+                -[:OWNS]->
+                (i:Instance {uid: $instance_uid})
+
+            OPTIONAL MATCH
+                (i)-[:HAS_VALUE]->(iv:InstanceValue)
+
+            RETURN
+                i,
+                collect(
+                    CASE
+                        WHEN iv IS NULL
+                        THEN null
+                        ELSE iv.properties
+                    END
+                ) AS objects
             `,
-            { user_uid, instance_uid }
+            {
+                user_uid,
+                instance_uid
+            }
         )
 
         const record = result.records[0]
 
-        return record
-            ? {
-                ...record.get('i').properties,
-                objects: []
-            }
-            : null
-    } finally {
+        if (!record) {
+            return null
+        }
+
+        const instance_properties =
+            record.get('i').properties
+
+        const objects =
+            (
+                record.get('objects') as
+                Array<GraphQL_Instance_Value | null>
+            ).filter(
+                (
+                    object
+                ): object is GraphQL_Instance_Value =>
+                    object !== null
+            )
+
+        return {
+            ...instance_properties,
+
+            objects:
+                objects.length > 0
+                    ? objects
+                    : undefined
+        }
+    }
+    finally {
         await session.close()
     }
 }
-
 export async function db_update_instance(
     driver: Driver,
     uid: string,
@@ -162,7 +200,7 @@ export async function db_update_instance(
 
         return objects.filter(
             (object: GraphQL_Instance_Value) =>
-                object.field_schema_uid !== null
+                object.schema_uid !== null
         )
     } finally {
         await session.close()

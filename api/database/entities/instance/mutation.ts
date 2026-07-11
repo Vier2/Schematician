@@ -22,8 +22,9 @@ builder.mutationFields(t => ({
             schema_uid: t.arg.string({ required: true }),
             objects: t.arg({
                 type: [Instance_Value_Input],
-                required: true
+                required: false
             })
+            
         },
         resolve: (_root, args, context) => {
             if (!context.user) throw new Error('Unauthorized')

@@ -23,7 +23,7 @@
 </div>
 
 <script lang="ts">
-import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Search_Schema_Value_Recursive, Render_Options_Schema, Make_Schema_Input_View, Make_Viewer_Element, Link_Element_to_State } from "$lib/utils";
+import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Search_Schema_Value_Recursive, Render_Options_Schema } from "$lib/utils";
 import type { GraphQL_Response, GraphQl_Instance, GraphQL_Schema} from "$lib/graphql/types";
 import { Create_Schema_Modal } from "$lib/utils";
 import { Delete_Schema } from "$lib/graphql/utils";
@@ -381,10 +381,18 @@ function Render_Schema_Result(
         container.remove()
     }
     )
+    const instantiate_button: HTMLButtonElement = document.createElement('button') as HTMLButtonElement
+    instantiate_button.addEventListener('click', async function() {
+        const instance = await Create_Instance(api_url, schema.uid)
+        console.log(`instance uid${instance.uid}`)
+        goto(`/Schema/Instantiation/${instance.uid}`)
+    })
+    instantiate_button.textContent = 'instantiate'
     container.appendChild(name)
     container.appendChild(data_type)
     container.appendChild(edit_url)
     container.appendChild(delete_button)
+    container.appendChild(instantiate_button)
     return container
 }
 
@@ -409,9 +417,10 @@ function Render_Instance_Results(
 }
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
-import { Make_Button_Goto_URL } from "$lib/utils";
 import type { Search_Target } from "$lib/Schema/models";
 import { Create_Options_In_Select_From_Array } from "$lib/utils";
+import { Create_Instance } from "$lib/graphql/utils";
+    import { goto } from "$app/navigation";
     onMount(() => {
       if (browser) {
             const new_schema_button: HTMLButtonElement = document.getElementById('new_schema_button') as HTMLButtonElement

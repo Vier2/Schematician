@@ -34,11 +34,12 @@ export interface GraphQL_Constraints {
 
 export interface GraphQl_Instance {
     schema_uid: string
-    objects: GraphQL_Instance_Value[]
+    objects?: GraphQL_Instance_Value[]
+    value?: any
     uid: string
 }
 export interface GraphQL_Instance_Value {
-    field_schema_uid: string
+    schema_uid: string
     value: unknown
 }
 
@@ -59,10 +60,17 @@ export interface Create_Schema_Response {
 export interface Get_Schema_By_UID_Input {
     uid: string
 }
-
 export interface Get_Schema_By_UID_Response {
     schema: GraphQL_Schema | null
 }
+export interface Get_Instance_By_UID_Input {
+    uid: string
+}
+
+export interface Get_Instance_By_UID_Response {
+    instance: GraphQl_Instance | null
+}
+
 export interface Delete_Schema_Input {
     uid: string
 }
@@ -76,7 +84,13 @@ export interface Delete_Schema_Payload {
 export interface Delete_Schema_Response {
     delete_schema: Delete_Schema_Payload
 }
-
+export interface Create_Instance_Input {
+    schema_uid: string
+    /**All you should need is the source schema */
+}
+export interface Create_Instance_Response {
+    create_instance: GraphQl_Instance
+}
 export type GraphQL_Variable_Type =
     | 'String'
     | 'String!'
@@ -96,6 +110,12 @@ export interface GraphQL_Variable_Definition {
     type: GraphQL_Variable_Type
 }
 
+export type GraphQL_Selection =
+    | string
+    | {
+        field: string
+        selection: GraphQL_Selection[]
+    }
 export interface Send_GraphQL_Options<Input_Type> {
     api_url: string
     operation_type: GraphQL_Operation_Type
@@ -103,7 +123,7 @@ export interface Send_GraphQL_Options<Input_Type> {
     field_name: string
     variables?: GraphQL_Variable_Definition[]
     input_data?: Input_Type
-    selection: string[]
+    selection: GraphQL_Selection[]
     token?: string
 }
 
