@@ -48,29 +48,195 @@ export async function db_get_schema_by_uid(
         await session.close()
     }
 }
+
+async function Create_Schema_Link_In_Transaction(
+    transaction: ManagedTransaction,
+    user_uid: string,
+    parent_schema_uid: string,
+    child_schema_uid: string,
+    role: Schema_Link_Role,
+    index?: number,
+    value?: unknown
+): Promise<void> {
+    const result = await transaction.run(
+        `
+        MATCH
+            (u:User {uid: $user_uid})
+            -[:OWNS]->
+            (parent:Schema {uid: $parent_schema_uid})
+
+        MATCH
+            (u)-[:OWNS]->
+            (child:Schema {uid: $child_schema_uid})
+
+        MERGE
+            (parent)-[relationship:${role}]->(child)
+
+        SET
+            relationship.index = $index,
+            relationship.value = $value
+        `,
+        {
+            user_uid,
+            parent_schema_uid,
+            child_schema_uid,
+            index: index ?? null,
+            value: value ?? null
+        }
+    )
+
+    if (result.summary.counters.updates().relationshipsCreated === 0) {
+        /*
+         * MERGE may have matched an existing relationship, so this does not
+         * always indicate failure. The MATCH clauses failing would simply
+         * produce no records, however.
+         */
+    }
+}
 export async function db_create_schema(
     driver: Driver,
     user_uid: string,
     schema: GraphQL_Schema
 ): Promise<GraphQL_Schema> {
     const session = driver.session()
-    try {
-        const result = await session.run(
-            `
-            MATCH (u:User {uid: $user_uid})
-            CREATE (s:Schema $schema)
-            CREATE (u)-[:OWNS]->(s)
-            RETURN s
-            `,
-            { user_uid, schema }
-        )
 
-        return result.records[0]!.get('s').properties
-    } finally {
+    try {
+        return await session.executeWrite(
+            async transaction => {
+                const {
+                    elements = [],
+                    properties = [],
+                    identifiers = [],
+
+                    constraints,
+                    enumerations,
+                    options,
+
+                    ...flat_schema_fields
+                } = schema
+
+                /*
+                 * Neo4j node properties cannot contain arbitrary nested
+                 * objects or arrays of objects.
+                 *
+                 * Store JSON-compatible structured fields as serialized JSON,
+                 * or later represent them with dedicated graph nodes.
+                 */
+                const node_properties = {
+                    ...flat_schema_fields,
+
+                    constraints_json:
+                        constraints === undefined
+                            ? null
+                            : JSON.stringify(constraints),
+
+                    enumerations_json:
+                        enumerations === undefined
+                            ? null
+                            : JSON.stringify(enumerations),
+
+                    options_json:
+                        options === undefined
+                            ? null
+                            : JSON.stringify(options)
+                }
+
+                const create_result = await transaction.run(
+                    `
+                    MATCH (user:User {uid: $user_uid})
+
+                    CREATE (schema:Schema $node_properties)
+
+                    CREATE (user)-[:OWNS]->(schema)
+
+                    RETURN schema
+                    `,
+                    {
+                        user_uid,
+                        node_properties
+                    }
+                )
+
+                const record = create_result.records[0]
+
+                if (!record) {
+                    throw new Error(
+                        `Could not create schema "${schema.name}". User was not found.`
+                    )
+                }
+
+                /*
+                 * Elements are ordered structural connections.
+                 */
+                for (const [index, child_schema] of elements.entries()) {
+                    if (!child_schema.uid) {
+                        throw new Error(
+                            `Element "${child_schema.name}" has no uid. ` +
+                            'Referenced schemas must be created before they can be linked.'
+                        )
+                    }
+
+                    await Create_Schema_Link_In_Transaction(
+                        transaction,
+                        user_uid,
+                        schema.uid,
+                        child_schema.uid,
+                        'HAS_ELEMENT',
+                        index
+                    )
+                }
+
+                /*
+                 * Properties are schema associations. Their values belong to
+                 * the relationship, not the child Schema node.
+                 */
+                for (const [index, property] of properties.entries()) {
+                    if (!property.schema.uid) {
+                        throw new Error(
+                            `Property schema "${property.schema.name}" has no uid.`
+                        )
+                    }
+
+                    await Create_Schema_Link_In_Transaction(
+                        transaction,
+                        user_uid,
+                        schema.uid,
+                        property.schema.uid,
+                        'HAS_PROPERTY',
+                        index,
+                        property.value
+                    )
+                }
+
+                /*
+                 * Identifiers follow the same association model.
+                 */
+                for (const [index, identifier] of identifiers.entries()) {
+                    if (!identifier.schema.uid) {
+                        throw new Error(
+                            `Identifier schema "${identifier.schema.name}" has no uid.`
+                        )
+                    }
+
+                    await Create_Schema_Link_In_Transaction(
+                        transaction,
+                        user_uid,
+                        schema.uid,
+                        identifier.schema.uid,
+                        'HAS_IDENTIFIER',
+                        index,
+                        identifier.value
+                    )
+                }
+
+                return record.get('schema').properties as GraphQL_Schema
+            }
+        )
+    }
+    finally {
         await session.close()
     }
 }
-
 
 export async function db_create_schema_link(
     driver: Driver,

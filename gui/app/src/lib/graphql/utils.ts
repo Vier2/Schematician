@@ -136,7 +136,79 @@ export async function Get_Schema_By_UID(
                 'logic',
                 'relationships',
                 'enumerations',
-                'options'
+                'options',
+
+                {
+                    field: 'constraints',
+                    selection: [
+                        'minimum_number',
+                        'maximum_number',
+                        'can_be_positive',
+                        'can_be_negative',
+                        'minimum_characters',
+                        'maximum_characters',
+                        'regex',
+                        'lowercase',
+                        'uppercase'
+                    ]
+                },
+
+                {
+                    field: 'elements',
+                    selection: [
+                        'uid',
+                        'name',
+                        'data_type',
+                        'image',
+                        'rules',
+                        'logic',
+                        'relationships',
+                        'enumerations',
+                        'options'
+                    ]
+                },
+
+                {
+                    field: 'properties',
+                    selection: [
+                        'value',
+                        {
+                            field: 'schema',
+                            selection: [
+                                'uid',
+                                'name',
+                                'data_type',
+                                'image',
+                                'rules',
+                                'logic',
+                                'relationships',
+                                'enumerations',
+                                'options'
+                            ]
+                        }
+                    ]
+                },
+
+                {
+                    field: 'identifiers',
+                    selection: [
+                        'value',
+                        {
+                            field: 'schema',
+                            selection: [
+                                'uid',
+                                'name',
+                                'data_type',
+                                'image',
+                                'rules',
+                                'logic',
+                                'relationships',
+                                'enumerations',
+                                'options'
+                            ]
+                        }
+                    ]
+                }
             ],
 
             token
