@@ -357,16 +357,12 @@ export async function Make_Searchable_Select(
     select.addEventListener('input', function() {
         // search_input.value = select.value
         select.style.display = 'none';
-        const p = document.createElement('p')
-        p.textContent = this.textContent
-        const delete_button = document.createElement('button')
-        delete_button.textContent = 'x'
-        Make_Delete_Function_Schema(p, delete_button, state
-         )
-        console.log(`schema select, selected`)
-
-        container.appendChild(p)
-        container.appendChild(delete_button)
+        Create_Schema_Element(
+            this.textContent,
+            state,
+            container
+        )
+       
     })
     document.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
@@ -385,7 +381,22 @@ export async function Make_Searchable_Select(
     return select;
 }
 
+export function Create_Schema_Element(
+    element_name: string,
+    state: Schema,
+    container: HTMLDivElement
+) {
+    const p = document.createElement('p')
+    p.textContent = element_name
+    const delete_button = document.createElement('button')
+    delete_button.textContent = 'x'
+    Make_Delete_Function_Schema(p, delete_button, state
+    )
+    console.log(`schema select, selected`)
 
+    container.appendChild(p)
+    container.appendChild(delete_button)
+}
 
 export async function Make_Searchable_Select_Schema(
     button: HTMLButtonElement,
@@ -626,7 +637,7 @@ export function Render_Options_Schema(schemas: Schema[],
 
 
 
- export function Handle_Data_Type_Select(
+ export async function Handle_Data_Type_Select(
     select: HTMLSelectElement,
     schemas: Schema[],
     container: HTMLDivElement,
@@ -640,9 +651,9 @@ export function Render_Options_Schema(schemas: Schema[],
         'Interface',
         'Associative_Array'
     ] as const
-    select.addEventListener('input', async function() {
+    // select.addEventListener('input', async function() {
         
-        if (this.value == 'Interface') {
+        if (state.data_type == 'Interface') {
             const select = await Make_Searchable_Select(schemas,
                 container, state
             )
@@ -651,13 +662,13 @@ export function Render_Options_Schema(schemas: Schema[],
             Handle_Create_New_Schema(container, data_types, state, container)
 
         }
-        if (this.value === 'String' ||
-            this.value === 'Number'
+        if (state.data_type === 'String' ||
+            state.data_type === 'Number'
         ) {
-            Add_Schema_Constraints_UI(this.value, constraint_container)
+            Add_Schema_Constraints_UI(state.data_type, constraint_container)
 
         }
-    })
+    // })
  }
 
 export function Set_Instance_Value(

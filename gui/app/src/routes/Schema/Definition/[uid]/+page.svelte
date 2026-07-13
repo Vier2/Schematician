@@ -68,7 +68,7 @@ import { onMount } from "svelte";
 import { browser } from "$app/environment";
 import type { Schema, Schema_Association, Data_Type, Selection, Association } from "$lib/Schema/models";
 import { Get_Schema_By_UID } from "$lib/graphql/utils";
-import { Get_All_Schemas, Convert_GraphQL_Schema_To_Schema } from "$lib/utils";
+import { Get_All_Schemas, Convert_GraphQL_Schema_To_Schema, Create_Schema_Element } from "$lib/utils";
 import { PUBLIC_SERVER_API_URL } from "$env/static/public";
 import { Link_Element_to_State, Render_Schema_Option, Make_Collapsible, Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Searchable_Select } from "$lib/utils";
 import { page } from '$app/state';
@@ -96,12 +96,15 @@ function Resolve_Schema_Association(
         /**make url to edit schema*/
     });
 }
+function Resolve_Elements() {
 
+}
 function Resolve_Schema_In_Elements(
     schema: Schema,
     name_input: HTMLInputElement,
     data_type_select: HTMLSelectElement,
-    associations?: Association[]
+    element_container: HTMLDivElement,
+    associations?: Association[],
     ) {
         name_input.value = schema.name
         data_type_select.value = schema.data_type
@@ -110,6 +113,13 @@ function Resolve_Schema_In_Elements(
             Resolve_Schema_Association(
                 schema,
                 element
+            )
+        });
+        schema.elements?.forEach(element => {
+            Create_Schema_Element(
+                element.name,
+                schema,
+                element_container
             )
         });
 
@@ -147,10 +157,10 @@ function Resolve_Schema_In_Elements(
             Link_Element_to_State(state, 'data_type', Data_Type_Select)
             const constraint_label = document.getElementById('Constraint_Label')
             const constraint_container: HTMLDivElement = document.getElementById('sub_constraint_div') as HTMLDivElement
-            Handle_Data_Type_Select(Data_Type_Select,
-                [], first_row_center_column,
-                constraint_container, state
-            )
+            // await Handle_Data_Type_Select(Data_Type_Select,
+            //     [], first_row_center_column,
+            //     constraint_container, state
+            // )
             
             Make_Collapsible(constraint_label!, constraint_container)
             const center_column_2nd_row: HTMLDivElement = document.getElementById('center_column_2nd_row') as HTMLDivElement
@@ -178,6 +188,7 @@ function Resolve_Schema_In_Elements(
                 schema,
                 Schema_Name_Input,
                 Data_Type_Select,
+                first_row_center_column,
                 [{'div': identifier_div, 'select': identifier_search_select, 'selection': 'identifiers', 'schema_association': state.identifiers},
                     {'div': sub_property_div, 'select': property_search_select, 'schema_association': state.properties, 'selection': 'properties'}
                 ]
