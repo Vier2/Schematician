@@ -1,4 +1,4 @@
-import type { Data_Type } from "$lib/Schema/models"
+import type { Data_Type, Schema } from "$lib/Schema/models"
 
 export interface GraphQL_Schema {
     name: string
@@ -57,6 +57,14 @@ export interface Create_Schema_Input {
 export interface Create_Schema_Response {
     create_schema: GraphQL_Schema
 }
+export interface Update_Schema_Input {
+    schema: Schema
+}
+
+export interface Update_Schema_Response {
+    schema: Schema
+}
+
 export interface Get_Schema_By_UID_Input {
     uid: string
 }
@@ -66,6 +74,7 @@ export interface Get_Schema_By_UID_Response {
 export interface Get_Instance_By_UID_Input {
     uid: string
 }
+
 
 export interface Get_Instance_By_UID_Response {
     instance: GraphQl_Instance | null

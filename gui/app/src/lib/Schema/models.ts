@@ -63,6 +63,13 @@ type Schema_Value<
     S extends Schema
 > = Data_Type_Map[S['data_type']]
 
+
+export interface Association {
+    schema_association?: Schema_Association[]
+    div: HTMLDivElement
+    select: HTMLSelectElement
+    selection: Selection
+}
 /**
  * Generic schema/value association
  *
@@ -101,6 +108,10 @@ type EnumPart<T extends Data_Type> = {
 export interface Input_View {
     input: HTMLSelectElement | HTMLInputElement
     container: HTMLDivElement
+}
+export interface Input_Viewer {
+    input: HTMLSelectElement | HTMLInputElement
+    viewer: HTMLParagraphElement
 }
 type OptionsPart<T extends Data_Type> = {
     options: Data_Type_Map[T][]

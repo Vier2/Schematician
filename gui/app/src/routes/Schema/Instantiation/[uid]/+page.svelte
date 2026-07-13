@@ -121,6 +121,7 @@ import { Get_Instance_By_UID, Get_Schema_By_UID } from "$lib/graphql/utils";
 
                 )
             const schema = Convert_GraphQL_Schema_To_Schema(GraphQL_schema!)
+            console.log(`schema ${JSON.stringify(schema)}`)
             Render_Schema_MetaData(schema!, Current_Schema_Div)
             const Map_Div: HTMLDivElement = document.getElementById('Map_Div') as HTMLDivElement
             const list = Add_Hierarchical_Elements(Map_Div, schema!)

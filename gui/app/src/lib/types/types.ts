@@ -7,6 +7,7 @@ export type Key_Value_Container_Creation = () => HTMLElement
 export type Create_Element_Method = (ElementObject: ElementObject, Base_Url: string, Parent_Container: HTMLElement, location: string, category: DataKey, Secondary_Container?: HTMLElement ) => HTMLElement
 
 
+
 export type CSS_Property = {
     [K in keyof CSSStyleDeclaration]: CSSStyleDeclaration[K] extends string ? K : never
 }[keyof CSSStyleDeclaration] /*This maps over every key, keeps only the ones whose value type is string (which is what actual style properties are), and discards methods and non-string members. The result is a union of only legitimate property names like 'marginTop' | 'display' | 'fontSize' and so on. */

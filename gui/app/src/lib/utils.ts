@@ -18,7 +18,7 @@ import { goto } from "$app/navigation";
 import type { GraphQL_Schema } from "./graphql/types";
 import { Send_GraphQL_Request } from "./graphql/utils";
 import type { Create_Schema_Input, Create_Schema_Response} from "./graphql/types";
-import type { Rendered_Search_Value, Schema_Association,  Selection, Input_View, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
+import type { Rendered_Search_Value, Schema_Association,  Selection, Input_View, Input_Viewer, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
 import type { CSS_Property,  Schemas_Query_Response, CSS_Unit, GraphQL_Response, Element_Handler, Value_Computer } from "./types/types";
 function Make_Create_Element_UI(types: Data_Type[],
     state: Schema,
@@ -392,18 +392,23 @@ export async function Make_Searchable_Select_Schema(
     schemas: Schema[],
     container: HTMLDivElement,
     state: Schema,
-    selection: Selection
+    selection: Selection,
+    select: HTMLSelectElement
 )  {
+    select.size = 10;
+    select.style.display = 'none'
     button.onclick = () => {
-
+        if (select.style.display = 'none') {
+            select.style.display = 'revert'
+        } else {
+            select.style.display = 'none'
+        }
         // const label = document.createElement('p')
         // label.textContent = 'Adding Existing Schema as Element'
         const search_input = document.createElement('input');
         search_input.type = 'text';
         search_input.placeholder = 'Search...';
         const element_label: HTMLParagraphElement = document.createElement('p') as HTMLParagraphElement
-        const select = document.createElement('select');
-        select.size = 10;
     
         search_input.addEventListener('input', () => {
             select.style.display = '';
@@ -426,20 +431,13 @@ export async function Make_Searchable_Select_Schema(
         select.addEventListener('input', (event: Event) => {
             const Selected_Option = select.options[select.selectedIndex];
             const schema = JSON.parse(Selected_Option.dataset.schema!)
-            select.style.display = 'none';
-            const label = document.createElement('p')
-            label.textContent = schema.name
-            const div = document.createElement('div')
-            div.style.display = 'flex'
-            div.style.flexDirection = 'row'
-            div.style.gap = '3px'
-            div.appendChild(label)
-            const input_view = Make_Schema_Input_View(schema)
-            const viewer_element = Make_Viewer_Element(input_view.input)
-            Connect_Input_View_To_State(input_view.input, state, schema, selection)
-            div.appendChild(input_view.input)
-            div.appendChild(viewer_element)
-            container.appendChild(div)
+            Render_Schema_Option(
+                select,
+                state,
+                selection,
+                container,
+                schema
+            )
             search_input.style.display = 'none';
 
         })
@@ -460,6 +458,30 @@ export async function Make_Searchable_Select_Schema(
     }
 }
 
+export function Render_Schema_Option(
+    select: HTMLSelectElement,
+    state: Schema,
+    selection: Selection,
+    container: HTMLDivElement,
+    schema: Schema
+): Input_Viewer {
+
+    select.style.display = 'none';
+    const label = document.createElement('p')
+    label.textContent = schema.name
+    const div = document.createElement('div')
+    div.style.display = 'flex'
+    div.style.flexDirection = 'row'
+    div.style.gap = '3px'
+    div.appendChild(label)
+    const input_view = Make_Schema_Input_View(schema)
+    const viewer_element = Make_Viewer_Element(input_view.input)
+    Connect_Input_View_To_State(input_view.input, state, schema, selection)
+    div.appendChild(input_view.input)
+    div.appendChild(viewer_element)
+    container.appendChild(div)
+    return {'input': input_view.input, 'viewer': viewer_element}
+}
 
 /**
  * Access the selection property of schema
@@ -473,6 +495,7 @@ export function Connect_Input_View_To_State(
     selectedSchema: Schema,
     selection: Selection
 ) {
+
     // Ensure the array exists
     if (!state[selection]) {
         state[selection] = [];
