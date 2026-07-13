@@ -324,7 +324,8 @@ export function Link_Element_to_State(state: Record<string, any>, key: string,
 export async function Make_Searchable_Select(
     schemas: Schema[],
     container: HTMLDivElement,
-    state: Schema
+    state: Schema,
+    client_url: string
 ): Promise<HTMLSelectElement> {
     const label = document.createElement('p')
     label.textContent = 'Adding Existing Schema as Element'
@@ -356,11 +357,14 @@ export async function Make_Searchable_Select(
    
     select.addEventListener('input', function() {
         // search_input.value = select.value
+        const Selected_Option = select.options[select.selectedIndex];
+        const schema = JSON.parse(Selected_Option.dataset.schema!)
         select.style.display = 'none';
         Create_Schema_Element(
-            this.textContent,
+            schema,
             state,
-            container
+            container,
+            client_url
         )
        
     })
@@ -382,20 +386,30 @@ export async function Make_Searchable_Select(
 }
 
 export function Create_Schema_Element(
-    element_name: string,
+    element: Schema,
     state: Schema,
-    container: HTMLDivElement
+    container: HTMLDivElement,
+    client_url: string
 ) {
-    const p = document.createElement('p')
-    p.textContent = element_name
+    const div = document.createElement('div')
+    div.style.display = 'flex'
+    div.style.flexDirection = 'row'
+    div.style.gap = '3%'
+    const edit_link:HTMLAnchorElement = document.createElement('a')
+    edit_link.textContent = element.name
+    edit_link.href = `${client_url}/Schema/Definition/${element.uid}`
+    edit_link.rel = 'external'
     const delete_button = document.createElement('button')
     delete_button.textContent = 'x'
-    Make_Delete_Function_Schema(p, delete_button, state
+    Make_Delete_Function_Schema(edit_link, delete_button, state
     )
     console.log(`schema select, selected`)
-
-    container.appendChild(p)
-    container.appendChild(delete_button)
+    const information_tooltip: HTMLParagraphElement = document.createElement('p')
+    information_tooltip.textContent = "?" /**TODO: add info */
+    div.appendChild(edit_link)
+    div.appendChild(information_tooltip)
+    div.appendChild(delete_button)
+    container.appendChild(div)
 }
 
 export async function Make_Searchable_Select_Schema(
@@ -643,6 +657,7 @@ export function Render_Options_Schema(schemas: Schema[],
     container: HTMLDivElement,
     constraint_container: HTMLDivElement, 
     state: Schema,
+    client_url: string
     ) {
     select.value = ''
     const data_types: Data_Type[]= ['String',
@@ -655,7 +670,7 @@ export function Render_Options_Schema(schemas: Schema[],
         
         if (state.data_type == 'Interface') {
             const select = await Make_Searchable_Select(schemas,
-                container, state
+                container, state, client_url
             )
             Connect_Select_To_List_State(select, state, 'elements')
 

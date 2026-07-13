@@ -69,7 +69,7 @@ import { browser } from "$app/environment";
 import type { Schema, Schema_Association, Data_Type, Selection, Association } from "$lib/Schema/models";
 import { Get_Schema_By_UID } from "$lib/graphql/utils";
 import { Get_All_Schemas, Convert_GraphQL_Schema_To_Schema, Create_Schema_Element } from "$lib/utils";
-import { PUBLIC_SERVER_API_URL } from "$env/static/public";
+import { PUBLIC_CLIENT_API_URL, PUBLIC_SERVER_API_URL } from "$env/static/public";
 import { Link_Element_to_State, Render_Schema_Option, Make_Collapsible, Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Searchable_Select } from "$lib/utils";
 import { page } from '$app/state';
 import { Send_GraphQL_Request } from "$lib/graphql/utils";
@@ -117,9 +117,10 @@ function Resolve_Schema_In_Elements(
         });
         schema.elements?.forEach(element => {
             Create_Schema_Element(
-                element.name,
+                element,
                 schema,
-                element_container
+                element_container,
+                PUBLIC_CLIENT_API_URL
             )
         });
 
