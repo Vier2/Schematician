@@ -103,7 +103,8 @@ function Resolve_Schema_Association(
         const input_viewer = Render_Schema_Option(
             association.select,
             association.div,
-            element.schema
+            element.schema,
+            association.selection, state
         )
         input_viewer.input.value = `${element.value}`
         input_viewer.viewer.textContent = input_viewer.input.value

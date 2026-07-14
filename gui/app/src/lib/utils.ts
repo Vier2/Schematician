@@ -382,6 +382,10 @@ export async function Make_Searchable_Select(
             )
             search_input.style.display = 'none';
             overlay.style.display = 'none'
+            if (!state.elements) {
+                state.elements = []
+            }
+            state.elements.push(schema)
          
            
         })
@@ -507,7 +511,7 @@ export async function Make_Searchable_Select_Schema(
             overlay.style.display = 'none'
             const input_view = Render_Schema_Option(select,
                 div,
-                schema
+                schema, selection, state
             )
             Connect_Input_View_To_State(input_view.input, state, schema, selection)
 
@@ -536,7 +540,9 @@ export async function Make_Searchable_Select_Schema(
 export function Render_Schema_Option(
     select: HTMLSelectElement,
     container: HTMLDivElement,
-    schema: Schema
+    schema: Schema,
+    selection: Selection,
+    state: Schema
 ): Input_Viewer {
 
     select.style.display = 'none';
@@ -553,9 +559,9 @@ export function Render_Schema_Option(
     div.appendChild(viewer_element)
     const delete_button = document.createElement('button')
     delete_button.textContent = 'x'
-    Make_Delete_Function(
-        div, delete_button, schema,
-        'elements', 'string'
+    Make_Delete_Function_Association(
+        div, delete_button, state,
+        selection, schema.uid!
     )
     div.appendChild(delete_button)
     container.appendChild(div)
@@ -997,44 +1003,44 @@ export function Make_Delete_Function_Schema(
     });
 }
 
-export async function Make_Delete_Function(element: HTMLElement, delete_button: HTMLButtonElement, State: Record<string, any>, key: string, type: 'number' | 'string') {
-    delete_button.addEventListener("click", () => {
-        console.log(`key ${key}`)
-        console.log(`state ${JSON.stringify(State)}`)
-        let index = 0
-        if (type == 'number') {
-            index = State[key].indexOf(Number(element.textContent))
-
+export function Make_Delete_Function_Association(
+    element: HTMLElement,
+    delete_button: HTMLButtonElement,
+    state: Schema,
+    key: Selection,
+    schema_uid: string
+) {
+    delete_button.addEventListener('click', () => {
+        const associations = state[key]
+        console.log('key:', JSON.stringify(key))
+        console.log('state in function:', state)
+        console.log('State[key]:', state[key])
+        if (!associations) {
+            console.log(`No ${key} found on schema.`)
+            return
         }
-        if (type == 'string') {
-            console.log(`key ${key}`)
-            index = State[key].indexOf(element.textContent)
 
+        const index = associations.findIndex(
+            association => association.schema.uid === schema_uid
+        )
+
+        if (index === -1) {
+            console.log(
+                `Could not find ${key} association with uid ${schema_uid}`
+            )
+            return
         }
-        console.log(`index ${index}`)
-        State[key].splice(index, index + 1)
-        console.log(`new state after deleting ${State[key]}`)
-        element.remove();
-        delete_button.remove() //self destruct, lol
-        //remove element from list
 
-    });
+        associations.splice(index, 1)
+
+        console.log(`Removed ${key} association at index ${index}`)
+
+        element.remove()
+        delete_button.remove()
+    })
 }
 
-export async function Add_Element_and_Delete_Button(name: string, Parent_Container: HTMLDivElement, State: Record<string, any>, key: string, type: 'number' | 'string') {
-    const delete_button = document.createElement('button')
-    delete_button.textContent = 'x'
-    const text_element = document.createElement('p')
-    text_element.textContent = name
-    const div = document.createElement('div')
-    div.style.display = 'flex'
-    div.style.flexDirection = 'row'
-    div.style.gap = '5px'
-    div.appendChild(text_element)
-    div.appendChild(delete_button)
-    Make_Delete_Function(text_element, delete_button, State, key, type)
-    Parent_Container.appendChild(div)
-}
+
 export function Connect_Select_To_List_State(select: HTMLSelectElement,
     state: Record<string, any>,
     key: string
