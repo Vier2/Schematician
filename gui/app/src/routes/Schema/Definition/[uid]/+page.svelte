@@ -16,6 +16,17 @@
         <!-- <button id="create_new_schema">Create New Schema</button> -->
     </div>
     <div id="center_column_2nd_row">
+        <div id="element_div">
+            <p id="element_label">
+                Elements
+            </p>
+            <div id="sub_element_div">
+                <button id="element_button">
+                    +
+                </button>
+
+            </div>
+        </div>
         <div id="identifier_div">
             <p id="identifier_label">
                 Identifiers
@@ -61,6 +72,10 @@
         display: flex;
         flex-direction: column;
     }
+    .sub_container {
+        display: grid;
+        grid-template-rows: 1fr 1fr;
+    }
 </style>
 
 <script lang="ts">
@@ -84,10 +99,9 @@ function Resolve_Schema_Association(
     association: Association
 ) {
     association.schema_association?.forEach(element => {
+        /**dont add to state here because data is already in the state*/
         const input_viewer = Render_Schema_Option(
             association.select,
-            state,
-            association.selection,
             association.div,
             element.schema
         )
@@ -158,19 +172,20 @@ function Resolve_Schema_In_Elements(
             Link_Element_to_State(state, 'data_type', Data_Type_Select)
             const constraint_label = document.getElementById('Constraint_Label')
             const constraint_container: HTMLDivElement = document.getElementById('sub_constraint_div') as HTMLDivElement
-            // await Handle_Data_Type_Select(Data_Type_Select,
-            //     [], first_row_center_column,
-            //     constraint_container, state
-            // )
+            
+            await Handle_Data_Type_Select(Data_Type_Select,
+                [], first_row_center_column,
+                constraint_container, state, PUBLIC_CLIENT_API_URL
+            )
             
             Make_Collapsible(constraint_label!, constraint_container)
             const center_column_2nd_row: HTMLDivElement = document.getElementById('center_column_2nd_row') as HTMLDivElement
-            const identifier_div: HTMLDivElement = document.getElementById('sub_identifier_div') as HTMLDivElement
+            const sub_identifier_div: HTMLDivElement = document.getElementById('sub_identifier_div') as HTMLDivElement
 
             const Identifiers_Button: HTMLButtonElement = document.getElementById('identifier_button') as HTMLButtonElement
             
             const identifier_search_select:HTMLSelectElement = document.createElement('select') as HTMLSelectElement
-            Make_Searchable_Select_Schema(Identifiers_Button, schemas, identifier_div, state, 'identifiers', identifier_search_select)
+            Make_Searchable_Select_Schema(Identifiers_Button, schemas, sub_identifier_div, state, 'identifiers', identifier_search_select)
             const sub_property_div: HTMLDivElement = document.getElementById('sub_property_div') as HTMLDivElement
             const property_button: HTMLButtonElement = document.getElementById('property_button') as HTMLButtonElement
             const property_search_select:HTMLSelectElement = document.createElement('select') as HTMLSelectElement
@@ -181,16 +196,28 @@ function Resolve_Schema_In_Elements(
             const property_label = document.getElementById('property_label')
             Make_Collapsible(property_label!, sub_property_div)
             const identifier_label = document.getElementById('identifier_label')
-            Make_Collapsible(identifier_label!, identifier_div)
+            Make_Collapsible(identifier_label!, sub_identifier_div)
             const Schema_Name_Input: HTMLInputElement = document.getElementById('Schema_Name_Input') as HTMLInputElement
             Link_Element_to_State(state, 'name', Schema_Name_Input)
-            console.log(`identifiers ${JSON.stringify(state.identifiers)}`)
+            const sub_element_div: HTMLDivElement = document.getElementById('sub_element_div') as HTMLDivElement
+            const element_button: HTMLButtonElement = document.getElementById('element_button') as HTMLButtonElement
+            const element_label = document.getElementById('element_label')
+            Make_Collapsible(element_label!, sub_element_div)
+            const element_search_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
+            Make_Searchable_Select(
+                element_button,
+                schemas,
+                sub_element_div,
+                state,
+                PUBLIC_CLIENT_API_URL,
+                element_search_select
+            )
             Resolve_Schema_In_Elements(
                 schema,
                 Schema_Name_Input,
                 Data_Type_Select,
-                first_row_center_column,
-                [{'div': identifier_div, 'select': identifier_search_select, 'selection': 'identifiers', 'schema_association': state.identifiers},
+                sub_element_div,
+                [{'div': sub_identifier_div, 'select': identifier_search_select, 'selection': 'identifiers', 'schema_association': state.identifiers},
                     {'div': sub_property_div, 'select': property_search_select, 'schema_association': state.properties, 'selection': 'properties'}
                 ]
             )
@@ -199,7 +226,7 @@ function Resolve_Schema_In_Elements(
             save_schema.addEventListener('click', async function() {
                 /***/
                 // const result = await Send_GraphQL_Request<>()
-
+                console.log(`state ${JSON.stringify(state)}`)
             })
         }
     });

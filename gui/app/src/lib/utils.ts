@@ -108,6 +108,13 @@ export function Handle_Create_New_Schema(
     })
 }
 
+export function Add_Existing_Modal_State(
+    title: string,
+    selection: string,
+    state: Schema
+) {
+    /**create searchable select */
+}
 
 export function Create_Schema_Modal(
     api_url: string
@@ -322,67 +329,78 @@ export function Link_Element_to_State(state: Record<string, any>, key: string,
     
 
 export async function Make_Searchable_Select(
+    button: HTMLButtonElement,
     schemas: Schema[],
-    container: HTMLDivElement,
+    div: HTMLDivElement,
     state: Schema,
-    client_url: string
-): Promise<HTMLSelectElement> {
-    const label = document.createElement('p')
-    label.textContent = 'Adding Existing Schema as Element'
-    const search_input = document.createElement('input');
-    search_input.type = 'text';
-    search_input.placeholder = 'Search...';
-    const element_label: HTMLParagraphElement = document.createElement('p') as HTMLParagraphElement
-    element_label.textContent = 'Elements Added'
-    const select = document.createElement('select');
-    select.size = 10;
+    client_url: string,
+    select: HTMLSelectElement
+)  {
+    button.addEventListener('click', function() {
+
+        const container = Create_Modal_Container()
+        const overlay = Create_Modal_Overlay()
+        const label = document.createElement('p')
+        const search_input = document.createElement('input');
+        search_input.type = 'text';
+        search_input.placeholder = 'Search...';
+        select.size = 10;
+        
+        search_input.addEventListener('input', () => {
+            select.style.display = '';
+            Render_Options_Schema(
+                schemas,
+                select,
+                search_input.value
+            );
+        });
+        search_input.addEventListener('click', () => {
+            select.style.display = ''
+            // Render_Options(
+            //     schemas,
+            //     select,
+            //     search_input.value
+            // );
+            Render_Options_Schema(
+                schemas,
+                select,
+                search_input.value
+            );
+        })
     
-    search_input.addEventListener('input', () => {
-        select.style.display = '';
-        Render_Options(
-            schemas,
-            select,
-            search_input.value
-        );
-    });
-    search_input.addEventListener('click', () => {
-        select.style.display = ''
-        Render_Options(
-            schemas,
-            select,
-            search_input.value
-        );
-    })
-
-   
-    select.addEventListener('input', function() {
-        // search_input.value = select.value
-        const Selected_Option = select.options[select.selectedIndex];
-        const schema = JSON.parse(Selected_Option.dataset.schema!)
-        select.style.display = 'none';
-        Create_Schema_Element(
-            schema,
-            state,
-            container,
-            client_url
-        )
        
-    })
-    document.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-
-        // If click is outside both the input and the select, hide the select
-        if (target !== search_input && !select.contains(target)) {
+        select.addEventListener('input', function() {
+            // search_input.value = select.value
+            const Selected_Option = select.options[select.selectedIndex];
+            const schema = JSON.parse(Selected_Option.dataset.schema!)
             select.style.display = 'none';
-        }
-    });
-
-    container.appendChild(label)
-    container.appendChild(search_input);
-    container.appendChild(select);
-    container.appendChild(element_label)
-
-    return select;
+            Create_Schema_Element(
+                schema,
+                state,
+                div,
+                client_url
+            )
+            search_input.style.display = 'none';
+            overlay.style.display = 'none'
+         
+           
+        })
+        document.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+    
+            // If click is outside both the input and the select, hide the select
+            if (target !== search_input && !select.contains(target)) {
+                select.style.display = 'none';
+            }
+        });
+    
+        container.appendChild(label)
+        container.appendChild(search_input);
+        container.appendChild(select);
+        overlay.append(container)
+        document.body.appendChild(overlay)
+        return select;
+    })
 }
 
 export function Create_Schema_Element(
@@ -411,11 +429,36 @@ export function Create_Schema_Element(
     div.appendChild(delete_button)
     container.appendChild(div)
 }
+export function Create_Modal_Overlay(): HTMLDivElement {
+    const overlay = document.createElement('div')
+    
+    overlay.style.position = 'fixed'
+    overlay.style.inset = '0'
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.4)'
+    overlay.style.display = 'flex'
+    overlay.style.justifyContent = 'center'
+    overlay.style.alignItems = 'center'
+    overlay.style.zIndex = '1000'
+    return overlay
+}
+export function Create_Modal_Container(): HTMLDivElement {
+    const container = document.createElement('div')
+    
+    container.style.backgroundColor = 'white'
+    container.style.padding = '20px'
+    container.style.borderRadius = '8px'
+    container.style.display = 'flex'
+    container.style.flexDirection = 'column'
+    container.style.gap = '8px'
+    container.style.minWidth = '300px'
+    container.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.25)'
+    return container
 
+}
 export async function Make_Searchable_Select_Schema(
     button: HTMLButtonElement,
     schemas: Schema[],
-    container: HTMLDivElement,
+    div: HTMLDivElement,
     state: Schema,
     selection: Selection,
     select: HTMLSelectElement
@@ -428,8 +471,12 @@ export async function Make_Searchable_Select_Schema(
         } else {
             select.style.display = 'none'
         }
-        // const label = document.createElement('p')
-        // label.textContent = 'Adding Existing Schema as Element'
+      
+        const container = Create_Modal_Container()
+        const overlay = Create_Modal_Overlay()
+
+
+       
         const search_input = document.createElement('input');
         search_input.type = 'text';
         search_input.placeholder = 'Search...';
@@ -451,27 +498,28 @@ export async function Make_Searchable_Select_Schema(
                 search_input.value
             );
         })
-    
-    
+        
+        
         select.addEventListener('input', (event: Event) => {
             const Selected_Option = select.options[select.selectedIndex];
             const schema = JSON.parse(Selected_Option.dataset.schema!)
-            Render_Schema_Option(
-                select,
-                state,
-                selection,
-                container,
+            search_input.style.display = 'none';
+            overlay.style.display = 'none'
+            const input_view = Render_Schema_Option(select,
+                div,
                 schema
             )
-            search_input.style.display = 'none';
+            Connect_Input_View_To_State(input_view.input, state, schema, selection)
 
+            
         })
         document.addEventListener('click', (e) => {
             const target = e.target as HTMLElement;
-    
+            
             // If click is outside both the input and the select, hide the select
-            if (target !== search_input && !select.contains(target)) {
+            if (target !== search_input && !select.contains(target) ) {
                 select.style.display = 'none';
+                // overlay.remove()
             }
         });
     
@@ -479,14 +527,14 @@ export async function Make_Searchable_Select_Schema(
         container.appendChild(search_input);
         container.appendChild(select);
         container.appendChild(element_label)
-    
+        overlay.appendChild(container)
+        document.body.appendChild(overlay)
+        
     }
 }
 
 export function Render_Schema_Option(
     select: HTMLSelectElement,
-    state: Schema,
-    selection: Selection,
     container: HTMLDivElement,
     schema: Schema
 ): Input_Viewer {
@@ -501,9 +549,15 @@ export function Render_Schema_Option(
     div.appendChild(label)
     const input_view = Make_Schema_Input_View(schema)
     const viewer_element = Make_Viewer_Element(input_view.input)
-    Connect_Input_View_To_State(input_view.input, state, schema, selection)
     div.appendChild(input_view.input)
     div.appendChild(viewer_element)
+    const delete_button = document.createElement('button')
+    delete_button.textContent = 'x'
+    Make_Delete_Function(
+        div, delete_button, schema,
+        'elements', 'string'
+    )
+    div.appendChild(delete_button)
     container.appendChild(div)
     return {'input': input_view.input, 'viewer': viewer_element}
 }
@@ -669,12 +723,12 @@ export function Render_Options_Schema(schemas: Schema[],
     // select.addEventListener('input', async function() {
         
         if (state.data_type == 'Interface') {
-            const select = await Make_Searchable_Select(schemas,
-                container, state, client_url
-            )
+            // const select = await Make_Searchable_Select(schemas,
+            //     container, state, client_url
+            // )
             Connect_Select_To_List_State(select, state, 'elements')
 
-            Handle_Create_New_Schema(container, data_types, state, container)
+            // Handle_Create_New_Schema(container, data_types, state, container)
 
         }
         if (state.data_type === 'String' ||
