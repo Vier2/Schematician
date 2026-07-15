@@ -4,9 +4,9 @@ import type {
     Get_Schema_By_UID_Input, 
     Get_Schema_By_UID_Response, Delete_Schema_Response, 
     Delete_Schema_Input, Delete_Schema_Payload, 
-    Get_Instance_By_UID_Input, Get_Instance_By_UID_Response,
-    GraphQl_Instance, GraphQL_Selection} from "./types"
-
+    Get_Instance_By_UID_Input, Get_Instance_By_UID_Response, Schema_Association_Update,
+    GraphQl_Instance, GraphQL_Selection, Update_Schema_Data} from "./types"
+import type { Schema } from "$lib/Schema/models"
 function Build_GraphQL_Selection(
     selection: GraphQL_Selection[],
     indentation_level = 3
@@ -324,3 +324,44 @@ ${selection}
 }
 
 
+export function Convert_Schema_To_Update_Data(
+    state: Schema
+): Update_Schema_Data {
+    return {
+        uid: state.uid!,
+        name: state.name,
+        data_type: state.data_type,
+
+        image: state.image,
+        rules: state.rules,
+        logic: state.logic,
+        relationships: state.relationships,
+
+        constraints: state.constraints,
+        enumerations: state.enumerations,
+        options: state.options,
+
+        elements: state.elements?.map(
+            (element, index): Schema_Association_Update => ({
+                schema_uid: element.uid!,
+                index
+            })
+        ),
+
+        properties: state.properties?.map(
+            (property, index): Schema_Association_Update => ({
+                schema_uid: property.schema.uid!,
+                index,
+                value: property.value
+            })
+        ),
+
+        identifiers: state.identifiers?.map(
+            (identifier, index): Schema_Association_Update => ({
+                schema_uid: identifier.schema.uid!,
+                index,
+                value: identifier.value
+            })
+        )
+    }
+}
