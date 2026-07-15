@@ -394,31 +394,11 @@ function Render_Schema_Result(
     return container
 }
 
-function Render_Instance_Results(
-    instance: GraphQl_Instance,
-    client_url: string
-) {
-    const container = document.createElement('div')
 
-    const name = document.createElement('p')
-    /**query schema name using uid*/
-    // name.textContent = instance.
-
-    const schema_url: HTMLAnchorElement = document.createElement('a') as HTMLAnchorElement
-    schema_url.href = `${client_url}/Schema/Definition/${instance.schema_uid}`
-    /**
-     * TODO: add delete button
-    */
-    const edit_url: HTMLAnchorElement = document.createElement('a') as HTMLAnchorElement
-    edit_url.href = `${client_url}/Schema/Instantiation/${instance.uid}` /**TODO:Add id dir later*/
-
-}
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
 import type { Search_Target } from "$lib/Schema/models";
 import { Create_Options_In_Select_From_Array } from "$lib/utils";
-import { Create_Instance } from "$lib/graphql/utils";
-    import { goto } from "$app/navigation";
     onMount(() => {
       if (browser) {
             const new_schema_button: HTMLButtonElement = document.getElementById('new_schema_button') as HTMLButtonElement

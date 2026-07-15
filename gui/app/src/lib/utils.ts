@@ -1134,6 +1134,7 @@ export function Render_Schema_MetaData(schema: Schema,
     client_url: string
 ) {
     const name = Make_Bold_P_Element(schema.name)
+    const div = document.createElement('div')
     parent_container.appendChild(name)
     const edit_link: HTMLAnchorElement = document.createElement('a') as HTMLAnchorElement
     edit_link.href = `${client_url}/Schema/Definition/${schema.uid}`
@@ -1148,7 +1149,6 @@ export function Render_Schema_MetaData(schema: Schema,
         div.style.flexDirection = 'row'
         div.style.gap = '5px'
         div.appendChild(identifier)
-        div.appendChild(edit_link)
         div.appendChild(value_element)
         parent_container.appendChild(div)
     });
