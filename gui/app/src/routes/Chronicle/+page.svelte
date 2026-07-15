@@ -26,7 +26,7 @@
 import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Search_Schema_Value_Recursive, Render_Options_Schema } from "$lib/utils";
 import type { GraphQL_Response, GraphQl_Instance, GraphQL_Schema} from "$lib/graphql/types";
 import { Create_Schema_Modal } from "$lib/utils";
-import { Delete_Schema } from "$lib/graphql/utils";
+import { Delete_Schema, Create_Instantiate_Button } from "$lib/graphql/utils";
 import type { 
     Filter_Operator,
      Search_Schema_Result,
@@ -381,12 +381,10 @@ function Render_Schema_Result(
         container.remove()
     }
     )
-    const instantiate_button: HTMLButtonElement = document.createElement('button') as HTMLButtonElement
-    instantiate_button.addEventListener('click', async function() {
-        const instance = await Create_Instance(api_url, schema.uid)
-        console.log(`instance uid${instance.uid}`)
-        goto(`/Schema/Instantiation/${instance.uid}`)
-    })
+    const button:HTMLButtonElement = document.createElement('button')
+    const instantiate_button = Create_Instantiate_Button(
+        button,
+        api_url, schema.uid)
     instantiate_button.textContent = 'instantiate'
     container.appendChild(name)
     container.appendChild(data_type)

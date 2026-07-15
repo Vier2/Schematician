@@ -24,7 +24,6 @@
                 <button id="element_button">
                     +
                 </button>
-
             </div>
         </div>
         <div id="identifier_div">
@@ -58,6 +57,7 @@
 </div>
 <div id="right_column">
     <button id="save_schema"> Save Schema</button>
+    <button id="instantiate_schema"> Instantiate Schema</button>
 </div>
 </div>
 
@@ -87,8 +87,9 @@ import { Get_All_Schemas, Convert_GraphQL_Schema_To_Schema, Create_Schema_Elemen
 import { PUBLIC_CLIENT_API_URL, PUBLIC_SERVER_API_URL } from "$env/static/public";
 import { Link_Element_to_State, Render_Schema_Option, Make_Collapsible, Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Searchable_Select } from "$lib/utils";
 import { page } from '$app/state';
-import { Send_GraphQL_Request, Convert_Schema_To_Update_Data } from "$lib/graphql/utils";
+import { Send_GraphQL_Request, Convert_Schema_To_Update_Data, Create_Instantiate_Button } from "$lib/graphql/utils";
 import type { Update_Schema_Response, Update_Schema_Data } from "$lib/graphql/types";
+
 
 /**
  * use for properties, identifiers, elements
@@ -150,7 +151,7 @@ function Resolve_Schema_In_Elements(
             console.log(`schema uid ${schema_uid}`)
             const graphql_schema = await Get_Schema_By_UID(
                 PUBLIC_SERVER_API_URL, 
-                schema_uid!, localStorage.getItem('token') ?? undefined
+                schema_uid!, 5, localStorage.getItem('token') ?? undefined
             )
             const schema = Convert_GraphQL_Schema_To_Schema(graphql_schema!)
             let state = schema
@@ -183,6 +184,12 @@ function Resolve_Schema_In_Elements(
             Make_Collapsible(constraint_label!, constraint_container)
             const center_column_2nd_row: HTMLDivElement = document.getElementById('center_column_2nd_row') as HTMLDivElement
             const sub_identifier_div: HTMLDivElement = document.getElementById('sub_identifier_div') as HTMLDivElement
+            const instantiate_button: HTMLButtonElement = document.getElementById('instantiate_schema') as HTMLButtonElement
+            Create_Instantiate_Button(
+                instantiate_button,
+                PUBLIC_SERVER_API_URL, 
+                state.uid!
+            )
 
             const Identifiers_Button: HTMLButtonElement = document.getElementById('identifier_button') as HTMLButtonElement
             

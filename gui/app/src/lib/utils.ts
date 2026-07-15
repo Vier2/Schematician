@@ -602,6 +602,7 @@ export function Connect_Input_View_To_State(
 
 
 
+
 function resolveValue(schema: Schema, raw: string) {
     switch (schema.data_type) {
         case 'Number':
@@ -1129,10 +1130,15 @@ export function Link_Viewer_Input(viewer: HTMLElement, input: HTMLInputElement |
     });
 }
 export function Render_Schema_MetaData(schema: Schema,
-    parent_container: HTMLDivElement
+    parent_container: HTMLDivElement,
+    client_url: string
 ) {
     const name = Make_Bold_P_Element(schema.name)
     parent_container.appendChild(name)
+    const edit_link: HTMLAnchorElement = document.createElement('a') as HTMLAnchorElement
+    edit_link.href = `${client_url}/Schema/Definition/${schema.uid}`
+    edit_link.textContent = `Edit ${schema.name}`
+    parent_container.appendChild(edit_link)
     schema.identifiers?.forEach(element => {
         const div = document.createElement('div')
         const identifier: HTMLParagraphElement = Make_Bold_P_Element(element.schema.name)
@@ -1142,6 +1148,7 @@ export function Render_Schema_MetaData(schema: Schema,
         div.style.flexDirection = 'row'
         div.style.gap = '5px'
         div.appendChild(identifier)
+        div.appendChild(edit_link)
         div.appendChild(value_element)
         parent_container.appendChild(div)
     });
@@ -1262,17 +1269,18 @@ export function Add_Event_Map_Elements(current_schema_div: HTMLDivElement,
     previous_button: HTMLButtonElement, 
     next_button: HTMLButtonElement,
     current_instance_div: HTMLDivElement,
-    state: Schema_Instance ) {
+    state: Schema_Instance,
+    client_url: string ) {
     for (const [index, item] of current_schemas.entries()) {
         item.element.addEventListener('click', function() {
             current_schema_div.replaceChildren()
             current_instance_div.replaceChildren()
-            Render_Schema_MetaData(item.schema, current_schema_div)
+            Render_Schema_MetaData(item.schema, current_schema_div, client_url)
             Render_Adjacent_Elements(
                 index, current_schemas, previous_button, next_button,
                 current_schema_div,
                 current_instance_div,
-                state,
+                state, client_url
             )
             console.log(`calling handle schema input rendering`)
             Handle_Schema_input_rendering(item.schema, 
@@ -1290,6 +1298,7 @@ export function Render_Adjacent_Elements(
     current_schema_div: HTMLDivElement,
     current_instance_div: HTMLDivElement,
     state: Schema_Instance,
+    client_url: string
 ) {
     const previous = current_schemas[current_index - 1]
     const next = current_schemas[current_index + 1]
@@ -1304,7 +1313,8 @@ export function Render_Adjacent_Elements(
         current_schema_div,
         current_instance_div,
         state,
-        previous?.path ?? []
+        previous?.path ?? [],
+        client_url
     )
 
     Modify_Button_Element(
@@ -1317,7 +1327,8 @@ export function Render_Adjacent_Elements(
         current_schema_div,
         current_instance_div,
         state,
-        next?.path ?? []
+        next?.path ?? [],
+        client_url
     )
 }
 
@@ -1338,7 +1349,8 @@ export function Modify_Button_Element(
     current_schema_div: HTMLDivElement,
     current_instance_div: HTMLDivElement,
     state: Schema_Instance,
-    path: number[]
+    path: number[],
+    client_url: string
 ) {
     button.textContent = schema ? schema.name : '—'
     button.disabled = schema === null
@@ -1347,7 +1359,7 @@ export function Modify_Button_Element(
     button.onclick = () => {
         if (!schema) return
         current_schema_div.replaceChildren()
-        Render_Schema_MetaData(schema, current_schema_div)
+        Render_Schema_MetaData(schema, current_schema_div, client_url)
         Render_Adjacent_Elements(
             target_index,
             current_schemas,
@@ -1355,7 +1367,7 @@ export function Modify_Button_Element(
             next_button,
             current_schema_div,
             current_instance_div,
-            state,
+            state, client_url
         )
         Handle_Schema_input_rendering(schema, current_instance_div,
             state, path

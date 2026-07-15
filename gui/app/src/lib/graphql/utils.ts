@@ -7,6 +7,7 @@ import type {
     Get_Instance_By_UID_Input, Get_Instance_By_UID_Response, Schema_Association_Update,
     GraphQl_Instance, GraphQL_Selection, Update_Schema_Data} from "./types"
 import type { Schema } from "$lib/Schema/models"
+import { goto } from "$app/navigation"
 function Build_GraphQL_Selection(
     selection: GraphQL_Selection[],
     indentation_level = 3
@@ -101,11 +102,144 @@ export async function Delete_Schema(
 
     return response.delete_schema
 }
+
+function Build_Schema_Selection(
+    depth: number
+): GraphQL_Selection[] {
+    const Basic_Schema_Selection: GraphQL_Selection[] = [
+        'uid',
+        'name',
+        'data_type'
+    ]
+    
+    const Constraint_Selection: GraphQL_Selection = {
+        field: 'constraints',
+        selection: [
+            'minimum_number',
+            'maximum_number',
+            'can_be_positive',
+            'can_be_negative',
+            'minimum_characters',
+            'maximum_characters',
+            'regex',
+            'lowercase',
+            'uppercase'
+        ]
+    }
+    if (!Number.isInteger(depth) || depth < 1) {
+        throw new Error(
+            'Schema query depth must be an integer of at least 1.'
+        )
+    }
+
+    const own_fields: GraphQL_Selection[] = [
+        'uid',
+        'name',
+        'data_type',
+        'image',
+        'rules',
+        'logic',
+        'relationships',
+        'enumerations',
+        'options',
+        Constraint_Selection
+    ]
+
+    /*
+     * At depth 1, return the root's complete direct data,
+     * but only basic information about linked schemas.
+     */
+    if (depth === 1) {
+        return [
+            ...own_fields,
+
+            {
+                field: 'elements',
+                selection: Basic_Schema_Selection
+            },
+
+            {
+                field: 'properties',
+                selection: [
+                    'value',
+                    {
+                        field: 'schema',
+                        selection: Basic_Schema_Selection
+                    }
+                ]
+            },
+
+            {
+                field: 'identifiers',
+                selection: [
+                    'value',
+                    {
+                        field: 'schema',
+                        selection: Basic_Schema_Selection
+                    }
+                ]
+            }
+        ]
+    }
+
+    const nested_schema_selection =
+        Build_Schema_Selection(depth - 1)
+
+    return [
+        ...own_fields,
+
+        {
+            field: 'elements',
+            selection: nested_schema_selection
+        },
+
+        {
+            field: 'properties',
+            selection: [
+                'value',
+                {
+                    field: 'schema',
+                    selection: nested_schema_selection
+                }
+            ]
+        },
+
+        {
+            field: 'identifiers',
+            selection: [
+                'value',
+                {
+                    field: 'schema',
+                    selection: nested_schema_selection
+                }
+            ]
+        }
+    ]
+}
 export async function Get_Schema_By_UID(
     api_url: string,
     uid: string,
+    depth = 1,
     token?: string
 ): Promise<GraphQL_Schema | null> {
+    /*
+     * Prevent accidentally generating an enormous GraphQL operation.
+     * Change this limit if your application needs deeper queries.
+     */
+    const maximum_depth = 10
+
+    if (!Number.isInteger(depth) || depth < 1) {
+        throw new Error(
+            'Depth must be an integer greater than or equal to 1.'
+        )
+    }
+
+    if (depth > maximum_depth) {
+        throw new Error(
+            `Depth cannot exceed ${maximum_depth}.`
+        )
+    }
+
     const response =
         await Send_GraphQL_Request<
             Get_Schema_By_UID_Response,
@@ -127,89 +261,8 @@ export async function Get_Schema_By_UID(
                 uid
             },
 
-            selection: [
-                'uid',
-                'name',
-                'data_type',
-                'image',
-                'rules',
-                'logic',
-                'relationships',
-                'enumerations',
-                'options',
-
-                {
-                    field: 'constraints',
-                    selection: [
-                        'minimum_number',
-                        'maximum_number',
-                        'can_be_positive',
-                        'can_be_negative',
-                        'minimum_characters',
-                        'maximum_characters',
-                        'regex',
-                        'lowercase',
-                        'uppercase'
-                    ]
-                },
-
-                {
-                    field: 'elements',
-                    selection: [
-                        'uid',
-                        'name',
-                        'data_type',
-                        'image',
-                        'rules',
-                        'logic',
-                        'relationships',
-                        'enumerations',
-                        'options'
-                    ]
-                },
-
-                {
-                    field: 'properties',
-                    selection: [
-                        'value',
-                        {
-                            field: 'schema',
-                            selection: [
-                                'uid',
-                                'name',
-                                'data_type',
-                                'image',
-                                'rules',
-                                'logic',
-                                'relationships',
-                                'enumerations',
-                                'options'
-                            ]
-                        }
-                    ]
-                },
-
-                {
-                    field: 'identifiers',
-                    selection: [
-                        'value',
-                        {
-                            field: 'schema',
-                            selection: [
-                                'uid',
-                                'name',
-                                'data_type',
-                                'image',
-                                'rules',
-                                'logic',
-                                'relationships',
-                                'enumerations',
-                                'options'
-                            ]
-                        }
-                    ]
-                }
-            ],
+            selection:
+                Build_Schema_Selection(depth),
 
             token
         })
@@ -364,4 +417,18 @@ export function Convert_Schema_To_Update_Data(
             })
         )
     }
+}
+
+export function Create_Instantiate_Button(
+    button: HTMLButtonElement,
+    api_url: string,
+    schema_uid: string
+) {
+    button.addEventListener('click', async function () {
+        const instance = await Create_Instance(api_url, schema_uid)
+        console.log(`instance uid${instance.uid}`)
+        goto(`/Schema/Instantiation/${instance.uid}`)
+    })
+    return button
+
 }

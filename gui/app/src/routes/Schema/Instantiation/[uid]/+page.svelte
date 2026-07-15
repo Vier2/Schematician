@@ -96,7 +96,7 @@ import { page } from '$app/state';
 import { Add_Hierarchical_Elements, Apply_Descending_Indentation, Render_Schema_MetaData, Apply_Incremental_CSS_To_Children, Add_Header_For_Each_KeyValue, Add_Event_Map_Elements, Convert_GraphQL_Schema_To_Schema } from "$lib/utils";
 import type { Schema_Instance } from "$lib/Schema/models";
 import { Get_Instance_By_UID, Get_Schema_By_UID } from "$lib/graphql/utils";
-    import { PUBLIC_SERVER_API_URL } from "$env/static/public";
+    import { PUBLIC_CLIENT_API_URL, PUBLIC_SERVER_API_URL } from "$env/static/public";
     onMount( async() => {
         if (browser) {
             
@@ -116,13 +116,13 @@ import { Get_Instance_By_UID, Get_Schema_By_UID } from "$lib/graphql/utils";
             console.log(`schema uid: ${instance?.schema_uid}`)
             const GraphQL_schema = await Get_Schema_By_UID(
                     PUBLIC_SERVER_API_URL, 
-                    instance!.schema_uid,
+                    instance!.schema_uid, 5,
                     localStorage.getItem('token') ?? undefined
 
                 )
             const schema = Convert_GraphQL_Schema_To_Schema(GraphQL_schema!)
             console.log(`schema ${JSON.stringify(schema)}`)
-            Render_Schema_MetaData(schema!, Current_Schema_Div)
+            Render_Schema_MetaData(schema!, Current_Schema_Div, PUBLIC_CLIENT_API_URL)
             const Map_Div: HTMLDivElement = document.getElementById('Map_Div') as HTMLDivElement
             const list = Add_Hierarchical_Elements(Map_Div, schema!)
             const previous_button: HTMLButtonElement = document.getElementById('Previous_Element_Button') as HTMLButtonElement
@@ -133,7 +133,7 @@ import { Get_Instance_By_UID, Get_Schema_By_UID } from "$lib/graphql/utils";
             Add_Event_Map_Elements(
                 Current_Schema_Div, list, previous_button, 
                 next_button, Current_Instance_Div,
-            state)
+            state, PUBLIC_CLIENT_API_URL)
         }
     });
 </script>
