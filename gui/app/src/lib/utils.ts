@@ -125,7 +125,7 @@ export function Create_Add_Schema_Button(
 }
 export function Create_Schema_Modal(
     api_url: string
-) {
+): Promise<GraphQL_Schema> | null {
     /**Create popup window to create a schema */
     
     const data_type_array = ['String', 'Interface', 'Number', 'Boolean', 'Associative_Array']
@@ -164,16 +164,15 @@ export function Create_Schema_Modal(
     container.appendChild(data_type_label)
     container.appendChild(data_type)
     container.appendChild(submit)
-    submit.addEventListener('click', async function() {
-        /**Create Schema */
-        const name_value = name.value
-        const data_type_value = data_type.value as Data_Type
+    return new Promise((resolve) => {
+
+    submit.addEventListener('click', async () => {
         const result =
             await Send_GraphQL_Request<
                 Create_Schema_Response,
                 Create_Schema_Input
             >({
-                api_url: api_url,
+                api_url,
                 operation_type: 'mutation',
                 operation_name: 'Create_Schema',
                 field_name: 'create_schema',
@@ -182,8 +181,8 @@ export function Create_Schema_Modal(
                     { name: 'data_type', type: 'Data_Type!' }
                 ],
                 input_data: {
-                    name: name_value,
-                    data_type: data_type_value,
+                    name: name.value,
+                    data_type: data_type.value as Data_Type
                 },
                 selection: [
                     'uid',
@@ -191,21 +190,20 @@ export function Create_Schema_Modal(
                     'data_type'
                 ]
             })
-            const edit_button: HTMLButtonElement = document.createElement('button')
-            edit_button.textContent = `edit schema`
-        /**
-         * add result to container
-         */
-        console.log(result.create_schema)
 
-    }
+        overlay.remove()
 
-    )
+        resolve(result.create_schema)
+    })
+
     overlay.addEventListener('click', event => {
         if (event.target === overlay) {
             overlay.remove()
+
+            return null
         }
     })
+})
 }
 function Handle_Save_Schema_Button(
     button: HTMLButtonElement,
@@ -389,12 +387,12 @@ export async function Make_Searchable_Select(
                 div,
                 client_url
             )
-            search_input.style.display = 'none';
-            overlay.style.display = 'none'
             if (!state.elements) {
                 state.elements = []
             }
             state.elements.push(schema)
+            search_input.style.display = 'none';
+            overlay.style.display = 'none'
          
            
         })
@@ -473,6 +471,57 @@ export function Create_Modal_Container(): HTMLDivElement {
     container.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.25)'
     return container
 
+}
+export function Add_Schema_Modal_Association(
+    button: HTMLButtonElement,
+    api_url: string,
+    selection: Selection,
+    div: HTMLDivElement,
+    state: Schema, 
+    select: HTMLSelectElement
+) {
+    button.addEventListener('click', async function() {
+        const graphql_schema = await Create_Schema_Modal(api_url)
+        
+        if (graphql_schema) {
+            const schema = Convert_GraphQL_Schema_To_Schema(graphql_schema)
+            const input_view = Render_Schema_Option(select,
+                div,
+                schema, selection, state
+            )
+            Connect_Input_View_To_State(input_view.input, state, schema, selection)
+            
+        }
+        
+    }
+    )
+}
+export function Add_Schema_Modal_Element(
+    button: HTMLButtonElement,
+    api_url: string,
+    client_url: string,
+    div: HTMLDivElement,
+    state: Schema,
+) {
+    button.addEventListener('click', async function () {
+        const graphql_schema = await Create_Schema_Modal(api_url)
+
+        if (graphql_schema) {
+            const schema = Convert_GraphQL_Schema_To_Schema(graphql_schema)
+            Create_Schema_Element(
+                schema,
+                state,
+                div,
+                client_url
+            )
+            if (!state.elements) {
+                state.elements = []
+            }
+            state.elements.push(schema)
+        }
+
+    }
+    )
 }
 export async function Make_Searchable_Select_Schema(
     button: HTMLButtonElement,

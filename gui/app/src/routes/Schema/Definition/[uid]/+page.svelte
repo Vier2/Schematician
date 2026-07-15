@@ -36,7 +36,9 @@
                 <button id="identifier_button" >
                     <img src={Search_Icon} alt="search icon" height="12px">
                 </button>
-                
+                 <button id="create_identifier_button" >
+                     +
+                </button>
             </div>
 
         </div>
@@ -46,7 +48,10 @@
             </p>
                 <div id="sub_property_div"> 
                     <button id="property_button" >
-                    <img src={Search_Icon} alt="search icon" height="12px">
+                        <img src={Search_Icon} alt="search icon" height="12px">
+                    </button>
+                    <button id="create_property_button">
+                        +
                     </button>
                 </div>
         <div> 
@@ -87,7 +92,7 @@ import type { Schema, Schema_Association, Data_Type, Selection, Association } fr
 import { Get_Schema_By_UID } from "$lib/graphql/utils";
 import { Get_All_Schemas, Convert_GraphQL_Schema_To_Schema, Create_Schema_Element } from "$lib/utils";
 import { PUBLIC_CLIENT_API_URL, PUBLIC_SERVER_API_URL } from "$env/static/public";
-import { Link_Element_to_State, Render_Schema_Option, Make_Collapsible, Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Searchable_Select } from "$lib/utils";
+import { Link_Element_to_State, Add_Schema_Modal_Association, Add_Schema_Modal_Element, Render_Schema_Option, Make_Collapsible, Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Searchable_Select } from "$lib/utils";
 import { page } from '$app/state';
 import { Send_GraphQL_Request, Convert_Schema_To_Update_Data, Create_Instantiate_Button } from "$lib/graphql/utils";
 import type { Update_Schema_Response, Update_Schema_Data } from "$lib/graphql/types";
@@ -232,6 +237,33 @@ function Resolve_Schema_In_Elements(
                     {'div': sub_property_div, 'select': property_search_select, 'schema_association': state.properties, 'selection': 'properties'}
                 ]
             )
+            const create_element_button: HTMLButtonElement = document.getElementById('create_element_button') as HTMLButtonElement
+            Add_Schema_Modal_Element(
+                create_element_button,
+                PUBLIC_SERVER_API_URL,
+                PUBLIC_CLIENT_API_URL,
+                sub_element_div,
+                state
+            )
+            const create_property_button: HTMLButtonElement = document.getElementById('create_property_button') as HTMLButtonElement
+            const create_identifier_button: HTMLButtonElement = document.getElementById('create_identifier_button') as HTMLButtonElement
+            Add_Schema_Modal_Association(
+                create_property_button,
+                PUBLIC_SERVER_API_URL,
+                'properties',
+                sub_property_div,
+                state,
+                property_search_select
+            )
+            Add_Schema_Modal_Association(
+                create_identifier_button,
+                PUBLIC_SERVER_API_URL,
+                'identifiers',
+                sub_identifier_div,
+                state,
+                identifier_search_select
+            )
+
             const save_schema: HTMLButtonElement = document.getElementById('save_schema') as HTMLButtonElement
 
             save_schema.addEventListener('click', async function() {
@@ -327,7 +359,6 @@ function Resolve_Schema_In_Elements(
 
                         })
                     }
-            const create_element_button: HTMLButtonElement = document.createElement('button')
-            
+         
     });
 </script>
