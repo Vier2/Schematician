@@ -13,7 +13,6 @@
         </div>
         <label for="Data_Type_Select"> Select Data Type</label>
         <select id="Data_Type_Select"></select>
-        <!-- <button id="create_new_schema">Create New Schema</button> -->
     </div>
     <div id="center_column_2nd_row">
         <div id="element_div">
@@ -21,7 +20,10 @@
                 Elements
             </p>
             <div id="sub_element_div">
-                <button id="element_button">
+                <button id="search_element_button">
+                    <img src={Search_Icon} alt="search icon" height="12px">
+                </button>
+                <button id="create_element_button">
                     +
                 </button>
             </div>
@@ -32,7 +34,7 @@
             </p>
             <div id="sub_identifier_div"> 
                 <button id="identifier_button" >
-                    +
+                    <img src={Search_Icon} alt="search icon" height="12px">
                 </button>
                 
             </div>
@@ -44,7 +46,7 @@
             </p>
                 <div id="sub_property_div"> 
                     <button id="property_button" >
-                        +
+                    <img src={Search_Icon} alt="search icon" height="12px">
                     </button>
                 </div>
         <div> 
@@ -89,7 +91,7 @@ import { Link_Element_to_State, Render_Schema_Option, Make_Collapsible, Make_Sea
 import { page } from '$app/state';
 import { Send_GraphQL_Request, Convert_Schema_To_Update_Data, Create_Instantiate_Button } from "$lib/graphql/utils";
 import type { Update_Schema_Response, Update_Schema_Data } from "$lib/graphql/types";
-
+import Search_Icon from '$lib/assets/search.png'
 
 /**
  * use for properties, identifiers, elements
@@ -209,12 +211,12 @@ function Resolve_Schema_In_Elements(
             const Schema_Name_Input: HTMLInputElement = document.getElementById('Schema_Name_Input') as HTMLInputElement
             Link_Element_to_State(state, 'name', Schema_Name_Input)
             const sub_element_div: HTMLDivElement = document.getElementById('sub_element_div') as HTMLDivElement
-            const element_button: HTMLButtonElement = document.getElementById('element_button') as HTMLButtonElement
+            const search_element_button: HTMLButtonElement = document.getElementById('search_element_button') as HTMLButtonElement
             const element_label = document.getElementById('element_label')
             Make_Collapsible(element_label!, sub_element_div)
             const element_search_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
             Make_Searchable_Select(
-                element_button,
+                search_element_button,
                 schemas,
                 sub_element_div,
                 state,
@@ -325,5 +327,7 @@ function Resolve_Schema_In_Elements(
 
                         })
                     }
+            const create_element_button: HTMLButtonElement = document.createElement('button')
+            
     });
 </script>

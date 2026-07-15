@@ -115,7 +115,14 @@ export function Add_Existing_Modal_State(
 ) {
     /**create searchable select */
 }
-
+export function Create_Add_Schema_Button(
+    api_url: string,
+    container: HTMLDivElement,
+    state: Schema,
+    selection: Selection
+) {
+    Create_Schema_Modal
+}
 export function Create_Schema_Modal(
     api_url: string
 ) {
@@ -186,7 +193,9 @@ export function Create_Schema_Modal(
             })
             const edit_button: HTMLButtonElement = document.createElement('button')
             edit_button.textContent = `edit schema`
-
+        /**
+         * add result to container
+         */
         console.log(result.create_schema)
 
     }
@@ -395,9 +404,15 @@ export async function Make_Searchable_Select(
             // If click is outside both the input and the select, hide the select
             if (target !== search_input && !select.contains(target)) {
                 select.style.display = 'none';
+              
+                
             }
         });
-    
+        overlay.addEventListener('click', event => {
+            if (event.target === overlay) {
+                overlay.remove()
+            }
+        })
         container.appendChild(label)
         container.appendChild(search_input);
         container.appendChild(select);
@@ -526,8 +541,11 @@ export async function Make_Searchable_Select_Schema(
                 // overlay.remove()
             }
         });
-    
-        // container.appendChild(label)
+        overlay.addEventListener('click', event => {
+            if (event.target === overlay) {
+                overlay.remove()
+            }
+        })
         container.appendChild(search_input);
         container.appendChild(select);
         container.appendChild(element_label)
