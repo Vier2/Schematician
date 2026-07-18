@@ -1,10 +1,7 @@
-import type { ElementObject } from "$lib/interfaces/ElementObject"
-import type { DataKey } from "$lib/interfaces/ElementObject";
 import type { GraphQL_Schema } from "$lib/graphql/types";
 
 export type Cleanup = () => void;
 export type Key_Value_Container_Creation = () => HTMLElement
-export type Create_Element_Method = (ElementObject: ElementObject, Base_Url: string, Parent_Container: HTMLElement, location: string, category: DataKey, Secondary_Container?: HTMLElement ) => HTMLElement
 
 
 

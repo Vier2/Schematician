@@ -3,14 +3,14 @@ export type Data_Type =
     | 'String'
     | 'Number'
     | 'Boolean'
-    | 'Interface'
+    | 'composite'
     | 'Associative_Array'
 
 type Data_Type_Map = {
     String: string
     Number: number
     Boolean: boolean
-    Interface: Schema_Instance
+    composite: Schema_Instance
     Associative_Array: Record<string, unknown>
 }
 
@@ -31,7 +31,7 @@ interface Interaction {
 
 }
 /**
- * I need a interface which will receive 
+ * I need a composite which will receive 
  * any number of interaction properties
  * resolve the difference/output
  * and return the results to each element
@@ -121,14 +121,14 @@ type Constraint_Map = {
     String: String_Constraints
     Number: Number_Constraints
     Boolean: Boolean_Constraints
-    Interface: Interface_Constraints
+    composite: composite_Constraints
     Associative_Array: Associative_Array_Constraints
 }
 
 interface Boolean_Constraints {
 
 }
-interface Interface_Constraints {
+interface composite_Constraints {
 
 }
 

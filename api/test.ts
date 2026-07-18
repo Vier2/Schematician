@@ -1,7 +1,6 @@
 // test.ts (project root)
 const BASE_URL = 'http://localhost:3000/graphql'
-import { Interface } from "node:readline"
-import { db_create_schema } from "./database/entities/schema/repository.js"
+import { db_create_schema, db_get_schema_by_uid } from "./database/entities/schema/repository.js"
 import type { GraphQL_Schema } from "./database/schema.js"
 import { Data_Type } from "./database/builder.js"
 async function Create_Schema(
@@ -256,53 +255,72 @@ async function run() {
 
         const user_uid = login.data.login.user_uid
 
-        const Introduction = await db_create_schema(
+        const Height = await db_create_schema(
             driver,
             user_uid,
             {
                 uid: crypto.randomUUID(),
-                name: 'Introduction',
-                data_type: Data_Type.String
+                name: 'Height',
+                data_type: Data_Type.Number
             }
         )
 
-        const Body = await db_create_schema(
+        const Weight = await db_create_schema(
             driver,
             user_uid,
             {
                 uid: crypto.randomUUID(),
-                name: 'Body',
-                data_type: Data_Type.String
+                name: 'Weight',
+                data_type: Data_Type.Number
+            }
+        )
+        const Flesh = await db_create_schema(
+            driver,
+            user_uid,
+            {
+                uid: crypto.randomUUID(),
+                name: 'Flesh',
+                data_type: Data_Type.Composite
             }
         )
 
-        const Conclusion = await db_create_schema(
+        const Spirit = await db_create_schema(
             driver,
             user_uid,
             {
                 uid: crypto.randomUUID(),
-                name: 'Conclusion',
+                name: 'Spirit',
                 data_type: Data_Type.String
             }
         )
-
-        const Essay = await db_create_schema(
+        const definition = await db_get_schema_by_uid(
+            driver,
+            user_uid,
+            'd3974871-1e72-497a-8d4e-b2b2f7d72451'
+        )
+        const Xavier = await db_create_schema(
             driver,
             user_uid,
             {
                 uid: crypto.randomUUID(),
-                name: 'Essay',
-                data_type: Data_Type.Interface,
+                name: 'Xavier',
+                data_type: Data_Type.Composite,
 
                 elements: [
-                    Introduction,
-                    Body,
-                    Conclusion
+                    Flesh,
+                    Spirit
+                ],
+                properties: [
+                    {'schema': Height, 'value': 6},
+                    {'schema': Weight, 'value': 185}
+                ],
+                identifiers: [
+                    {'schema': definition!, 'value': 'Man fearfully and wonderfully made in the image of Yahweh, bond servant, software engineer, writer, musician'}
                 ]
             }
         )
 
-        console.log('Created Essay:', Essay)
+        console.log('Created Xavier:', Xavier)
     }
     catch (error) {
         console.error('Test failed:', error)

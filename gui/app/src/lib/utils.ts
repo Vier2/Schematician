@@ -128,7 +128,7 @@ export function Create_Schema_Modal(
 ): Promise<GraphQL_Schema> | null {
     /**Create popup window to create a schema */
     
-    const data_type_array = ['String', 'Interface', 'Number', 'Boolean', 'Associative_Array']
+    const data_type_array = ['String', 'composite', 'Number', 'Boolean', 'Associative_Array']
     const container = document.createElement('div')
     const overlay = document.createElement('div')
 
@@ -240,7 +240,7 @@ export function Render_Schema_Value_Recursive(
      * ancestry_level_visible: The number of ancestry of a element that will be rendered
      */
     const is_container =
-        schema.data_type === 'Interface' ||
+        schema.data_type === 'Composite' ||
         schema.data_type === 'Associative_Array'
     console.log(`running recursive`)
     if (!is_container) {
@@ -743,7 +743,7 @@ export function Add_Schema_Constraints_UI(data_type: Data_Type,
         div.appendChild(minimum_characters.container)
 
     } 
-    if (data_type === 'Interface') {
+    if (data_type === 'Composite') {
         /**
          * maybe constraints like: instances may or may not add additional elements
          * 
@@ -791,12 +791,12 @@ export function Render_Options_Schema(schemas: Schema[],
     const data_types: Data_Type[]= ['String',
         'Number',
         'Boolean',
-        'Interface',
+        'Composite',
         'Associative_Array'
     ] as const
     // select.addEventListener('input', async function() {
         
-        if (state.data_type == 'Interface') {
+        if (state.data_type == 'Composite') {
             // const select = await Make_Searchable_Select(schemas,
             //     container, state, client_url
             // )
@@ -899,7 +899,7 @@ export function Render_Search_Schema_Value_Recursive(
 ): Rendered_Search_Value[] {
 
     const is_container =
-        schema.data_type === 'Interface' ||
+        schema.data_type === 'Composite' ||
         schema.data_type === 'Associative_Array'
 
     if (!is_container) {
@@ -1019,7 +1019,7 @@ export function Handle_Schema_input_rendering(
     div.replaceChildren()
 
     if (
-        schema.data_type === 'Interface' ||
+        schema.data_type === 'Composite' ||
         schema.data_type === 'Associative_Array'
     ) {
         console.log(`callling render schema value recursive`)
@@ -1500,12 +1500,12 @@ export function Apply_Length_Value_CSS(Element: HTMLElement, property: CSS_Prope
     Element.style.setProperty(kebab_property, `${value}${unit}`)
 }
 export async function Send_Post_Request<
-    Request_Interface,
-    Response_Interface
+    Request_composite,
+    Response_composite
 >(
     path_url: string,
-    data: Request_Interface,
-): Promise<Response_Interface> {
+    data: Request_composite,
+): Promise<Response_composite> {
 
     const token = localStorage.getItem('token')
     console.log(localStorage.getItem('token'))
@@ -1524,7 +1524,7 @@ export async function Send_Post_Request<
         body: JSON.stringify(data)
     })
 
-    return await Response.json() as Response_Interface
+    return await Response.json() as Response_composite
 }
 
 export function Convert_GraphQL_Schema_To_Schema(

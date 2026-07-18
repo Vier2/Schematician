@@ -17,7 +17,7 @@ export enum Data_Type {
     String = 'String',
     Number = 'Number',
     Boolean = 'Boolean',
-    Interface = 'Interface',
+    Composite = 'Composite',
     Associative_Array = 'Associative_Array'
 }
 

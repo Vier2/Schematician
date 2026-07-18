@@ -20,20 +20,20 @@ export type Data_Type =
     | 'String'
     | 'Number'
     | 'Boolean'
-    | 'Interface'
+    | 'Composite'
     | 'Associative_Array'
 
 type Data_Type_Map = {
     String: string
     Number: number
     Boolean: boolean
-    Interface: Schema_Instance
+    Composite: Schema_Instance
     Associative_Array: Record<string, unknown>
 }
 
 
 /**
- * I need a interface which will receive 
+ * I need a composite which will receive 
  * any number of interaction properties
  * resolve the difference/output
  * and return the results to each element
@@ -144,7 +144,7 @@ type Constraint_Map = {
     String: String_Constraints
     Number: Number_Constraints
     Boolean: Boolean_Constraints
-    Interface: Interface_Constraints
+    Composite: composite_Constraints
     Associative_Array: Associative_Array_Constraints
 }
 
@@ -155,7 +155,7 @@ type minimum_number = number
 interface Boolean_Constraints {
 
 }
-interface Interface_Constraints {
+interface composite_Constraints {
 
 }
 

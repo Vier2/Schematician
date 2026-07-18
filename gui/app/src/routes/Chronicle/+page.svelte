@@ -129,7 +129,7 @@ function Get_Operators_For_Schema(
     }
 
     if (
-        schema.data_type === 'Interface' ||
+        schema.data_type === 'composite' ||
         schema.data_type === 'Associative_Array'
     ) {
         return [

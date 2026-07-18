@@ -167,7 +167,7 @@ function Resolve_Schema_In_Elements(
                 'String',
                 'Number',
                 'Boolean',
-                'Interface',
+                'composite',
                 'Associative_Array'
             ]
             const graphql_schemas = await Get_All_Schemas(PUBLIC_SERVER_API_URL)

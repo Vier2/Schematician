@@ -13,7 +13,7 @@
 
 <script lang="ts" context='module'>
     import { goto } from "$app/navigation";
-    import type { RegisterResponse, register } from "$lib/interfaces/Authentication";
+    import type { RegisterResponse, register } from "$lib/composites/Authentication";
     import { PUBLIC_SERVER_API_URL } from "$env/static/public";
 
     async function handleSubmit_register(event: SubmitEvent) {

@@ -25,7 +25,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { browser } from "$app/environment";
-    import type { login, LoginResponse } from "$lib/interfaces/Authentication";
+    import type { login, LoginResponse } from "$lib/composites/Authentication";
     import { PUBLIC_SERVER_API_URL } from "$env/static/public";
     import { goto } from "$app/navigation";
 
