@@ -15,11 +15,14 @@ implementation:
         and adding the margin left value to that, setting it
 */
 import { goto } from "$app/navigation";
-import type { GraphQL_Schema } from "./graphql/types";
+import type { Instance_Node } from "@schematician/shared";
+import type { GraphQL_Schema } from "@schematician/shared";
 import { Send_GraphQL_Request } from "./graphql/utils";
 import type { Create_Schema_Input, Create_Schema_Response} from "./graphql/types";
-import type { Rendered_Search_Value, Schema_Association,  Selection, Input_View, Input_Viewer, Schema_Instance, Instance_Node, Schema, Data_Type, Rendered_Node } from "./Schema/models";
+import type { Schema, Data_Type, Schema_Instance } from "@schematician/shared";
+import type { Rendered_Search_Value, Schema_Association,  Selection, Input_View, Input_Viewer,  Rendered_Node } from "./Schema/models";
 import type { CSS_Property,  Schemas_Query_Response, CSS_Unit, GraphQL_Response, Element_Handler, Value_Computer } from "./types/types";
+import type { Schema_Value } from "./Schema/models";
 function Make_Create_Element_UI(types: Data_Type[],
     state: Schema,
     element_container: HTMLDivElement
@@ -241,7 +244,6 @@ export function Render_Schema_Value_Recursive(
      */
     const is_container =
         schema.data_type === 'Composite' ||
-        schema.data_type === 'Associative_Array'
     console.log(`running recursive`)
     if (!is_container) {
         console.log(`schema aint container ${schema}`)
@@ -670,15 +672,29 @@ export function Connect_Input_View_To_State(
 
 
 
-function resolveValue(schema: Schema, raw: string) {
+export function resolveValue<T extends Data_Type>(
+    schema: Schema<T>,
+    raw_value: string
+): Schema_Value<Schema<T>> {
     switch (schema.data_type) {
-        case 'Number':
-            return Number(raw);
-        case 'Boolean':
-            return raw === 'true';
         case 'String':
+            return raw_value as Schema_Value<Schema<T>>
+
+        case 'Number':
+            return Number(raw_value) as Schema_Value<Schema<T>>
+
+        case 'Boolean':
+            return (raw_value === 'true') as Schema_Value<Schema<T>>
+
+        case 'Composite':
+            throw new Error(
+                'A Composite schema cannot be resolved from one input value.'
+            )
+
         default:
-            return raw;
+            throw new Error(
+                `Unsupported data type: ${schema.data_type}`
+            )
     }
 }
 
@@ -792,7 +808,6 @@ export function Render_Options_Schema(schemas: Schema[],
         'Number',
         'Boolean',
         'Composite',
-        'Associative_Array'
     ] as const
     // select.addEventListener('input', async function() {
         
@@ -899,8 +914,7 @@ export function Render_Search_Schema_Value_Recursive(
 ): Rendered_Search_Value[] {
 
     const is_container =
-        schema.data_type === 'Composite' ||
-        schema.data_type === 'Associative_Array'
+        schema.data_type === 'Composite' 
 
     if (!is_container) {
         const context_div =
@@ -1019,8 +1033,7 @@ export function Handle_Schema_input_rendering(
     div.replaceChildren()
 
     if (
-        schema.data_type === 'Composite' ||
-        schema.data_type === 'Associative_Array'
+        schema.data_type === 'Composite' 
     ) {
         console.log(`callling render schema value recursive`)
         Render_Schema_Value_Recursive(

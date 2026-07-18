@@ -22,7 +22,8 @@
     "graphql-yoga": "^5.21.2",
     "jsonwebtoken": "^9.0.3",
     "neo4j-driver": "^6.1.0",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "@schematician/shared": "file:../shared_data"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

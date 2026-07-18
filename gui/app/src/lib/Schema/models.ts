@@ -1,4 +1,4 @@
-import { Make_Schema_Input } from "$lib/utils"
+import type { Schema, Schema_Instance, Data_Type} from "@schematician/shared"
 
 interface Interaction_Element {
     element: Schema
@@ -12,24 +12,18 @@ interface Interaction_Element {
      */
 
 }
-interface Interaction {
-    elements: Interaction_Element[]
 
-}
-export type Data_Type =
-    | 'String'
-    | 'Number'
-    | 'Boolean'
-    | 'Composite'
-    | 'Associative_Array'
-
-type Data_Type_Map = {
+export type Data_Type_Map = {
     String: string
     Number: number
     Boolean: boolean
     Composite: Schema_Instance
-    Associative_Array: Record<string, unknown>
 }
+interface Interaction {
+    elements: Interaction_Element[]
+
+}
+
 
 
 /**
@@ -59,7 +53,7 @@ export type Selection = 'identifiers' | 'properties'
 /**
  * Value resolved from schema data type
  */
-type Schema_Value<
+export type Schema_Value<
     S extends Schema
 > = Data_Type_Map[S['data_type']]
 
@@ -85,26 +79,7 @@ export interface Schema_Association<
     schema: S
     value: Schema_Value<S>
 }
-type BaseSchema<T extends Data_Type> = {
-    uid?: string
-    name: string
-    data_type: T
-    elements?: Schema[]
-    properties?: Schema_Association[]
-    identifiers?: Schema_Association[]
-    /**
-     * Graphic representing schema
-     */
-    image?: string
-    rules?: string
-    logic?: string
-    constraints?: Constraint_Map[T]
-    relationships?: string
-}
-type EnumPart<T extends Data_Type> = {
-    enumerations: Data_Type_Map[T][]
-    options?: never
-}
+
 export interface Input_View {
     input: HTMLSelectElement | HTMLInputElement
     container: HTMLDivElement
@@ -113,55 +88,15 @@ export interface Input_Viewer {
     input: HTMLSelectElement | HTMLInputElement
     viewer: HTMLParagraphElement
 }
-type OptionsPart<T extends Data_Type> = {
-    options: Data_Type_Map[T][]
-    enumerations?: never
-}
 
-type EmptyPart = {
-    enumerations?: never
-    options?: never
-}
-export type Schema<T extends Data_Type = Data_Type> =
-BaseSchema<T> & (EnumPart<T> | OptionsPart<T> | EmptyPart)
-
-interface Number_Constraints {
-    minimum_number?: number
-    maximum_number?: number
-    can_be_positive?: boolean
-    can_be_negative?: boolean
-}
-
-interface String_Constraints {
-    minimum_characters?: number
-    maximum_characters?: number
-    regex?: RegExp
-    lowercase?: boolean
-    uppercase?: boolean
-}
-
-type Constraint_Map = {
-    String: String_Constraints
-    Number: Number_Constraints
-    Boolean: Boolean_Constraints
-    Composite: composite_Constraints
-    Associative_Array: Associative_Array_Constraints
-}
 
 type character_limit = number
 type character_minimum = number
 type max_number = number
 type minimum_number = number
-interface Boolean_Constraints {
 
-}
-interface composite_Constraints {
 
-}
 
-interface Associative_Array_Constraints {
-
-}
 export interface Rendered_Search_Value {
     schema: Schema
     input: HTMLInputElement | HTMLSelectElement
@@ -221,15 +156,8 @@ interface Instance_Value<
 
     value?: Schema_Value<S>
 }
-export interface Instance_Node {
-    value?: unknown
-    elements?: Instance_Node[]
-}
 
-export interface Schema_Instance {
-    schema: Schema
-    root: Instance_Node
-}
+
 export interface Schema_Instantiation_State {
     instances: Schema_Instance[]
 }

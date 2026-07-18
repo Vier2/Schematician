@@ -1,5 +1,4 @@
-import type { GraphQL_Schema } from "$lib/graphql/types";
-
+import type { GraphQL_Schema } from "@schematician/shared";
 export type Cleanup = () => void;
 export type Key_Value_Container_Creation = () => HTMLElement
 

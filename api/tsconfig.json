@@ -4,7 +4,7 @@
     // File Layout
     // "rootDir": "./src",
     // "outDir": "./dist",
-
+  "composite": true,
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
@@ -40,5 +40,11 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-  }
+  },
+    "references": [
+      {
+        "path": "../shared_data"
+      }
+    ]
+  
 }
