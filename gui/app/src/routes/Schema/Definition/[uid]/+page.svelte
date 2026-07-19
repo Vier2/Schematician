@@ -86,7 +86,7 @@
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
 import { Get_Schema_By_UID } from "$lib/graphql/utils";
-import { Get_All_Schemas, Convert_GraphQL_Schema_To_Schema, Create_Schema_Element } from "$lib/utils";
+import { Add_Save_Schema_Function, Get_All_Schemas, Convert_GraphQL_Schema_To_Schema, Create_Schema_Element } from "$lib/utils";
 import { PUBLIC_CLIENT_API_URL, PUBLIC_SERVER_API_URL } from "$env/static/public";
 import { Link_Element_to_State, Add_Schema_Modal_Association, Add_Schema_Modal_Element, Render_Schema_Option, Make_Collapsible, Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Searchable_Select } from "$lib/utils";
 import { page } from '$app/state';
@@ -259,98 +259,14 @@ function Resolve_Schema_In_Elements(
 
             const save_schema: HTMLButtonElement = document.getElementById('save_schema') as HTMLButtonElement
 
-            save_schema.addEventListener('click', async function() {
-                /***/
-                
-             const update_data = Convert_Schema_To_Update_Data(state)
-
-            const result =
-                await Send_GraphQL_Request<
-                    Update_Schema_Response,
-                    {
-                        schema: Update_Schema_Data
-                    }
-                >({
-                    api_url: PUBLIC_SERVER_API_URL,
-
-                    operation_type: 'mutation',
-
-                    operation_name: 'Update_Schema',
-
-                    field_name: 'update_schema',
-
-                    variables: [
-                        {
-                            name: 'schema',
-                            type: 'Update_Schema_Input!'
-                        }
-                    ],
-
-                    input_data: {
-                        schema: update_data
-                    },
-
-                    selection: [
-                        'uid',
-                        'name',
-                        'data_type',
-                        'image',
-                        'rules',
-                        'logic',
-                        'relationships',
-                        'enumerations',
-                        'options',
-
-                        {
-                            field: 'elements',
-                            selection: [
-                                'uid',
-                                'name',
-                                'data_type'
-                            ]
-                        },
-
-                        {
-                            field: 'properties',
-                            selection: [
-                                'value',
-                                {
-                                    field: 'schema',
-                                    selection: [
-                                        'uid',
-                                        'name',
-                                        'data_type'
-                                    ]
-                                }
-                            ]
-                        },
-
-                        {
-                            field: 'identifiers',
-                            selection: [
-                                'value',
-                                {
-                                    field: 'schema',
-                                    selection: [
-                                        'uid',
-                                        'name',
-                                        'data_type'
-                                    ]
-                                }
-                            ]
-                        }
-                    ],
-
-                    token:
-                        localStorage.getItem('token') ??
-                        undefined
-                })
-
-            const updated_schema = result.schema
+            const updated_schema = Add_Save_Schema_Function(
+                save_schema, 
+                state,
+                PUBLIC_SERVER_API_URL
+            )
 
             console.log('Updated schema:', updated_schema)
 
-                        })
                     }
          
     });

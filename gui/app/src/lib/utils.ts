@@ -15,10 +15,10 @@ implementation:
         and adding the margin left value to that, setting it
 */
 import { goto } from "$app/navigation";
-import type { Cardinality, Instance_Node, Schema_Element } from "@schematician/shared";
+import type { Cardinality, Instance_Node, Schema_Element, Update_Schema_Data } from "@schematician/shared";
 import type { GraphQL_Schema } from "@schematician/shared";
-import { Send_GraphQL_Request } from "./graphql/utils";
-import type { Create_Schema_Input, Create_Schema_Response} from "./graphql/types";
+import { Send_GraphQL_Request, Convert_Schema_To_Update_Data } from "./graphql/utils";
+import type { Create_Schema_Input, Create_Schema_Response, Update_Schema_Response} from "./graphql/types";
 import type { Schema, Data_Type, Schema_Instance } from "@schematician/shared";
 import type { Rendered_Search_Value, Input_View, Input_Viewer,  Rendered_Node } from "./Schema/models";
 import type { CSS_Property,  Schemas_Query_Response, CSS_Unit, GraphQL_Response, Element_Handler, Value_Computer } from "./types/types";
@@ -144,6 +144,124 @@ export function Handle_Create_Schema_Form(
     return handle_key_down
 }
 
+export function Add_Save_Schema_Function(
+    button: HTMLButtonElement,
+    state: Schema,
+    api_url: string
+): void {
+    button.addEventListener(
+        'click',
+        async function (): Promise<void> {
+            const update_data =
+                Convert_Schema_To_Update_Data(state)
+
+            const result =
+                await Send_GraphQL_Request<
+                    Update_Schema_Response,
+                    {
+                        schema: Update_Schema_Data
+                    }
+                >({
+                    api_url,
+
+                    operation_type: 'mutation',
+
+                    operation_name: 'Update_Schema',
+
+                    field_name: 'update_schema',
+
+                    variables: [
+                        {
+                            name: 'schema',
+                            type: 'Update_Schema_Input!'
+                        }
+                    ],
+
+                    input_data: {
+                        schema: update_data
+                    },
+
+                    selection: [
+                        'uid',
+                        'name',
+                        'data_type',
+                        'image',
+                        'rules',
+                        'logic',
+                        'relationships',
+                        'enumerations',
+                        'options',
+
+                        {
+                            field: 'elements',
+                            selection: [
+                                'index',
+                                'required',
+                                'cardinality',
+
+                                {
+                                    field: 'element',
+                                    selection: [
+                                        'uid',
+                                        'name',
+                                        'data_type'
+                                    ]
+                                }
+                            ]
+                        },
+
+                        {
+                            field: 'properties',
+                            selection: [
+                                'value',
+
+                                {
+                                    field: 'schema',
+                                    selection: [
+                                        'uid',
+                                        'name',
+                                        'data_type'
+                                    ]
+                                }
+                            ]
+                        },
+
+                        {
+                            field: 'identifiers',
+                            selection: [
+                                'value',
+
+                                {
+                                    field: 'schema',
+                                    selection: [
+                                        'uid',
+                                        'name',
+                                        'data_type'
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+
+                    token:
+                        localStorage.getItem('token') ??
+                        undefined
+                })
+
+            const updated_schema =
+                result.schema
+
+            /*
+             * Use updated_schema here if the local state
+             * should be refreshed after saving.
+             */
+            console.log(
+                'Updated schema:',
+                updated_schema
+            )
+        }
+    )
+}
 export function Handle_Create_New_Schema(
     div: HTMLDivElement, types: Data_Type[],
     state: Schema, element_container: HTMLDivElement

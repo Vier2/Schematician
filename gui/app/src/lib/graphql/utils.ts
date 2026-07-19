@@ -1,12 +1,14 @@
 import type { 
-    Send_GraphQL_Options, GraphQL_Schema, 
+    Send_GraphQL_Options,
     Create_Instance_Input, Create_Instance_Response,
     Get_Schema_By_UID_Input, 
     Get_Schema_By_UID_Response, Delete_Schema_Response, 
     Delete_Schema_Input, Delete_Schema_Payload, 
-    Get_Instance_By_UID_Input, Get_Instance_By_UID_Response, Schema_Association_Update,
-    GraphQl_Instance, GraphQL_Selection, Update_Schema_Data} from "./types"
-import type { Schema } from "$lib/Schema/models"
+    Get_Instance_By_UID_Input, Get_Instance_By_UID_Response,
+    GraphQl_Instance, GraphQL_Selection, } from "./types"
+import type { Schema, 
+    Update_Schema_Data, 
+    GraphQL_Schema, Schema_Association_Update, Schema_Element_Update} from "@schematician/shared"
 import { goto } from "$app/navigation"
 function Build_GraphQL_Selection(
     selection: GraphQL_Selection[],
@@ -106,13 +108,21 @@ export async function Delete_Schema(
 function Build_Schema_Selection(
     depth: number
 ): GraphQL_Selection[] {
-    const Basic_Schema_Selection: GraphQL_Selection[] = [
-        'uid',
-        'name',
-        'data_type'
-    ]
-    
-    const Constraint_Selection: GraphQL_Selection = {
+    if (!Number.isInteger(depth) || depth < 1) {
+        throw new Error(
+            'Schema query depth must be an integer of at least 1.'
+        )
+    }
+
+    const Basic_Schema_Selection:
+        GraphQL_Selection[] = [
+            'uid',
+            'name',
+            'data_type'
+        ]
+
+    const Constraint_Selection:
+        GraphQL_Selection = {
         field: 'constraints',
         selection: [
             'minimum_number',
@@ -126,28 +136,37 @@ function Build_Schema_Selection(
             'uppercase'
         ]
     }
-    if (!Number.isInteger(depth) || depth < 1) {
-        throw new Error(
-            'Schema query depth must be an integer of at least 1.'
-        )
-    }
 
-    const own_fields: GraphQL_Selection[] = [
-        'uid',
-        'name',
-        'data_type',
-        'image',
-        'rules',
-        'logic',
-        'relationships',
-        'enumerations',
-        'options',
-        Constraint_Selection
-    ]
+    const own_fields:
+        GraphQL_Selection[] = [
+            'uid',
+            'name',
+            'data_type',
+            'image',
+            'rules',
+            'logic',
+            'relationships',
+            'enumerations',
+            'options',
+            Constraint_Selection
+        ]
 
     /*
-     * At depth 1, return the root's complete direct data,
-     * but only basic information about linked schemas.
+     * At depth 1, return all direct data belonging
+     * to the root schema.
+     *
+     * Linked schemas only receive their basic fields.
+     *
+     * Schema elements now contain relationship data:
+     *
+     * {
+     *     index
+     *     required
+     *     cardinality
+     *     element {
+     *         ...
+     *     }
+     * }
      */
     if (depth === 1) {
         return [
@@ -155,16 +174,28 @@ function Build_Schema_Selection(
 
             {
                 field: 'elements',
-                selection: Basic_Schema_Selection
+                selection: [
+                    'index',
+                    'required',
+                    'cardinality',
+
+                    {
+                        field: 'element',
+                        selection:
+                            Basic_Schema_Selection
+                    }
+                ]
             },
 
             {
                 field: 'properties',
                 selection: [
                     'value',
+
                     {
                         field: 'schema',
-                        selection: Basic_Schema_Selection
+                        selection:
+                            Basic_Schema_Selection
                     }
                 ]
             },
@@ -173,33 +204,50 @@ function Build_Schema_Selection(
                 field: 'identifiers',
                 selection: [
                     'value',
+
                     {
                         field: 'schema',
-                        selection: Basic_Schema_Selection
+                        selection:
+                            Basic_Schema_Selection
                     }
                 ]
             }
         ]
     }
 
-    const nested_schema_selection =
-        Build_Schema_Selection(depth - 1)
+    const nested_schema_selection:
+        GraphQL_Selection[] =
+        Build_Schema_Selection(
+            depth - 1
+        )
 
     return [
         ...own_fields,
 
         {
             field: 'elements',
-            selection: nested_schema_selection
+            selection: [
+                'index',
+                'required',
+                'cardinality',
+
+                {
+                    field: 'element',
+                    selection:
+                        nested_schema_selection
+                }
+            ]
         },
 
         {
             field: 'properties',
             selection: [
                 'value',
+
                 {
                     field: 'schema',
-                    selection: nested_schema_selection
+                    selection:
+                        nested_schema_selection
                 }
             ]
         },
@@ -208,9 +256,11 @@ function Build_Schema_Selection(
             field: 'identifiers',
             selection: [
                 'value',
+
                 {
                     field: 'schema',
-                    selection: nested_schema_selection
+                    selection:
+                        nested_schema_selection
                 }
             ]
         }
@@ -395,9 +445,11 @@ export function Convert_Schema_To_Update_Data(
         options: state.options,
 
         elements: state.elements?.map(
-            (element, index): Schema_Association_Update => ({
-                schema_uid: element.uid!,
-                index
+            (element, index): Schema_Element_Update => ({
+                element_uid: element.element.uid!,
+                index: element.index,
+                cardinality: element.cardinality,
+                required: element.required
             })
         ),
 
