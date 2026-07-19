@@ -152,6 +152,7 @@ export function Add_Save_Schema_Function(
     button.addEventListener(
         'click',
         async function (): Promise<void> {
+            console.log(`state ${JSON.stringify(state)}`)
             const update_data =
                 Convert_Schema_To_Update_Data(state)
 
@@ -729,6 +730,13 @@ export function Create_Schema_Element(
     const cardinality_div: HTMLDivElement = document.createElement('div') as HTMLDivElement
     cardinality_div.appendChild(cardinality_select_label)
     cardinality_div.appendChild(cardinality_select)
+    Connect_Schema_Element_Property_State(
+        state,
+        element,
+        required_input,
+        index_input,
+        cardinality_select
+    )
     div.style.overflowX = 'scroll'
     div.appendChild(index_label)
     div.appendChild(index_input)
@@ -745,18 +753,20 @@ export function Connect_Schema_Element_Property_State(
     state: Schema,
     element: Schema_Element,
     required: HTMLInputElement,
-    index: HTMLInputElement,
+    index_el: HTMLInputElement,
     cardinality: HTMLSelectElement
 ) {
+    let index = state.elements?.indexOf(element)
     cardinality.addEventListener('change', function() {
-        state.elements![element.index].cardinality = cardinality.value as Cardinality
-
+        state.elements![index!].cardinality = cardinality.value as Cardinality
+        console.log(`state after cardinality change ${JSON.stringify(state.elements![index!])}`)
     })
     required.addEventListener('change', function() {
-        state.elements![element.index].required = required.checked
+        state.elements![index!].required = required.checked
+        console.log(`state${JSON.stringify(state.elements![index!])} `)
     })
-    index.addEventListener('change', function() {
-        state.elements![element.index].index = Number(index.value)
+    index_el.addEventListener('change', function() {
+        state.elements![index!].index = Number(index_el.value)
     })
 }
 export function Create_Modal_Overlay(): HTMLDivElement {
