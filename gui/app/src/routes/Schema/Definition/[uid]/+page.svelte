@@ -79,25 +79,21 @@
         display: flex;
         flex-direction: column;
     }
-    .sub_container {
-        display: grid;
-        grid-template-rows: 1fr 1fr;
-    }
+   
 </style>
 
 <script lang="ts">
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
-import type { Schema, Schema_Association, Data_Type, Selection, Association } from "$lib/Schema/models";
 import { Get_Schema_By_UID } from "$lib/graphql/utils";
 import { Get_All_Schemas, Convert_GraphQL_Schema_To_Schema, Create_Schema_Element } from "$lib/utils";
 import { PUBLIC_CLIENT_API_URL, PUBLIC_SERVER_API_URL } from "$env/static/public";
 import { Link_Element_to_State, Add_Schema_Modal_Association, Add_Schema_Modal_Element, Render_Schema_Option, Make_Collapsible, Make_Searchable_Select_Schema, Handle_Data_Type_Select, Create_Options_In_Select_From_Array, Make_Searchable_Select } from "$lib/utils";
 import { page } from '$app/state';
 import { Send_GraphQL_Request, Convert_Schema_To_Update_Data, Create_Instantiate_Button } from "$lib/graphql/utils";
-import type { Update_Schema_Response, Update_Schema_Data } from "$lib/graphql/types";
+import type { Update_Schema_Response } from "$lib/graphql/types";
 import Search_Icon from '$lib/assets/search.png'
-
+import type { Association, Schema, Data_Type, Update_Schema_Data } from "@schematician/shared";
 /**
  * use for properties, identifiers, elements
  * @param state: schema
@@ -120,9 +116,7 @@ function Resolve_Schema_Association(
         /**make url to edit schema*/
     });
 }
-function Resolve_Elements() {
 
-}
 function Resolve_Schema_In_Elements(
     schema: Schema,
     name_input: HTMLInputElement,
@@ -141,7 +135,7 @@ function Resolve_Schema_In_Elements(
         });
         schema.elements?.forEach(element => {
             Create_Schema_Element(
-                element,
+                element.element,
                 schema,
                 element_container,
                 PUBLIC_CLIENT_API_URL
@@ -167,8 +161,7 @@ function Resolve_Schema_In_Elements(
                 'String',
                 'Number',
                 'Boolean',
-                'composite',
-                'Associative_Array'
+                'Composite',
             ]
             const graphql_schemas = await Get_All_Schemas(PUBLIC_SERVER_API_URL)
             const schemas: Schema[] = graphql_schemas.map(Convert_GraphQL_Schema_To_Schema) 

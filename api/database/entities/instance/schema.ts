@@ -1,9 +1,8 @@
 import { builder } from '../../builder.js'
-import { db_get_instance_values } from './repository.js'
-
+import type { JSON_Value } from '@schematician/shared'
 export interface GraphQL_Instance_Value {
     schema_uid: string
-    value: unknown
+    value: JSON_Value
 }
 
 export interface GraphQL_Instance {
@@ -11,7 +10,7 @@ export interface GraphQL_Instance {
     schema_uid: string
     objects?: GraphQL_Instance_Value[]
     /**data type of schema */
-    value?: any
+    value?: JSON_Value
 }
 
 /**type needs to change

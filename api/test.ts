@@ -1,8 +1,7 @@
 // test.ts (project root)
 const BASE_URL = 'http://localhost:3000/graphql'
 import { db_create_schema, db_get_schema_by_uid } from "./database/entities/schema/repository.js"
-import type { GraphQL_Schema } from "./database/schema.js"
-import { Data_Type } from "./database/builder.js"
+import type { GraphQL_Schema_Element } from "@schematician/shared"
 async function Create_Schema(
     name: string,
     data_type: string,
@@ -213,6 +212,7 @@ async function gql(query: string, variables: Record<string, unknown> = {}, token
 }
 
 import neo4j from 'neo4j-driver'
+import { features } from "node:process"
 
 
 export const driver = neo4j.driver(
@@ -261,7 +261,7 @@ async function run() {
             {
                 uid: crypto.randomUUID(),
                 name: 'Height',
-                data_type: Data_Type.Number
+                data_type: 'Number'
             }
         )
 
@@ -271,7 +271,7 @@ async function run() {
             {
                 uid: crypto.randomUUID(),
                 name: 'Weight',
-                data_type: Data_Type.Number
+                data_type: 'Number'
             }
         )
         const Flesh = await db_create_schema(
@@ -280,7 +280,7 @@ async function run() {
             {
                 uid: crypto.randomUUID(),
                 name: 'Flesh',
-                data_type: Data_Type.Composite
+                data_type: 'Composite'
             }
         )
 
@@ -290,7 +290,7 @@ async function run() {
             {
                 uid: crypto.randomUUID(),
                 name: 'Spirit',
-                data_type: Data_Type.String
+                data_type: 'String'
             }
         )
         const definition = await db_get_schema_by_uid(
@@ -298,17 +298,29 @@ async function run() {
             user_uid,
             'd3974871-1e72-497a-8d4e-b2b2f7d72451'
         )
+        const flesh_element: GraphQL_Schema_Element = {
+            'element': Flesh,
+            'index': 0,
+            'cardinality': 'Single',
+            'required': false
+        }
+        const spirit_element: GraphQL_Schema_Element = {
+            'element': Flesh,
+            'index': 0,
+            'cardinality': 'Single',
+            'required': false
+        }
         const Xavier = await db_create_schema(
             driver,
             user_uid,
             {
                 uid: crypto.randomUUID(),
                 name: 'Xavier',
-                data_type: Data_Type.Composite,
+                data_type: 'Composite',
 
                 elements: [
-                    Flesh,
-                    Spirit
+                    flesh_element,
+                    spirit_element
                 ],
                 properties: [
                     {'schema': Height, 'value': 6},

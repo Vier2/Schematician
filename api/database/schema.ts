@@ -1,4 +1,5 @@
-import { builder, Data_Type } from './builder.js'
+import { builder, Data_Type_Enum } from './builder.js'
+import { Schema_Element_Ref } from './entities/schema/mutation.js'
 import { db_get_schema_elements, db_get_schema_properties, db_get_schema_identifiers } from './entities/schema/repository.js'
 import type { 
     GraphQL_Constraints, 
@@ -48,7 +49,7 @@ Schema_Ref.implement({
         uid: t.exposeString('uid'),
 
         data_type: t.expose('data_type', {
-            type: Data_Type
+            type: Data_Type_Enum
         }),
 
         image: t.exposeString('image', { nullable: true }),
@@ -57,7 +58,7 @@ Schema_Ref.implement({
         relationships: t.exposeString('relationships', { nullable: true }),
 
         elements: t.field({
-            type: [Schema_Ref],
+            type: [Schema_Element_Ref],
             nullable: true,
             resolve: (schema, _args, context) => {
                 return db_get_schema_elements(

@@ -27,29 +27,8 @@ export interface Create_Schema_Input {
 export interface Create_Schema_Response {
     create_schema: GraphQL_Schema
 }
-export interface Schema_Association_Update {
-    schema_uid: string
-    index?: number | null
-    value?: unknown
-}
-export interface Update_Schema_Data {
-    uid: string
-    name: string
-    data_type: Data_Type
 
-    image?: string
-    rules?: string
-    logic?: string
-    relationships?: string
 
-    constraints?: unknown
-    enumerations?: unknown[]
-    options?: unknown[]
-
-    elements?: Schema_Association_Update[]
-    properties?: Schema_Association_Update[]
-    identifiers?: Schema_Association_Update[]
-}
 
 export interface Update_Schema_Response {
     schema: GraphQL_Schema

@@ -1,5 +1,13 @@
-import { Data_Type } from "../schema/types"
-
+import { Data_Type, Cardinality} from "../schema/types"
+export type JSON_Value =
+    | string
+    | number
+    | boolean
+    | null
+    | JSON_Value[]
+    | {
+        [key: string]: JSON_Value
+    }
 export interface GraphQL_Constraints {
     minimum_number?: number
     maximum_number?: number
@@ -11,7 +19,13 @@ export interface GraphQL_Constraints {
     lowercase?: boolean
     uppercase?: boolean
 }
+export interface GraphQL_Schema_Element {
+    element: GraphQL_Schema
+    required: boolean
+    cardinality: Cardinality
+    index: number
 
+}
 export interface GraphQL_Schema {
     name: string
     uid: string
@@ -20,15 +34,16 @@ export interface GraphQL_Schema {
     rules?: string
     logic?: string
     relationships?: string
-    elements?: GraphQL_Schema[]
+    elements?: GraphQL_Schema_Element[]
     properties?: GraphQL_Schema_Association[]
     identifiers?: GraphQL_Schema_Association[]
     constraints?: GraphQL_Constraints
-    enumerations?: unknown[]
-    options?: unknown[]
+    enumerations?: JSON_Value[]
+    options?: JSON_Value[]
 }
 
 export interface GraphQL_Schema_Association {
     schema: GraphQL_Schema
-    value: unknown
+    value: JSON_Value
 }
+

@@ -1,6 +1,6 @@
 import { Driver } from 'neo4j-driver'
 import type { GraphQL_Instance, GraphQL_Instance_Value } from './schema.js'
-import type { Search_Query } from '../schema/types.js'
+import type { Search_Query } from '@schematician/shared'
 export async function db_get_all_instances(
     driver: Driver,
     user_uid: string

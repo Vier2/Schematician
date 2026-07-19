@@ -15,14 +15,14 @@ implementation:
         and adding the margin left value to that, setting it
 */
 import { goto } from "$app/navigation";
-import type { Instance_Node } from "@schematician/shared";
+import type { Cardinality, Instance_Node, Schema_Element } from "@schematician/shared";
 import type { GraphQL_Schema } from "@schematician/shared";
 import { Send_GraphQL_Request } from "./graphql/utils";
 import type { Create_Schema_Input, Create_Schema_Response} from "./graphql/types";
 import type { Schema, Data_Type, Schema_Instance } from "@schematician/shared";
-import type { Rendered_Search_Value, Schema_Association,  Selection, Input_View, Input_Viewer,  Rendered_Node } from "./Schema/models";
+import type { Rendered_Search_Value, Input_View, Input_Viewer,  Rendered_Node } from "./Schema/models";
 import type { CSS_Property,  Schemas_Query_Response, CSS_Unit, GraphQL_Response, Element_Handler, Value_Computer } from "./types/types";
-import type { Schema_Value } from "./Schema/models";
+import type { Selection, Schema_Value, Schema_Association} from "@schematician/shared";
 function Make_Create_Element_UI(types: Data_Type[],
     state: Schema,
     element_container: HTMLDivElement
@@ -52,11 +52,43 @@ function Make_Create_Element_UI(types: Data_Type[],
     const form = document.createElement('form')
     const submit_button = document.createElement('button')
     submit_button.textContent = 'create'
+
+    const index_input: HTMLInputElement = document.createElement('input')
+    index_input.type = 'number'
+    index_input.value = ((state.elements?.length ?? 0) + 1).toString();    
+    const index_label: HTMLParagraphElement = document.createElement('p')
+    index_label.textContent = 'index'
+    const index_div: HTMLDivElement = document.createElement('div') as HTMLDivElement
+    index_div.appendChild(index_label)
+    index_div.appendChild(index_input)
+
+    const required_input: HTMLInputElement = document.createElement('input')
+    const required_input_label: HTMLParagraphElement = document.createElement('p')
+    required_input_label.textContent = 'Required?'
+    required_input.type = 'checkbox'
+    const required_div:HTMLDivElement = document.createElement('div') as HTMLDivElement
+    required_div.appendChild(required_input_label)
+    required_div.appendChild(required_input)
+
+    const cardinality_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
+    Create_Options_In_Select_From_Array(cardinality_select, ['Single', 'Array'])
+    const cardinality_select_label:HTMLParagraphElement = document.createElement('p') as HTMLParagraphElement
+    cardinality_select_label.textContent = 'Cardinality'
+    const cardinality_div:HTMLDivElement = document.createElement('div') as HTMLDivElement
+    cardinality_div.appendChild(cardinality_select_label)
+    cardinality_div.appendChild(cardinality_select)
+
     form.appendChild(name_div)
     form.appendChild(data_type_div)
+    form.appendChild(index_div)
+    form.appendChild(required_div)
+    form.appendChild(cardinality_div)
     form.appendChild(submit_button)
     form.addEventListener('keydown', Handle_Create_Schema_Form(form,
-        name, data_type_select, state, element_container
+        name, data_type_select, state, element_container,
+        cardinality_select,
+        index_input,
+        required_input
     ))
     return form
 }
@@ -69,7 +101,10 @@ export function Make_Button_Goto_URL(button: HTMLButtonElement, url: string) {
 export function Handle_Create_Schema_Form(
     form: HTMLFormElement, name_input: HTMLInputElement,
     data_type_select: HTMLSelectElement, state: Schema,
-    element_container: HTMLDivElement) {
+    element_container: HTMLDivElement,
+    cardinality_select: HTMLSelectElement,
+    index_input: HTMLInputElement,
+    required_input: HTMLInputElement) {
     const handle_key_down = (event: KeyboardEvent): void => {
         if (event.key === 'Enter') {
             //save element, add element, close
@@ -78,7 +113,18 @@ export function Handle_Create_Schema_Form(
             const name = name_input.value
             const data_type: Data_Type = data_type_select.value as Data_Type
             const schema: Schema = {'name': name, 'data_type': data_type}
-            state.elements?.push(schema)
+            const schema_element: Schema_Element = {
+                'element': schema, 
+                'cardinality': cardinality_select.value as Cardinality,
+                'index': Number(index_input.value),
+                'required': required_input.checked
+            }
+            /**
+             * index input
+             * 
+             * 
+             */
+            state.elements?.push(schema_element)
             const p = document.createElement('p')
             p.textContent = schema.name
             p.dataset.schema = JSON.stringify(schema)
@@ -126,31 +172,120 @@ export function Create_Add_Schema_Button(
 ) {
     Create_Schema_Modal
 }
+export function Create_Schema_Element_Modal(
+    api_url: string,
+    previous_index: number
+): Promise<Schema_Element> | null {
+    /**Create popup window to create a schema */
+
+    const data_type_array = ['String', 'Composite', 'Number', 'Boolean', 'Array']
+    const container = Create_Modal_Container()
+    const overlay = Create_Modal_Overlay()
+    overlay.appendChild(container)
+    document.body.appendChild(overlay)
+    const name: HTMLInputElement = document.createElement('input') as HTMLInputElement
+    const name_label = document.createElement('p')
+    name_label.textContent = 'Name'
+    const data_type: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
+    const data_type_label = document.createElement('p')
+    data_type_label.textContent = 'Data Type'
+    Create_Options_In_Select_From_Array(data_type, data_type_array)
+    const submit: HTMLButtonElement = document.createElement('button') as HTMLButtonElement
+    submit.textContent = 'submit'
+    const index_input: HTMLInputElement = document.createElement('input')
+    index_input.type = 'number'
+    index_input.value = ((previous_index) + 1).toString();
+    const index_label: HTMLParagraphElement = document.createElement('p')
+    index_label.textContent = 'index'
+    const index_div: HTMLDivElement = document.createElement('div') as HTMLDivElement
+    index_div.appendChild(index_label)
+    index_div.appendChild(index_input)
+
+    const required_input: HTMLInputElement = document.createElement('input')
+    const required_input_label: HTMLParagraphElement = document.createElement('p')
+    required_input_label.textContent = 'Required?'
+    required_input.type = 'checkbox'
+    const required_div: HTMLDivElement = document.createElement('div') as HTMLDivElement
+    required_div.appendChild(required_input_label)
+    required_div.appendChild(required_input)
+
+    const cardinality_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
+    Create_Options_In_Select_From_Array(cardinality_select, ['Single', 'Array'])
+    const cardinality_select_label: HTMLParagraphElement = document.createElement('p') as HTMLParagraphElement
+    cardinality_select_label.textContent = 'Cardinality'
+    const cardinality_div: HTMLDivElement = document.createElement('div') as HTMLDivElement
+    cardinality_div.appendChild(cardinality_select_label)
+    cardinality_div.appendChild(cardinality_select)
+    container.appendChild(name_label)
+    container.appendChild(name)
+    container.appendChild(data_type_label)
+    container.appendChild(data_type)
+    container.appendChild(index_div)
+    container.appendChild(required_div)
+    container.appendChild(cardinality_div)
+    container.appendChild(submit)
+
+    return new Promise((resolve) => {
+
+        submit.addEventListener('click', async () => {
+            const result =
+                await Send_GraphQL_Request<
+                    Create_Schema_Response,
+                    Create_Schema_Input
+                >({
+                    api_url,
+                    operation_type: 'mutation',
+                    operation_name: 'Create_Schema',
+                    field_name: 'create_schema',
+                    variables: [
+                        { name: 'name', type: 'String!' },
+                        { name: 'data_type', type: 'Data_Type!' }
+                    ],
+                    input_data: {
+                        name: name.value,
+                        data_type: data_type.value as Data_Type
+                    },
+                    selection: [
+                        'uid',
+                        'name',
+                        'data_type'
+                    ]
+                })
+
+            overlay.remove()
+
+            const graphql_schema: GraphQL_Schema =
+                result.create_schema
+            const schema = Convert_GraphQL_Schema_To_Schema(graphql_schema)
+            const schema_element: Schema_Element = {
+                element: schema,
+                required: required_input.checked,
+                index: Number(index_input.value),
+                cardinality: cardinality_select.value as Cardinality
+            }
+
+            overlay.remove()
+
+            resolve(schema_element)
+        })
+
+        overlay.addEventListener('click', event => {
+            if (event.target === overlay) {
+                overlay.remove()
+
+                return null
+            }
+        })
+    })
+}
 export function Create_Schema_Modal(
     api_url: string
 ): Promise<GraphQL_Schema> | null {
     /**Create popup window to create a schema */
     
-    const data_type_array = ['String', 'composite', 'Number', 'Boolean', 'Associative_Array']
-    const container = document.createElement('div')
-    const overlay = document.createElement('div')
-
-    overlay.style.position = 'fixed'
-    overlay.style.inset = '0'
-    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.4)'
-    overlay.style.display = 'flex'
-    overlay.style.justifyContent = 'center'
-    overlay.style.alignItems = 'center'
-    overlay.style.zIndex = '1000'
-
-    container.style.backgroundColor = 'white'
-    container.style.padding = '20px'
-    container.style.borderRadius = '8px'
-    container.style.display = 'flex'
-    container.style.flexDirection = 'column'
-    container.style.gap = '8px'
-    container.style.minWidth = '300px'
-    container.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.25)'
+    const data_type_array = ['String', 'Composite', 'Number', 'Boolean', 'Array']
+    const container = Create_Modal_Container()
+    const overlay = Create_Modal_Overlay()
     overlay.appendChild(container)
     document.body.appendChild(overlay)
     const name: HTMLInputElement = document.createElement('input') as HTMLInputElement
@@ -270,7 +405,7 @@ export function Render_Schema_Value_Recursive(
 
     schema.elements?.forEach((child, index) => {
         Render_Schema_Value_Recursive(
-            child,
+            child.element,
             [...parents, schema],
             target_container,
             state,
@@ -506,12 +641,18 @@ export function Add_Schema_Modal_Element(
     state: Schema,
 ) {
     button.addEventListener('click', async function () {
-        const graphql_schema = await Create_Schema_Modal(api_url)
-
-        if (graphql_schema) {
-            const schema = Convert_GraphQL_Schema_To_Schema(graphql_schema)
+        let index = 0
+        if (state.elements) {
+            index = state.elements.length + 1 //increment
+        }
+        const schema_element = await Create_Schema_Element_Modal(api_url, index)
+        /**
+         * challenge: This function is just used for elements, but the function its calling is not, so I need to get the extra data
+         * 
+         */
+        if (schema_element) {
             Create_Schema_Element(
-                schema,
+                schema_element.element,
                 state,
                 div,
                 client_url
@@ -519,7 +660,7 @@ export function Add_Schema_Modal_Element(
             if (!state.elements) {
                 state.elements = []
             }
-            state.elements.push(schema)
+            state.elements.push(schema_element)
         }
 
     }
@@ -944,7 +1085,7 @@ export function Render_Search_Schema_Value_Recursive(
 
     schema.elements?.forEach(child => {
         Render_Search_Schema_Value_Recursive(
-            child,
+            child.element,
             target_container,
             [...parents, schema],
             ancestry_level_visible,
@@ -1071,7 +1212,7 @@ export function Make_Delete_Function_Schema(
         if (!text) return;
 
         // Find the schema whose name matches the text
-        const index = list.findIndex(item => item?.name === text);
+        const index = list.findIndex(item => item?.element.name === text);
 
         if (index !== -1) {
             list.splice(index, 1);   // remove the schema
@@ -1334,7 +1475,7 @@ function Render_Schema_Node(
     schema.elements?.forEach(
         (child, index) =>
             Render_Schema_Node(
-                child,
+                child.element,
                 parent,
                 depth + 1,
                 [...path, index],
@@ -1548,9 +1689,12 @@ export function Convert_GraphQL_Schema_To_Schema(
         name: graphql_schema.name,
         data_type: graphql_schema.data_type,
 
-        elements: graphql_schema.elements?.map(
-            Convert_GraphQL_Schema_To_Schema
-        ),
+        elements: graphql_schema.elements?.map(element => ({
+            element: Convert_GraphQL_Schema_To_Schema(element.element),
+            required: element.required,
+            index: element.index,
+            cardinality: element.cardinality
+        })),
 
         properties: graphql_schema.properties?.map(association => ({
             schema: Convert_GraphQL_Schema_To_Schema(association.schema),
