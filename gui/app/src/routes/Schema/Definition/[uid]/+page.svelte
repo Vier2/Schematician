@@ -135,7 +135,7 @@ function Resolve_Schema_In_Elements(
         });
         schema.elements?.forEach(element => {
             Create_Schema_Element(
-                element.element,
+                element,
                 schema,
                 element_container,
                 PUBLIC_CLIENT_API_URL

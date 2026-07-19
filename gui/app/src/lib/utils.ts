@@ -130,10 +130,10 @@ export function Handle_Create_Schema_Form(
             p.dataset.schema = JSON.stringify(schema)
             const delete_button = document.createElement('button') as HTMLButtonElement
             delete_button.textContent = 'x'
-            Make_Delete_Function_Schema(p, delete_button, state)
             const div = document.createElement('div')
             div.appendChild(p)
             div.appendChild(delete_button)
+            Make_Delete_Function_Schema(div, schema_element, delete_button, state)
             element_container.appendChild(div)
             //4. add element to container with delete button
             //close
@@ -630,12 +630,6 @@ export async function Make_Searchable_Select(
             const Selected_Option = select.options[select.selectedIndex];
             const schema = JSON.parse(Selected_Option.dataset.schema!) as Schema
             select.style.display = 'none';
-            Create_Schema_Element(
-                schema,
-                state,
-                div,
-                client_url
-            )
             let index = 0
             if (!state.elements) {
                 state.elements = []
@@ -651,6 +645,12 @@ export async function Make_Searchable_Select(
                 'index': index
             }
             state.elements.push(schema_element)
+            Create_Schema_Element(
+                schema_element,
+                state,
+                div,
+                client_url
+            )
             console.log(`state aftering pushing ${schema.name} ${JSON.stringify(state)}`)
             search_input.style.display = 'none';
             overlay.style.display = 'none'
@@ -682,7 +682,7 @@ export async function Make_Searchable_Select(
 }
 
 export function Create_Schema_Element(
-    element: Schema,
+    element: Schema_Element,
     state: Schema,
     container: HTMLDivElement,
     client_url: string
@@ -692,20 +692,72 @@ export function Create_Schema_Element(
     div.style.flexDirection = 'row'
     div.style.gap = '3%'
     const edit_link:HTMLAnchorElement = document.createElement('a')
-    edit_link.textContent = element.name
-    edit_link.href = `${client_url}/Schema/Definition/${element.uid}`
+    edit_link.textContent = element.element.name
+    edit_link.href = `${client_url}/Schema/Definition/${element.element.uid}`
     edit_link.rel = 'external'
     const delete_button = document.createElement('button')
     delete_button.textContent = 'x'
-    Make_Delete_Function_Schema(edit_link, delete_button, state
+    Make_Delete_Function_Schema(div, element, delete_button, state
     )
+    
     console.log(`schema select, selected`)
     const information_tooltip: HTMLParagraphElement = document.createElement('p')
     information_tooltip.textContent = "?" /**TODO: add info */
+
+    const index_input: HTMLInputElement = document.createElement('input')
+    index_input.type = 'number'
+    index_input.value = `${element.index}`
+    const index_label: HTMLParagraphElement = document.createElement('p')
+    index_label.textContent = 'index'
+    const index_div: HTMLDivElement = document.createElement('div') as HTMLDivElement
+    index_div.appendChild(index_label)
+    index_div.appendChild(index_input)
+    const required_input: HTMLInputElement = document.createElement('input')
+    const required_input_label: HTMLParagraphElement = document.createElement('p')
+    required_input_label.textContent = 'Required?'
+    required_input.type = 'checkbox'
+    required_input.checked = element.required
+    const required_div: HTMLDivElement = document.createElement('div') as HTMLDivElement
+    required_div.appendChild(required_input_label)
+    required_div.appendChild(required_input)
+    
+
+    const cardinality_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
+    Create_Options_In_Select_From_Array(cardinality_select, ['Single', 'Array'])
+    const cardinality_select_label: HTMLParagraphElement = document.createElement('p') as HTMLParagraphElement
+    cardinality_select_label.textContent = 'Cardinality'
+    const cardinality_div: HTMLDivElement = document.createElement('div') as HTMLDivElement
+    cardinality_div.appendChild(cardinality_select_label)
+    cardinality_div.appendChild(cardinality_select)
+    div.style.overflowX = 'scroll'
+    div.appendChild(index_label)
+    div.appendChild(index_input)
+    div.appendChild(cardinality_select_label)
+    div.appendChild(cardinality_select)
+    div.appendChild(required_input_label)
+    div.appendChild(required_input)
     div.appendChild(edit_link)
     div.appendChild(information_tooltip)
     div.appendChild(delete_button)
     container.appendChild(div)
+}
+export function Connect_Schema_Element_Property_State(
+    state: Schema,
+    element: Schema_Element,
+    required: HTMLInputElement,
+    index: HTMLInputElement,
+    cardinality: HTMLSelectElement
+) {
+    cardinality.addEventListener('change', function() {
+        state.elements![element.index].cardinality = cardinality.value as Cardinality
+
+    })
+    required.addEventListener('change', function() {
+        state.elements![element.index].required = required.checked
+    })
+    index.addEventListener('change', function() {
+        state.elements![element.index].index = Number(index.value)
+    })
 }
 export function Create_Modal_Overlay(): HTMLDivElement {
     const overlay = document.createElement('div')
@@ -776,7 +828,7 @@ export function Add_Schema_Modal_Element(
          */
         if (schema_element) {
             Create_Schema_Element(
-                schema_element.element,
+                schema_element,
                 state,
                 div,
                 client_url
@@ -1323,27 +1375,20 @@ export function Handle_Schema_input_rendering(
 
 
 export function Make_Delete_Function_Schema(
-    element: HTMLElement,
+    container: HTMLElement,
+    element: Schema_Element,
     delete_button: HTMLButtonElement,
     State: Schema
 ) {
+    delete_button.type = 'button'
     delete_button.addEventListener("click", () => {
 
-        const list = State.elements;
-        if (!list) return; // nothing to delete
-
-        const text = element.textContent?.trim();
-        if (!text) return;
-
         // Find the schema whose name matches the text
-        const index = list.findIndex(item => item?.element.name === text);
 
-        if (index !== -1) {
-            list.splice(index, 1);   // remove the schema
-        }
+        State.elements!.splice(State.elements!.indexOf(element), 1);   // remove the schema
 
         // Remove DOM elements
-        element.remove();
+        container.remove();
         delete_button.remove();
         console.log(`state after deleting ${JSON.stringify(State)}`)
     });
