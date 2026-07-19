@@ -618,11 +618,6 @@ export async function Make_Searchable_Select(
         });
         search_input.addEventListener('click', () => {
             select.style.display = ''
-            // Render_Options(
-            //     schemas,
-            //     select,
-            //     search_input.value
-            // );
             Render_Options_Schema(
                 schemas,
                 select,
@@ -632,9 +627,8 @@ export async function Make_Searchable_Select(
     
        
         select.addEventListener('input', function() {
-            // search_input.value = select.value
             const Selected_Option = select.options[select.selectedIndex];
-            const schema = JSON.parse(Selected_Option.dataset.schema!)
+            const schema = JSON.parse(Selected_Option.dataset.schema!) as Schema
             select.style.display = 'none';
             Create_Schema_Element(
                 schema,
@@ -642,10 +636,22 @@ export async function Make_Searchable_Select(
                 div,
                 client_url
             )
+            let index = 0
             if (!state.elements) {
                 state.elements = []
+
+            } else {
+                index = state.elements.length + 1
             }
-            state.elements.push(schema)
+            /**set default, could choose to have user select later */
+            const schema_element: Schema_Element = {
+                'element': schema,
+                'cardinality': 'Single',
+                'required': true,
+                'index': index
+            }
+            state.elements.push(schema_element)
+            console.log(`state aftering pushing ${schema.name} ${JSON.stringify(state)}`)
             search_input.style.display = 'none';
             overlay.style.display = 'none'
          
