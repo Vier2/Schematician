@@ -152,10 +152,10 @@ export function Add_Save_Schema_Function(
     button.addEventListener(
         'click',
         async function (): Promise<void> {
-            console.log(`state ${JSON.stringify(state)}`)
             const update_data =
-                Convert_Schema_To_Update_Data(state)
-
+            Convert_Schema_To_Update_Data(state)
+            
+            console.log(`update data elements ${JSON.stringify(update_data.elements)}`)
             const result =
                 await Send_GraphQL_Request<
                     Update_Schema_Response,
@@ -725,6 +725,7 @@ export function Create_Schema_Element(
 
     const cardinality_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
     Create_Options_In_Select_From_Array(cardinality_select, ['Single', 'Array'])
+    cardinality_select.value = element.cardinality
     const cardinality_select_label: HTMLParagraphElement = document.createElement('p') as HTMLParagraphElement
     cardinality_select_label.textContent = 'Cardinality'
     const cardinality_div: HTMLDivElement = document.createElement('div') as HTMLDivElement
