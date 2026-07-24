@@ -23,10 +23,11 @@
 </div>
 
 <script lang="ts">
-import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Search_Schema_Value_Recursive, Render_Options_Schema } from "$lib/utils";
+import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Options_Schema } from "$lib/shared/utils";
 import type { GraphQL_Response} from "$lib/graphql/types";
+import { Render_Search_Schema_Value_Recursive } from "$lib/Instantiation/utils";
 import type { Schema, GraphQL_Schema, Search_Query_Input, Search_Filter_Input, Filter_Operator } from "@schematician/shared";
-import { Create_Schema_Modal } from "$lib/utils";
+import { Create_Schema_Modal } from "$lib/shared/utils";
 import { Delete_Schema, Create_Instantiate_Button } from "$lib/graphql/utils";
 import type { 
      Search_Schema_Result,
@@ -82,26 +83,26 @@ function Add_Search_Filter_Row(
                             'has_identifier']
     const field_operator_select: HTMLSelectElement = document.createElement('select') as HTMLSelectElement
     Create_Options_In_Select_From_Array(field_operator_select, field_operator)
-    const rendered_values =
-    Render_Search_Schema_Value_Recursive(
-        schema,
-        row,
-        [],
-        0
-        )
+    // const rendered_values =
+    // Render_Search_Schema_Value_Recursive(
+    //     schema,
+    //     row,
+    //     [],
+    //     0
+    //     )
         
-        rendered_values.forEach(rendered => {
-            rendered.input.addEventListener(
-            'input',
-            () => {
-                filter.values =
-                    rendered_values.map(item => ({
-                        schema: item.schema,
-                        value: item.input.value
-                    }))
-            }
-        )
-    })
+    //     rendered_values.forEach(rendered => {
+    //         rendered.input.addEventListener(
+    //         'input',
+    //         () => {
+    //             filter.values =
+    //                 rendered_values.map(item => ({
+    //                     schema: item.schema,
+    //                     value: item.input.value
+    //                 }))
+    //         }
+    //     )
+    // })
     row.appendChild(field_operator_select)
 
 
@@ -186,23 +187,8 @@ export async function Make_Searchable_Select(
         const Selected_Option = select.options[select.selectedIndex];
         const schema: Schema = JSON.parse(Selected_Option.dataset.schema!)
         select.style.display = 'none';
-        // const label = document.createElement('p')
-        // label.textContent = schema.name
-        // const div = document.createElement('div')
-        // div.style.display = 'flex'
-        // div.style.flexDirection = 'row'
-        // div.style.gap = '3px'
-        // div.appendChild(label)
-    //     const rendered_values = Render_Search_Schema_Value_Recursive(
-    //     schema,
-    //     div,
-    //     [],
-    //     0
-    // )
-        /**
-         * if field operator vary according to data type, differinate them
-         * 
-        */
+       
+        
       
         
         search_input.style.display = 'none';
@@ -398,7 +384,7 @@ function Render_Schema_Result(
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
 import type  {Search_Target } from "@schematician/shared";
-import { Create_Options_In_Select_From_Array } from "$lib/utils";
+import { Create_Options_In_Select_From_Array } from "$lib/shared/utils";
     onMount(() => {
       if (browser) {
             const new_schema_button: HTMLButtonElement = document.getElementById('new_schema_button') as HTMLButtonElement

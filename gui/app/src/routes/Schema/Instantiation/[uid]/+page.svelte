@@ -3,24 +3,11 @@
         <!-- <div></div> -->
         <header id="Schema_App_Mode_Header"> Schema Instantiation</header>
         <div id="Hierarchical_Path_Div">
-            <div id="Great_Grand_Parent_Element_Div">
-                Great_Grand_Parent_Element_Div
-            </div>
-            <div id="Grand_Parent_Element_Div">
-                Grand_Parent_Element_Div
-            </div>
-            <div id="Parent_Element_Div" >
-                Parent_Element_Div
-                <div class="Vertical_Flex_Column" id="Parent_Element_Index_Set">
-                    <a class="Font_Size_Large" href="nop">1 </a>
-                    <a class="Font_Size_Large" href="nop">2 </a>
-                    <a class="Font_Size_Large" href="nop">3 </a>
-                
-
-                </div>
-            </div>
-
+            <button id="save_instance_button">
+                Save Instance
+            </button>
         </div>
+
         <button id="Previous_Element_Button"> Previous</button>
     </div>
     <div class="Center_Column">
@@ -71,11 +58,11 @@
         grid-template-rows: 50% 30%
 
     }
-    .Vertical_Flex_Column {
+    :global(.Vertical_Flex_Column) {
         display: flex;
         flex-direction: column;
     }
-  .Font_Size_Large {
+  :global(.Font_Size_Large) {
     font-size: large;
     margin-left: 350px;
   }
@@ -93,20 +80,20 @@
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
 import { page } from '$app/state';
-import { Add_Hierarchical_Elements, Apply_Descending_Indentation, Render_Schema_MetaData, Apply_Incremental_CSS_To_Children, Add_Header_For_Each_KeyValue, Add_Event_Map_Elements, Convert_GraphQL_Schema_To_Schema } from "$lib/utils";
+import { Add_Hierarchical_Elements,
+    Render_Schema_MetaData,
+    Add_Event_Map_Elements,
+    Render_Adjacent_Elements,
+    Add_Save_Instance_Function, Create_Instance_State,
+    Add_Event_To_Map_Element, Render_Schema_Node
+ } from "$lib/Instantiation/utils";
+import {  Apply_Descending_Indentation, Apply_Incremental_CSS_To_Children, Add_Header_For_Each_KeyValue, Convert_GraphQL_Schema_To_Schema } from "$lib/shared/utils";
 import type { Schema_Instance } from "@schematician/shared";
 import { Get_Instance_By_UID, Get_Schema_By_UID } from "$lib/graphql/utils";
     import { PUBLIC_CLIENT_API_URL, PUBLIC_SERVER_API_URL } from "$env/static/public";
+    import { Handle_Schema_input_rendering } from "$lib/Instantiation/utils";
     onMount( async() => {
         if (browser) {
-            
-            const Hierarchical_Path_Div: HTMLDivElement = document.getElementById('Hierarchical_Path_Div') as HTMLDivElement;
-            Apply_Descending_Indentation(Hierarchical_Path_Div, 42)
-            Apply_Incremental_CSS_To_Children(Hierarchical_Path_Div, 'fontSize', 15, 'px')
-       
-
-            const Current_Instance_Div: HTMLDivElement = document.getElementById('Current_Instance_Div') as HTMLDivElement
-            const Current_Schema_Div: HTMLDivElement = document.getElementById('Current_Schema_Div') as HTMLDivElement
             const instance_uid: string | undefined = page.params.uid
             const instance = await Get_Instance_By_UID(
                 PUBLIC_SERVER_API_URL, instance_uid!, 
@@ -122,18 +109,60 @@ import { Get_Instance_By_UID, Get_Schema_By_UID } from "$lib/graphql/utils";
                 )
             const schema = Convert_GraphQL_Schema_To_Schema(GraphQL_schema!)
             console.log(`schema ${JSON.stringify(schema)}`)
-            const state: Schema_Instance = $state({'schema': schema,
-                'root': {}
-            })
+            const state: Schema_Instance = $state(Create_Instance_State(schema)
+            )
+    
+            
+            const Hierarchical_Path_Div: HTMLDivElement = document.getElementById('Hierarchical_Path_Div') as HTMLDivElement;
+            Apply_Descending_Indentation(Hierarchical_Path_Div, 42)
+            Apply_Incremental_CSS_To_Children(Hierarchical_Path_Div, 'fontSize', 15, 'px')
+            const save_instance_button: HTMLButtonElement = document.getElementById('save_instance_button') as HTMLButtonElement
+            Add_Save_Instance_Function(save_instance_button, state)
+
+            const Current_Instance_Div: HTMLDivElement = document.getElementById('Current_Instance_Div') as HTMLDivElement
+            const Current_Schema_Div: HTMLDivElement = document.getElementById('Current_Schema_Div') as HTMLDivElement
             Render_Schema_MetaData(schema!, Current_Schema_Div, PUBLIC_CLIENT_API_URL)
             const Map_Div: HTMLDivElement = document.getElementById('Map_Div') as HTMLDivElement
-            const list = Add_Hierarchical_Elements(Map_Div, schema!)
+            // const list = Add_Hierarchical_Elements(Map_Div, schema!, state)
             const previous_button: HTMLButtonElement = document.getElementById('Previous_Element_Button') as HTMLButtonElement
             const next_button: HTMLButtonElement = document.getElementById('Next_Element_Button') as HTMLButtonElement
-            Add_Event_Map_Elements(
-                Current_Schema_Div, list, previous_button, 
-                next_button, Current_Instance_Div,
-            state, PUBLIC_CLIENT_API_URL)
+            Render_Schema_Node(
+                state.schema,
+                Map_Div,
+                0,
+                state,
+                [],
+                [],
+                (rendered_node, index) => {
+                    Add_Event_To_Map_Element(
+                        rendered_node,
+                        index,
+                        Current_Schema_Div,
+                        [],
+                        previous_button,
+                        next_button,
+                        Current_Instance_Div,
+                        state,
+                        PUBLIC_CLIENT_API_URL
+                    )
+    })
+
+            // Render_Adjacent_Elements(
+            //     0, list, previous_button, next_button,
+            //     Current_Schema_Div,
+            //     Current_Instance_Div,
+            //     state, PUBLIC_CLIENT_API_URL
+            // )
+            console.log(`calling handle schema input rendering`)
+            // Handle_Schema_input_rendering(schema, 
+            //     Current_Instance_Div, state,
+            //     [])
+           
+            
+            // Add_Event_Map_Elements(
+            //     Current_Schema_Div, list, previous_button, 
+            //     next_button, Current_Instance_Div,
+            // state, PUBLIC_CLIENT_API_URL)
         }
     });
 </script>

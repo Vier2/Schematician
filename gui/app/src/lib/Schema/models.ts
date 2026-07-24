@@ -1,4 +1,4 @@
-import type { Schema, Schema_Instance, Data_Type} from "@schematician/shared"
+import type { Schema, Schema_Instance, Data_Type,Instance_Path} from "@schematician/shared"
 
 
 export interface Input_View {
@@ -13,10 +13,12 @@ export interface Input_Viewer {
 
 export interface Rendered_Search_Value {
     schema: Schema
-    input: HTMLInputElement | HTMLSelectElement
+    input:
+    | HTMLInputElement
+    | HTMLSelectElement
     parents: Schema[]
+    path: Instance_Path
 }
-
 
 
 /**
@@ -32,7 +34,7 @@ export interface Rendered_Node {
 
     element: HTMLParagraphElement
 
-    path: number[]
+    path: Instance_Path
 }
 
 

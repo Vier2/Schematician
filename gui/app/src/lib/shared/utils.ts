@@ -17,11 +17,11 @@ implementation:
 import { goto } from "$app/navigation";
 import type { Cardinality, Instance_Node, Schema_Element, Update_Schema_Data } from "@schematician/shared";
 import type { GraphQL_Schema } from "@schematician/shared";
-import { Send_GraphQL_Request, Convert_Schema_To_Update_Data } from "./graphql/utils";
-import type { Create_Schema_Input, Create_Schema_Response, Update_Schema_Response} from "./graphql/types";
+import { Send_GraphQL_Request, Convert_Schema_To_Update_Data } from "../graphql/utils";
+import type { Create_Schema_Input, Create_Schema_Response, Update_Schema_Response} from "../graphql/types";
 import type { Schema, Data_Type, Schema_Instance } from "@schematician/shared";
-import type { Rendered_Search_Value, Input_View, Input_Viewer,  Rendered_Node } from "./Schema/models";
-import type { CSS_Property,  Schemas_Query_Response, CSS_Unit, GraphQL_Response, Element_Handler, Value_Computer } from "./types/types";
+import type { Rendered_Search_Value, Input_View, Input_Viewer,  Rendered_Node } from "../Schema/models";
+import type { CSS_Property,  Schemas_Query_Response, CSS_Unit, GraphQL_Response, Element_Handler, Value_Computer } from "../types/types";
 import type { Selection, Schema_Value, Schema_Association} from "@schematician/shared";
 function Make_Create_Element_UI(types: Data_Type[],
     state: Schema,
@@ -485,83 +485,7 @@ function Render_Schema_Input(schema: Schema): HTMLDivElement {
     div.appendChild(value)
     return div
 }
-export function Render_Schema_Value_Recursive(
-    schema: Schema,
-    parents: Schema[] = [],
-    target_container: HTMLDivElement,
-    state: Schema_Instance,
-    path: number[],
-    ancestry_level_visible?: number,
-) {
-    /**
-     * ancestry_level_visible: The number of ancestry of a element that will be rendered
-     */
-    const is_container =
-        schema.data_type === 'Composite' ||
-    console.log(`running recursive`)
-    if (!is_container) {
-        console.log(`schema aint container ${schema}`)
-        const context_div = Render_Parent_Context(
-            parents, ancestry_level_visible)
-        const input_view =
-            Make_Schema_Input_View(
-                schema,
-            )
-        Link_Schema_Input_View_To_State(input_view.input, state, path)
-        const label = Make_Schema_Label(schema)
 
-        target_container.appendChild(
-            context_div
-        )
-        target_container.appendChild(label)
-        target_container.appendChild(
-            input_view.container
-        )
-
-
-        return
-    }
-
-    schema.elements?.forEach((child, index) => {
-        Render_Schema_Value_Recursive(
-            child.element,
-            [...parents, schema],
-            target_container,
-            state,
-            [...path, index],
-            ancestry_level_visible
-        )
-    })
-}
-export function Render_Parent_Context(
-    parents: Schema[],
-    ancestry_level_visible?: number
-): HTMLDivElement {
-/**
- * ancestry_level_visible: The number of ancestry of a element that will be rendered
- */
-    const div = document.createElement('div')
-
-    let visible_parents = parents
-
-    if (ancestry_level_visible !== undefined) {
-
-        visible_parents =
-            ancestry_level_visible === 0
-                ? []
-                : parents.slice(-ancestry_level_visible)
-    }
-    visible_parents.forEach(parent => {
-
-        const p = document.createElement('p')
-
-        p.textContent = parent.name
-
-        div.appendChild(p)
-    })
-
-    return div
-}
 
 export function Render_Options(
     schemas: Schema[],
@@ -1157,17 +1081,7 @@ export function Render_Options_Schema(schemas: Schema[],
     // })
  }
 
-export function Set_Instance_Value(
-    instance: Schema_Instance,
-    path: number[],
-    value: unknown
-) {
 
-    Get_Instance_Node(
-        instance.root,
-        path
-    ).value = value
-}
 export function Apply_Descending_Indentation(parent: HTMLDivElement, margin: number) {
     Add_Flex_Style(parent, 'column')
    Apply_Incremental_CSS_To_Children(parent, 'marginLeft', margin, 'px')
@@ -1233,55 +1147,7 @@ export function Render_Enums(schema: Schema) {
 
 
 }
-export function Render_Search_Schema_Value_Recursive(
-    schema: Schema,
-    target_container: HTMLDivElement,
-    parents: Schema[] = [],
-    ancestry_level_visible?: number,
-    rendered_values: Rendered_Search_Value[] = []
-): Rendered_Search_Value[] {
 
-    const is_container =
-        schema.data_type === 'Composite' 
-
-    if (!is_container) {
-        const context_div =
-            Render_Parent_Context(
-                parents,
-                ancestry_level_visible
-            )
-
-        const label =
-            Make_Schema_Label(schema)
-
-        const input_view =
-            Make_Schema_Input_View(schema)
-
-        target_container.appendChild(context_div)
-        target_container.appendChild(label)
-        target_container.appendChild(input_view.container)
-
-        rendered_values.push({
-            schema,
-            input: input_view.input,
-            parents
-        })
-
-        return rendered_values
-    }
-
-    schema.elements?.forEach(child => {
-        Render_Search_Schema_Value_Recursive(
-            child.element,
-            target_container,
-            [...parents, schema],
-            ancestry_level_visible,
-            rendered_values
-        )
-    })
-
-    return rendered_values
-}
 export function Make_Schema_Input_View(
     schema: Schema
 ): Input_View {
@@ -1328,62 +1194,13 @@ export function Make_Schema_Input_View(
 
     return {'container': container, 'input': input}
 }
-export function Link_Schema_Input_View_To_State(
-    input: HTMLInputElement | HTMLSelectElement,
-    state: Schema_Instance,
-    path: number[]
-) {
-    /**
-     * Uses path for nested schemas in instantiation, in definition use other function
-     */
 
-    if (!input) return
-
-    Link_State(
-        input,
-        state,
-        path
-    )
-}
 
 export function Make_Schema_Label(schema: Schema): HTMLElement {
     const label = document.createElement('p')
     label.textContent = schema.name
     return label
 }
-export function Handle_Schema_input_rendering(
-    schema: Schema,
-    div: HTMLDivElement,
-    state: Schema_Instance,
-    path: number[]
-) {
-
-    div.replaceChildren()
-
-    if (
-        schema.data_type === 'Composite' 
-    ) {
-        console.log(`callling render schema value recursive`)
-        Render_Schema_Value_Recursive(
-            schema,
-            [],
-            div,
-            state,
-            path,
-            0
-        )
-
-        return
-    }
-    const input_view = Make_Schema_Input_View(
-        schema
-    )
-    Link_Schema_Input_View_To_State(input_view.input, state, path)
-    div.appendChild(
-        input_view.container
-    )
-}
-
 
 export function Make_Delete_Function_Schema(
     container: HTMLElement,
@@ -1457,40 +1274,7 @@ export function Connect_Select_To_List_State(select: HTMLSelectElement,
         select.value = ''
     })
 }
-function Link_State(
-    element: HTMLInputElement | HTMLSelectElement,
-    state: Schema_Instance,
-    path: number[]
-) {
-    const stable_path = [...path]
 
-    const current_value =
-        Get_Instance_Value(
-            state,
-            stable_path
-        )
-
-    element.value =
-        String(current_value ?? '')
-
-    const event_type =
-        element instanceof HTMLSelectElement
-            ? 'change'
-            : 'input'
-
-    element.addEventListener(
-        event_type,
-        () => {
-            Set_Instance_Value(
-                state,
-                stable_path,
-                element.value
-            )
-        }
-    )
-
-    return current_value
-}
 function Is_String_Schema(
     schema: Schema
 ): schema is Schema<'String'> {
@@ -1530,43 +1314,7 @@ export function Link_Viewer_Input(viewer: HTMLElement, input: HTMLInputElement |
 
     });
 }
-export function Render_Schema_MetaData(schema: Schema,
-    parent_container: HTMLDivElement,
-    client_url: string
-) {
-    const name = Make_Bold_P_Element(schema.name)
-    const div = document.createElement('div')
-    parent_container.appendChild(name)
-    const edit_link: HTMLAnchorElement = document.createElement('a') as HTMLAnchorElement
-    edit_link.href = `${client_url}/Schema/Definition/${schema.uid}`
-    edit_link.textContent = `Edit ${schema.name}`
-    parent_container.appendChild(edit_link)
-    schema.identifiers?.forEach(element => {
-        const div = document.createElement('div')
-        const identifier: HTMLParagraphElement = Make_Bold_P_Element(element.schema.name)
-        const value_element = document.createElement('p')
-        value_element.textContent = `${element.value}`
-        div.style.display = 'flex'
-        div.style.flexDirection = 'row'
-        div.style.gap = '5px'
-        div.appendChild(identifier)
-        div.appendChild(value_element)
-        parent_container.appendChild(div)
-    });
-    schema.properties?.forEach(element => {
-        const div = document.createElement('div')
-        const property: HTMLParagraphElement = Make_Bold_P_Element(element.schema.name)
-        const value_element = document.createElement('p')
-        value_element.textContent = `${element.value}`
-        div.style.display = 'flex'
-        div.style.flexDirection = 'row'
-        div.style.gap = '5px'
-        div.appendChild(property)
-        div.appendChild(value_element)
-        parent_container.appendChild(div)
-    })
-    Apply_Descending_Indentation(parent_container, 40)
-}
+
 export function Convert_Camel_to_Kebab(camel: CSS_Property): string {
     const kebab = (camel as string).replace(/[A-Z]/g, c => `-${c.toLowerCase()}`)
     return kebab
@@ -1580,45 +1328,7 @@ export function Make_Schema_Association_Function(div: HTMLDivElement,
 
 }
 
-export function Add_Hierarchical_Elements(
-    map_div: HTMLDivElement,
-    top_level_schema: Schema
-) {
-    return Render_Schema_Node(
-        top_level_schema,
-        map_div,
-        0
-    )
-}
-export function Get_Instance_Node(
-    root: Instance_Node,
-    path: number[]
-): Instance_Node {
 
-    let current = root
-
-    for (const index of path) {
-
-        current.elements ??= []
-
-        current.elements[index] ??= {}
-
-        current =
-            current.elements[index]
-    }
-
-    return current
-}
-export function Get_Instance_Value(
-    instance: Schema_Instance,
-    path: number[]
-) {
-
-    return Get_Instance_Node(
-        instance.root,
-        path
-    ).value
-}
 export function Apply_Hover_Highlight(element: HTMLElement, color: string) {
     const original = element.style.backgroundColor
     element.addEventListener('mouseenter', () => {
@@ -1627,141 +1337,12 @@ export function Apply_Hover_Highlight(element: HTMLElement, color: string) {
     element.addEventListener('mouseleave', () => {
         element.style.backgroundColor = original
     })
-}
+} 
+
 function Handle_Data_Type_Rendering(
     
 ) {
     
-}
-function Render_Schema_Node(
-    schema: Schema,
-    parent: HTMLElement,
-    depth: number,
-    path: number[] = [],
-    list: Rendered_Node[] = []
-): Rendered_Node[] { 
-
-    const row = document.createElement('div')
-
-    Add_Flex_Style(row, 'row')
-    Apply_Length_Value_CSS(row, 'gap', '%', 3)
-    Apply_Length_Value_CSS(row, 'marginLeft', 'px', depth * 20)
-    const label =Make_Bold_P_Element(schema.name)
-
-    Apply_Hover_Highlight(label, 'red')
-    row.appendChild(label)
-
-    parent.appendChild(row)
-
-    list.push({
-        schema,
-        element: label,
-        path
-    })
-
-    schema.elements?.forEach(
-        (child, index) =>
-            Render_Schema_Node(
-                child.element,
-                parent,
-                depth + 1,
-                [...path, index],
-                list
-            )
-    )
-    if (schema.data_type = 'Array') {
-        console.log(`element${schema.name} data type ${schema.data_type}, whole schema
-            ${JSON.stringify(schema)}`)
-        const add_instance_button: HTMLButtonElement = document.createElement('button') as HTMLButtonElement
-        row.appendChild(add_instance_button)
-        add_instance_button.textContent = '+'
-        add_instance_button.addEventListener('click', function () {
-            /**
-             * Create another map item with children for another element
-             */
-                schema.elements?.forEach(
-                    (child, index) =>
-                        Render_Schema_Node(
-                            child.element,
-                            parent,
-                            depth + 1,
-                            [...path, index],
-                            list
-                        )
-                )
-            
-        })
-
-    }
-
-    return list
-}
-export function Add_Event_Map_Elements(current_schema_div: HTMLDivElement, 
-    current_schemas: Rendered_Node[],
-    previous_button: HTMLButtonElement, 
-    next_button: HTMLButtonElement,
-    current_instance_div: HTMLDivElement,
-    state: Schema_Instance,
-    client_url: string ) {
-    for (const [index, item] of current_schemas.entries()) {
-        item.element.addEventListener('click', function() {
-            current_schema_div.replaceChildren()
-            current_instance_div.replaceChildren()
-            Render_Schema_MetaData(item.schema, current_schema_div, client_url)
-            Render_Adjacent_Elements(
-                index, current_schemas, previous_button, next_button,
-                current_schema_div,
-                current_instance_div,
-                state, client_url
-            )
-            console.log(`calling handle schema input rendering`)
-            Handle_Schema_input_rendering(item.schema, 
-                current_instance_div, state,
-                item.path)
-           
-        })
-    }
-}
-export function Render_Adjacent_Elements(
-    current_index: number,
-    current_schemas: Rendered_Node[],
-    previous_button: HTMLButtonElement,
-    next_button: HTMLButtonElement,
-    current_schema_div: HTMLDivElement,
-    current_instance_div: HTMLDivElement,
-    state: Schema_Instance,
-    client_url: string
-) {
-    const previous = current_schemas[current_index - 1]
-    const next = current_schemas[current_index + 1]
-
-    Modify_Button_Element(
-        previous_button,
-        previous?.schema ?? null,
-        current_index - 1,
-        current_schemas,
-        previous_button,
-        next_button,
-        current_schema_div,
-        current_instance_div,
-        state,
-        previous?.path ?? [],
-        client_url
-    )
-
-    Modify_Button_Element(
-        next_button,
-        next?.schema ?? null,
-        current_index + 1,
-        current_schemas,
-        previous_button,
-        next_button,
-        current_schema_div,
-        current_instance_div,
-        state,
-        next?.path ?? [],
-        client_url
-    )
 }
 
 export function Create_Schema<
@@ -1771,42 +1352,7 @@ export function Create_Schema<
 ): Schema<T> {
     return schema
 }
-export function Modify_Button_Element(
-    button: HTMLButtonElement,
-    schema: Schema | null,
-    target_index: number,
-    current_schemas: Rendered_Node[],
-    previous_button: HTMLButtonElement,
-    next_button: HTMLButtonElement,
-    current_schema_div: HTMLDivElement,
-    current_instance_div: HTMLDivElement,
-    state: Schema_Instance,
-    path: number[],
-    client_url: string
-) {
-    button.textContent = schema ? schema.name : '—'
-    button.disabled = schema === null
-  
-    // Replaces any existing handler — no accumulation
-    button.onclick = () => {
-        if (!schema) return
-        current_schema_div.replaceChildren()
-        Render_Schema_MetaData(schema, current_schema_div, client_url)
-        Render_Adjacent_Elements(
-            target_index,
-            current_schemas,
-            previous_button,
-            next_button,
-            current_schema_div,
-            current_instance_div,
-            state, client_url
-        )
-        Handle_Schema_input_rendering(schema, current_instance_div,
-            state, path
-            
-        )
-    }
-}
+
 export function Make_Bold_P_Element(text: string) {
     const p = document.createElement('p')
     p.style.fontWeight = 'bold'
