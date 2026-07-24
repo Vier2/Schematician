@@ -1,56 +1,142 @@
 import { builder } from '../../builder.js'
-import type { JSON_Value } from '@schematician/shared'
-export interface GraphQL_Instance_Value {
-    schema_uid: string
-    value: JSON_Value
-}
+import { Data_Type_Enum } from '../../builder.js'
+import type {
+    GraphQL_Atomic_Instance,
+    GraphQL_Composite_Instance,
+    GraphQL_Array_Instance,
+    GraphQL_Instance_Object
+} from '@schematician/shared'
 
-export interface GraphQL_Instance {
-    uid: string
-    schema_uid: string
-    objects?: GraphQL_Instance_Value[]
-    /**data type of schema */
-    value?: JSON_Value
-}
 
-/**type needs to change
- * if the data type of the schema is flat
- * meaning: string, number, etc, no objects,
- * if its nested, than objects
- */
-const Instance_Value_Ref =
-    builder.objectRef<GraphQL_Instance_Value>('Instance_Value')
+
+
+
+
+export const Atomic_Instance_Ref =
+    builder.objectRef<GraphQL_Atomic_Instance>(
+        'Atomic_Instance'
+    )
+
+export const Composite_Instance_Ref =
+    builder.objectRef<GraphQL_Composite_Instance>(
+        'Composite_Instance'
+    )
+
+export const Array_Instance_Ref =
+    builder.objectRef<GraphQL_Array_Instance>(
+        'Array_Instance'
+    )
+
+export const Instance_Object_Ref =
+    builder.objectRef<GraphQL_Instance_Object>(
+        'Instance_Object'
+    )
 
 export const Instance_Ref =
-    builder.objectRef<GraphQL_Instance>('Instance')
+    builder.unionType('Instance', {
+        types: [
+            Atomic_Instance_Ref,
+            Composite_Instance_Ref,
+            Array_Instance_Ref
+        ],
 
-Instance_Value_Ref.implement({
+        resolveType: instance => {
+            switch (instance.data_type) {
+                case 'String':
+                case 'Number':
+                case 'Boolean':
+                    return Atomic_Instance_Ref
+
+                case 'Composite':
+                    return Composite_Instance_Ref
+
+                case 'Array':
+                    return Array_Instance_Ref
+
+                default: {
+                    const exhaustive_check: never =
+                        instance
+
+                    throw new Error(
+                        `Unsupported instance type: ${JSON.stringify(
+                            exhaustive_check
+                        )
+                        }`
+                    )
+                }
+            }
+        }
+    })
+
+
+Atomic_Instance_Ref.implement({
     fields: t => ({
-        schema_uid: t.exposeString('schema_uid'),
+        uid: t.exposeString('uid'),
+
+        schema_uid:
+            t.exposeString('schema_uid'),
+
+        data_type: t.expose('data_type', {
+            type: Data_Type_Enum
+        }),
 
         value: t.field({
             type: 'JSON',
-            resolve: instance_value => instance_value.value
+            resolve: instance =>
+                instance.value
         })
     })
 })
 
-Instance_Ref.implement({
+Instance_Object_Ref.implement({
+    fields: t => ({
+        schema_element_uid:
+            t.exposeString(
+                'schema_element_uid'
+            ),
+
+        instance: t.field({
+            type: Instance_Ref,
+            resolve: instance_object =>
+                instance_object.instance
+        })
+    })
+})
+
+Composite_Instance_Ref.implement({
     fields: t => ({
         uid: t.exposeString('uid'),
 
-        schema_uid: t.exposeString('schema_uid'),
+        schema_uid:
+            t.exposeString('schema_uid'),
 
-        value: t.field({
-            type: 'JSON',
-            nullable: true,
-            resolve: instance => instance.value
+        data_type: t.expose('data_type', {
+            type: Data_Type_Enum
         }),
 
         objects: t.field({
-            type: [Instance_Value_Ref],
-            nullable: true,
-            resolve: instance => instance.objects
+            type: [Instance_Object_Ref],
+            resolve: instance =>
+                instance.objects
+        })
+    })
+})
+
+Array_Instance_Ref.implement({
+    fields: t => ({
+        uid: t.exposeString('uid'),
+
+        schema_uid:
+            t.exposeString('schema_uid'),
+
+        data_type: t.expose('data_type', {
+            type: Data_Type_Enum
+        }),
+
+        items: t.field({
+            type: [Instance_Ref],
+            resolve: instance =>
+                instance.items
         })
     })
 })

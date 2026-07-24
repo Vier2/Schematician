@@ -18,6 +18,7 @@ export interface Schema_Element_Link_Properties {
     index: number
     required: boolean
     cardinality: Cardinality
+    uid: string
 }
 
 export interface Schema_Value_Link_Properties {

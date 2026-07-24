@@ -162,6 +162,7 @@ function Resolve_Schema_In_Elements(
                 'Number',
                 'Boolean',
                 'Composite',
+                'Array'
             ]
             const graphql_schemas = await Get_All_Schemas(PUBLIC_SERVER_API_URL)
             const schemas: Schema[] = graphql_schemas.map(Convert_GraphQL_Schema_To_Schema) 
@@ -188,7 +189,8 @@ function Resolve_Schema_In_Elements(
             Create_Instantiate_Button(
                 instantiate_button,
                 PUBLIC_SERVER_API_URL, 
-                state.uid!
+                state.uid!,
+                state.data_type
             )
 
             const Identifiers_Button: HTMLButtonElement = document.getElementById('identifier_button') as HTMLButtonElement

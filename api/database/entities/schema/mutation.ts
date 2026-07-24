@@ -323,7 +323,9 @@ builder.mutationFields(t => ({
                         properties: {
                             index: link.index,
                             required: link.required,
-                            cardinality: link.cardinality
+                            cardinality: link.cardinality,
+                            uid: uuidv4()
+
                         }
                     }
                 )

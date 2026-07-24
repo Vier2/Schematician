@@ -1,9 +1,11 @@
 import { Driver, ManagedTransaction } from 'neo4j-driver'
-import type { GraphQL_Schema, GraphQL_Schema_Element, Cardinality } from '@schematician/shared'
+import type { GraphQL_Schema ,GraphQL_Schema_Element,
+     Cardinality, Create_Schema_Link_Result } from '@schematician/shared'
 import type { Search_Query, Field_Role, Update_Schema_Data } from '@schematician/shared'
-import type { Delete_Schema_Result, 
+import type { Delete_Schema_Result, Data_Type, 
     Schema_Association_Update, Schema_Element_Update } from '@schematician/shared'
 import type { Schema_Link_Role, Schema_Link_Input } from './types.js'
+import { v4 as uuidv4 } from 'uuid'
 export async function db_get_all_schemas(
     driver: Driver,
     user_uid: string
@@ -235,6 +237,7 @@ export async function db_create_schema(
     }
 }
 
+
 export async function db_create_schema_link(
     driver: Driver,
     user_uid: string,
@@ -248,23 +251,31 @@ export async function db_create_schema_link(
         let parameters: Record<string, unknown>
 
         if (link.role === 'HAS_ELEMENT') {
+            const schema_element_uid =
+                uuidv4()
+
             query = `
                 MATCH
                     (u:User {uid: $user_uid})
                     -[:OWNS]->
-                    (parent:Schema {uid: $parent_schema_uid})
+                    (parent:Schema {
+                        uid: $parent_schema_uid
+                    })
 
                 MATCH
                     (u)
                     -[:OWNS]->
-                    (child:Schema {uid: $child_schema_uid})
+                    (child:Schema {
+                        uid: $child_schema_uid
+                    })
 
-                CREATE (parent)-[r:HAS_ELEMENT]->(child)
-
-                SET
-                    r.index = $index,
-                    r.required = $required,
-                    r.cardinality = $cardinality
+                CREATE
+                    (parent)-[r:HAS_ELEMENT {
+                        uid: $schema_element_uid,
+                        index: $index,
+                        required: $required,
+                        cardinality: $cardinality
+                    }]->(child)
 
                 RETURN parent
             `
@@ -272,35 +283,52 @@ export async function db_create_schema_link(
             parameters = {
                 user_uid,
                 parent_schema_uid,
-                child_schema_uid: link.child_schema_uid,
-                index: link.properties.index,
-                required: link.properties.required,
-                cardinality: link.properties.cardinality
+                child_schema_uid:
+                    link.child_schema_uid,
+
+                schema_element_uid,
+
+                index:
+                    link.properties.index,
+
+                required:
+                    link.properties.required,
+
+                cardinality:
+                    link.properties.cardinality
             }
         } else {
             query = `
                 MATCH
                     (u:User {uid: $user_uid})
                     -[:OWNS]->
-                    (parent:Schema {uid: $parent_schema_uid})
+                    (parent:Schema {
+                        uid: $parent_schema_uid
+                    })
 
                 MATCH
                     (u)
                     -[:OWNS]->
-                    (child:Schema {uid: $child_schema_uid})
+                    (child:Schema {
+                        uid: $child_schema_uid
+                    })
 
-                CREATE (parent)-[r:${link.role}]->(child)
+                CREATE
+                    (parent)-[r:${link.role}]->(child)
 
-                SET r.value = $value
+                        SET r.value = $value
 
-                RETURN parent
+                        RETURN parent
             `
 
             parameters = {
                 user_uid,
                 parent_schema_uid,
-                child_schema_uid: link.child_schema_uid,
-                value: link.properties.value
+                child_schema_uid:
+                    link.child_schema_uid,
+
+                value:
+                    link.properties.value
             }
         }
 
@@ -312,12 +340,15 @@ export async function db_create_schema_link(
         const record = result.records[0]
 
         return record
-            ? record.get('parent').properties as GraphQL_Schema
+            ? record.get('parent')
+                .properties as GraphQL_Schema
             : null
     } finally {
         await session.close()
     }
 }
+
+
 export async function db_get_schema_elements(
     driver: Driver,
     user_uid: string,
@@ -342,7 +373,8 @@ export async function db_get_schema_elements(
                 element,
                 r.required AS required,
                 r.cardinality AS cardinality,
-                r.index AS index
+                r.index AS index,
+                r.uid as uid
 
             ORDER BY r.index
             `,
@@ -358,8 +390,53 @@ export async function db_get_schema_elements(
             cardinality: record.get('cardinality') as Cardinality,
             index: record.get('index').toNumber
                 ? record.get('index').toNumber()
-                : Number(record.get('index'))
+                : Number(record.get('index')),
+            uid: record.get('uid') as string
         }))
+    } finally {
+        await session.close()
+    }
+}
+
+
+export async function db_get_schema_data_type(
+    driver: Driver,
+    user_uid: string,
+    schema_uid: string
+): Promise<Data_Type> {
+    const session = driver.session()
+
+    try {
+        const result = await session.run(
+            `
+            MATCH
+                (user:User {
+                    uid: $user_uid
+                })
+                -[:OWNS]->
+                (schema:Schema {
+                    uid: $schema_uid
+                })
+
+            RETURN schema.data_type AS data_type
+            `,
+            {
+                user_uid,
+                schema_uid
+            }
+        )
+
+        const record = result.records[0]
+
+        if (!record) {
+            throw new Error(
+                `Schema ${schema_uid} was not found or is not owned by user ${user_uid}.`
+            )
+        }
+
+        return record.get(
+            'data_type'
+        ) as Data_Type
     } finally {
         await session.close()
     }

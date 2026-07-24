@@ -1628,19 +1628,26 @@ export function Apply_Hover_Highlight(element: HTMLElement, color: string) {
         element.style.backgroundColor = original
     })
 }
+function Handle_Data_Type_Rendering(
+    
+) {
+    
+}
 function Render_Schema_Node(
     schema: Schema,
     parent: HTMLElement,
     depth: number,
     path: number[] = [],
     list: Rendered_Node[] = []
-): Rendered_Node[] {
+): Rendered_Node[] { 
 
     const row = document.createElement('div')
 
     Add_Flex_Style(row, 'row')
+    Apply_Length_Value_CSS(row, 'gap', '%', 3)
     Apply_Length_Value_CSS(row, 'marginLeft', 'px', depth * 20)
     const label =Make_Bold_P_Element(schema.name)
+
     Apply_Hover_Highlight(label, 'red')
     row.appendChild(label)
 
@@ -1662,6 +1669,30 @@ function Render_Schema_Node(
                 list
             )
     )
+    if (schema.data_type = 'Array') {
+        console.log(`element${schema.name} data type ${schema.data_type}, whole schema
+            ${JSON.stringify(schema)}`)
+        const add_instance_button: HTMLButtonElement = document.createElement('button') as HTMLButtonElement
+        row.appendChild(add_instance_button)
+        add_instance_button.textContent = '+'
+        add_instance_button.addEventListener('click', function () {
+            /**
+             * Create another map item with children for another element
+             */
+                schema.elements?.forEach(
+                    (child, index) =>
+                        Render_Schema_Node(
+                            child.element,
+                            parent,
+                            depth + 1,
+                            [...path, index],
+                            list
+                        )
+                )
+            
+        })
+
+    }
 
     return list
 }

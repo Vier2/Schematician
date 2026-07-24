@@ -24,14 +24,14 @@
 
 <script lang="ts">
 import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Search_Schema_Value_Recursive, Render_Options_Schema } from "$lib/utils";
-import type { GraphQL_Response, GraphQl_Instance, GraphQL_Schema} from "$lib/graphql/types";
+import type { GraphQL_Response} from "$lib/graphql/types";
+import type { Schema, GraphQL_Schema, Search_Query_Input, Search_Filter_Input, Filter_Operator } from "@schematician/shared";
 import { Create_Schema_Modal } from "$lib/utils";
 import { Delete_Schema, Create_Instantiate_Button } from "$lib/graphql/utils";
 import type { 
-    Filter_Operator,
      Search_Schema_Result,
       Search_Result,  
-      Search_Instance_Result, Search_Filter_Input, Search_Query_Input, Schema} from "$lib/Schema/models"; 
+      Search_Instance_Result} from "$lib/Schema/models"; 
 import { PUBLIC_SERVER_API_URL, PUBLIC_CLIENT_API_URL } from "$env/static/public";
 function Handle_Search_Target_Select(select: HTMLSelectElement,
     container: HTMLDivElement,
@@ -129,8 +129,8 @@ function Get_Operators_For_Schema(
     }
 
     if (
-        schema.data_type === 'composite' ||
-        schema.data_type === 'Associative_Array'
+        schema.data_type === 'Composite' ||
+        schema.data_type === 'Array'
     ) {
         return [
             'has_element',
@@ -384,7 +384,7 @@ function Render_Schema_Result(
     const button:HTMLButtonElement = document.createElement('button')
     const instantiate_button = Create_Instantiate_Button(
         button,
-        api_url, schema.uid)
+        api_url, schema.uid, schema.data_type)
     instantiate_button.textContent = 'instantiate'
     container.appendChild(name)
     container.appendChild(data_type)
@@ -397,7 +397,7 @@ function Render_Schema_Result(
 
 import { onMount } from "svelte";
 import { browser } from "$app/environment";
-import type { Search_Target } from "$lib/Schema/models";
+import type  {Search_Target } from "@schematician/shared";
 import { Create_Options_In_Select_From_Array } from "$lib/utils";
     onMount(() => {
       if (browser) {

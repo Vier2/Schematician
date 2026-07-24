@@ -20,11 +20,17 @@ export interface GraphQL_Constraints {
     uppercase?: boolean
 }
 export interface GraphQL_Schema_Element {
+    uid: string,
     element: GraphQL_Schema
     required: boolean
     cardinality: Cardinality
     index: number
 
+}
+
+export interface Create_Schema_Link_Result {
+    parent: GraphQL_Schema
+    schema_element_uid?: string
 }
 export interface GraphQL_Schema {
     name: string
@@ -47,3 +53,43 @@ export interface GraphQL_Schema_Association {
     value: JSON_Value
 }
 
+
+export type GraphQL_Instance =
+| GraphQL_Atomic_Instance
+| GraphQL_Composite_Instance
+| GraphQL_Array_Instance
+
+export interface GraphQL_Instance_Value {
+    schema_uid: string
+    value: JSON_Value
+}
+interface GraphQL_Instance_Base {
+    uid: string
+    schema_uid: string
+    data_type: Data_Type
+}
+export interface GraphQL_Instance_Object {
+    schema_element_uid: string
+
+    instance: GraphQL_Instance
+}
+
+export interface GraphQL_Atomic_Instance
+    extends GraphQL_Instance_Base {
+    data_type: 'String' | 'Number' | 'Boolean'
+
+    value: JSON_Value | null /**For unintialized */
+}
+export interface GraphQL_Composite_Instance
+    extends GraphQL_Instance_Base {
+    data_type: 'Composite'
+
+    objects: GraphQL_Instance_Object[]
+}
+
+export interface GraphQL_Array_Instance
+    extends GraphQL_Instance_Base {
+    data_type: 'Array'
+
+    items: GraphQL_Instance[]
+}

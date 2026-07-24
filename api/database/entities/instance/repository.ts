@@ -1,6 +1,17 @@
-import { Driver } from 'neo4j-driver'
-import type { GraphQL_Instance, GraphQL_Instance_Value } from './schema.js'
-import type { Search_Query } from '@schematician/shared'
+import { Driver, ManagedTransaction } from 'neo4j-driver'
+import type { 
+    Search_Query, 
+    Cardinality, 
+    GraphQL_Instance, 
+    GraphQL_Instance_Value,
+    GraphQL_Atomic_Instance,
+    GraphQL_Composite_Instance, 
+    GraphQL_Instance_Object,
+    GraphQL_Array_Instance, Data_Type
+     } from '@schematician/shared'
+
+
+
 export async function db_get_all_instances(
     driver: Driver,
     user_uid: string
@@ -26,6 +37,8 @@ export async function db_get_all_instances(
 }
 
 
+
+
 export async function db_create_instance(
     driver: Driver,
     user_uid: string,
@@ -34,57 +47,481 @@ export async function db_create_instance(
     const session = driver.session()
 
     try {
-        const result = await session.run(
-            `
-            MATCH (u:User {uid: $user_uid})
-            MATCH (schema:Schema {uid: $schema_uid})
+        return await session.executeWrite(
+            async transaction => {
+                await Create_Instance_Recursively(
+                    transaction,
+                    user_uid,
+                    instance
+                )
 
-            CREATE (i:Instance {
-                uid: $instance_uid,
-                schema_uid: $schema_uid
-            })
-
-            CREATE (u)-[:OWNS]->(i)
-            CREATE (i)-[:INSTANCE_OF]->(schema)
-
-            WITH i
-            CALL {
-                WITH i
-                UNWIND $objects AS object
-                MATCH (field:Schema {uid: object.field_schema_uid})
-                CREATE (v:InstanceValue {
-                    value: object.value,
-                    field_schema_uid: object.field_schema_uid
-                })
-                CREATE (i)-[:HAS_VALUE]->(v)
-                CREATE (v)-[:FOR_FIELD]->(field)
-                RETURN count(*) AS created_values
-            }
-
-            RETURN i
-            `,
-            {
-                user_uid,
-                instance_uid: instance.uid,
-                schema_uid: instance.schema_uid,
-                objects: instance.objects ?? []
+                return instance
             }
         )
+    } finally {
+        await session.close()
+    }
+}
 
-        const record = result.records[0]
 
-        if (!record) {
+async function Create_Instance_Node(
+    transaction: ManagedTransaction,
+    user_uid: string,
+    instance: GraphQL_Instance
+): Promise<void> {
+    const result = await transaction.run(
+        `
+        MATCH
+            (user:User {
+                uid: $user_uid
+            })
+            -[:OWNS]->
+            (schema:Schema {
+                uid: $schema_uid
+            })
+
+        WHERE schema.data_type = $data_type
+
+        CREATE
+            (instance:Instance {
+                uid: $instance_uid,
+                schema_uid: $schema_uid,
+                data_type: $data_type
+            })
+
+        CREATE
+            (user)-[:OWNS]->(instance)
+
+        CREATE
+            (instance)-[:INSTANCE_OF]->(schema)
+
+        RETURN instance
+        `,
+        {
+            user_uid,
+            instance_uid: instance.uid,
+            schema_uid: instance.schema_uid,
+            data_type: instance.data_type
+        }
+    )
+
+    if (result.records.length === 0) {
+        throw new Error(
+            [
+                'Could not create instance.',
+                `user_uid=${user_uid}`,
+                `instance_uid=${instance.uid}`,
+                `schema_uid=${instance.schema_uid}`,
+                `data_type=${instance.data_type}`,
+                'Check schema ownership and data-type compatibility.'
+            ].join(' ')
+        )
+    }
+}
+async function Set_Atomic_Instance_Value(
+    transaction: ManagedTransaction,
+    instance: GraphQL_Atomic_Instance
+): Promise<void> {
+    const value_json =
+        JSON.stringify(instance.value)
+
+    if (value_json === undefined) {
+        throw new Error(
+            `Instance ${instance.uid} contains a value that cannot be serialized as JSON.`
+        )
+    }
+
+    const result = await transaction.run(
+        `
+        MATCH
+            (instance:Instance {
+                uid: $instance_uid
+            })
+
+        SET instance.value_json = $value_json
+
+        RETURN instance
+        `,
+        {
+            instance_uid: instance.uid,
+            value_json
+        }
+    )
+
+    if (result.records.length === 0) {
+        throw new Error(
+            `Atomic instance ${instance.uid} was not found after creation.`
+        )
+    }
+}
+
+async function Create_Composite_Instance_Objects(
+    transaction: ManagedTransaction,
+    user_uid: string,
+    instance: GraphQL_Composite_Instance
+): Promise<void> {
+    const used_schema_element_uids =
+        new Set<string>()
+
+    for (const object of instance.objects) {
+        if (
+            used_schema_element_uids.has(
+                object.schema_element_uid
+            )
+        ) {
             throw new Error(
-                `Instance creation returned no record. Check user_uid=${user_uid} and schema_uid=${instance.schema_uid}`
+                [
+                    `Composite instance ${instance.uid}`,
+                    'contains more than one value for',
+                    `schema element ${object.schema_element_uid}.`,
+                    'Use an array instance for an array-cardinality element.'
+                ].join(' ')
             )
         }
 
-        return {
-            ...record.get('i').properties,
-            objects: instance.objects ?? []
+        used_schema_element_uids.add(
+            object.schema_element_uid
+        )
+
+        await Validate_Composite_Object(
+            transaction,
+            instance,
+            object
+        )
+
+        await Create_Instance_Recursively(
+            transaction,
+            user_uid,
+            object.instance
+        )
+
+        await Create_Composite_Object_Link(
+            transaction,
+            instance.uid,
+            object
+        )
+    }
+}
+
+async function Create_Composite_Object_Link(
+    transaction: ManagedTransaction,
+    parent_instance_uid: string,
+    object: GraphQL_Instance_Object
+): Promise<void> {
+    const result = await transaction.run(
+        `
+        MATCH
+            (parent:Instance {
+                uid: $parent_instance_uid
+            })
+
+        MATCH
+            (child:Instance {
+                uid: $child_instance_uid
+            })
+
+        CREATE
+            (parent)
+            -[:HAS_OBJECT {
+                schema_element_uid:
+                    $schema_element_uid
+            }]->
+            (child)
+
+        RETURN parent
+        `,
+        {
+            parent_instance_uid,
+            child_instance_uid:
+                object.instance.uid,
+
+            schema_element_uid:
+                object.schema_element_uid
         }
-    } finally {
-        await session.close()
+    )
+
+    if (result.records.length === 0) {
+        throw new Error(
+            [
+                'Could not create HAS_OBJECT relationship',
+                `from ${parent_instance_uid}`,
+                `to ${object.instance.uid}.`
+            ].join(' ')
+        )
+    }
+}
+
+async function Validate_Composite_Object(
+    transaction: ManagedTransaction,
+    parent_instance: GraphQL_Composite_Instance,
+    object: GraphQL_Instance_Object
+): Promise<void> {
+    const result = await transaction.run(
+        `
+        MATCH
+            (parent_schema:Schema {
+                uid: $parent_schema_uid
+            })
+            -[schema_element:HAS_ELEMENT]->
+            (element_schema:Schema {
+                uid: $child_schema_uid
+            })
+
+        WHERE
+            schema_element.uid =
+                $schema_element_uid
+
+        RETURN
+            schema_element.required
+                AS required,
+
+            schema_element.cardinality
+                AS cardinality,
+
+            element_schema.data_type
+                AS element_data_type
+        `,
+        {
+            parent_schema_uid:
+                parent_instance.schema_uid,
+
+            schema_element_uid:
+                object.schema_element_uid,
+
+            child_schema_uid:
+                object.instance.schema_uid
+        }
+    )
+
+    const record = result.records[0]
+
+    if (!record) {
+        throw new Error(
+            [
+                `Schema element ${object.schema_element_uid}`,
+                `does not belong to schema ${parent_instance.schema_uid}`,
+                'or does not reference child schema',
+                `${object.instance.schema_uid}.`
+            ].join(' ')
+        )
+    }
+
+    const cardinality =
+        record.get('cardinality') as Cardinality
+
+    if (cardinality === 'Array') {
+        /*
+         * See the array-cardinality modeling note below.
+         */
+        throw new Error(
+            [
+                `Schema element ${object.schema_element_uid}`,
+                'has Array cardinality.',
+                'It cannot currently be instantiated as a normal',
+                'single composite object.'
+            ].join(' ')
+        )
+    }
+}
+async function Create_Instance_Recursively(
+    transaction: ManagedTransaction,
+    user_uid: string,
+    instance: GraphQL_Instance
+): Promise<void> {
+    await Create_Instance_Node(
+        transaction,
+        user_uid,
+        instance
+    )
+
+    switch (instance.data_type) {
+        case 'String':
+        case 'Number':
+        case 'Boolean':
+            await Set_Atomic_Instance_Value(
+                transaction,
+                instance
+            )
+
+            return
+
+        case 'Composite':
+            await Create_Composite_Instance_Objects(
+                transaction,
+                user_uid,
+                instance
+            )
+
+            return
+
+        case 'Array':
+            await Create_Array_Instance_Items(
+                transaction,
+                user_uid,
+                instance
+            )
+
+            return
+
+        default: {
+            const exhaustive_check: never =
+                instance
+
+            throw new Error(
+                `Unsupported instance type: ${JSON.stringify(
+                    exhaustive_check
+                )
+                }`
+            )
+        }
+    }
+}
+
+async function Get_Array_Item_Schema_UID(
+    transaction: ManagedTransaction,
+    array_schema_uid: string
+): Promise<string> {
+    const result = await transaction.run(
+        `
+        MATCH
+            (array_schema:Schema {
+                uid: $array_schema_uid,
+                data_type: 'Array'
+            })
+            -[schema_element:HAS_ELEMENT]->
+            (item_schema:Schema)
+
+        RETURN
+            item_schema.uid AS item_schema_uid,
+            schema_element.cardinality
+                AS cardinality,
+            schema_element.index
+                AS element_index
+
+        ORDER BY schema_element.index
+        `,
+        {
+            array_schema_uid
+        }
+    )
+
+    if (result.records.length !== 1) {
+        throw new Error(
+            [
+                `Array schema ${array_schema_uid}`,
+                'must contain exactly one item-schema element.',
+                `Found ${result.records.length}.`
+            ].join(' ')
+        )
+    }
+
+    const record = result.records[0]!
+
+    const cardinality =
+        record.get('cardinality') as Cardinality
+
+    if (cardinality !== 'Single') {
+        throw new Error(
+            [
+                `Array schema ${array_schema_uid}`,
+                'must define its item element with',
+                'Single cardinality.',
+                'The Array schema itself supplies',
+                'the repeated cardinality.'
+            ].join(' ')
+        )
+    }
+
+    return record.get(
+        'item_schema_uid'
+    ) as string
+}
+
+async function Create_Array_Item_Link(
+    transaction: ManagedTransaction,
+    array_instance_uid: string,
+    item_instance_uid: string,
+    index: number
+): Promise<void> {
+    const result = await transaction.run(
+        `
+        MATCH
+            (array_instance:Instance {
+                uid: $array_instance_uid,
+                data_type: 'Array'
+            })
+
+        MATCH
+            (item_instance:Instance {
+                uid: $item_instance_uid
+            })
+
+        CREATE
+            (array_instance)
+            -[:HAS_ITEM {
+                index: $index
+            }]->
+            (item_instance)
+
+        RETURN array_instance
+        `,
+        {
+            array_instance_uid,
+            item_instance_uid,
+            index
+        }
+    )
+
+    if (result.records.length === 0) {
+        throw new Error(
+            [
+                'Could not create HAS_ITEM relationship',
+                `from ${array_instance_uid}`,
+                `to ${item_instance_uid}.`
+            ].join(' ')
+        )
+    }
+}
+async function Create_Array_Instance_Items(
+    transaction: ManagedTransaction,
+    user_uid: string,
+    instance: GraphQL_Array_Instance
+): Promise<void> {
+    const item_schema_uid =
+        await Get_Array_Item_Schema_UID(
+            transaction,
+            instance.schema_uid
+        )
+
+    for (
+        let index = 0;
+        index < instance.items.length;
+        index += 1
+    ) {
+        const item = instance.items[index]!
+
+        if (item.schema_uid !== item_schema_uid) {
+            throw new Error(
+                [
+                    `Array instance ${instance.uid}`,
+                    `requires items of schema ${item_schema_uid},`,
+                    `but item ${index} uses schema ${item.schema_uid}.`
+                ].join(' ')
+            )
+        }
+
+        await Create_Instance_Recursively(
+            transaction,
+            user_uid,
+            item
+        )
+
+        await Create_Array_Item_Link(
+            transaction,
+            instance.uid,
+            item.uid,
+            index
+        )
     }
 }
 export async function db_get_instance_by_uid(

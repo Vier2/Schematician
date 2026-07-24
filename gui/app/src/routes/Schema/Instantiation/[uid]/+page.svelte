@@ -94,7 +94,7 @@ import { onMount } from "svelte";
 import { browser } from "$app/environment";
 import { page } from '$app/state';
 import { Add_Hierarchical_Elements, Apply_Descending_Indentation, Render_Schema_MetaData, Apply_Incremental_CSS_To_Children, Add_Header_For_Each_KeyValue, Add_Event_Map_Elements, Convert_GraphQL_Schema_To_Schema } from "$lib/utils";
-import type { Schema_Instance } from "$lib/Schema/models";
+import type { Schema_Instance } from "@schematician/shared";
 import { Get_Instance_By_UID, Get_Schema_By_UID } from "$lib/graphql/utils";
     import { PUBLIC_CLIENT_API_URL, PUBLIC_SERVER_API_URL } from "$env/static/public";
     onMount( async() => {
@@ -122,14 +122,14 @@ import { Get_Instance_By_UID, Get_Schema_By_UID } from "$lib/graphql/utils";
                 )
             const schema = Convert_GraphQL_Schema_To_Schema(GraphQL_schema!)
             console.log(`schema ${JSON.stringify(schema)}`)
+            const state: Schema_Instance = $state({'schema': schema,
+                'root': {}
+            })
             Render_Schema_MetaData(schema!, Current_Schema_Div, PUBLIC_CLIENT_API_URL)
             const Map_Div: HTMLDivElement = document.getElementById('Map_Div') as HTMLDivElement
             const list = Add_Hierarchical_Elements(Map_Div, schema!)
             const previous_button: HTMLButtonElement = document.getElementById('Previous_Element_Button') as HTMLButtonElement
             const next_button: HTMLButtonElement = document.getElementById('Next_Element_Button') as HTMLButtonElement
-            const state: Schema_Instance = $state({'schema': schema,
-                'root': {}
-            })
             Add_Event_Map_Elements(
                 Current_Schema_Div, list, previous_button, 
                 next_button, Current_Instance_Div,

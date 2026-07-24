@@ -1,17 +1,8 @@
 import type { Data_Type } from "@schematician/shared"
-import type { GraphQL_Schema } from "@schematician/shared"
+import type { GraphQL_Schema, GraphQL_Instance } from "@schematician/shared"
 
 
-export interface GraphQl_Instance {
-    schema_uid: string
-    objects?: GraphQL_Instance_Value[]
-    value?: any
-    uid: string
-}
-export interface GraphQL_Instance_Value {
-    schema_uid: string
-    value: unknown
-}
+
 
 export interface GraphQL_Response<T> {
     data?: T
@@ -46,7 +37,7 @@ export interface Get_Instance_By_UID_Input {
 
 
 export interface Get_Instance_By_UID_Response {
-    instance: GraphQl_Instance | null
+    instance: GraphQL_Instance | null
 }
 
 export interface Delete_Schema_Input {
@@ -67,7 +58,7 @@ export interface Create_Instance_Input {
     /**All you should need is the source schema */
 }
 export interface Create_Instance_Response {
-    create_instance: GraphQl_Instance
+    create_instance: GraphQL_Instance
 }
 export type GraphQL_Variable_Type =
     | 'String'
@@ -91,10 +82,18 @@ export interface GraphQL_Variable_Definition {
 
 export type GraphQL_Selection =
     | string
-    | {
-        field: string
-        selection: GraphQL_Selection[]
-    }
+    | GraphQL_Field_Selection
+    | GraphQL_Inline_Fragment
+
+export interface GraphQL_Field_Selection {
+    field: string
+    selection: GraphQL_Selection[]
+}
+
+export interface GraphQL_Inline_Fragment {
+    fragment_on: string
+    selection: GraphQL_Selection[]
+}
 export interface Send_GraphQL_Options<Input_Type> {
     api_url: string
     operation_type: GraphQL_Operation_Type

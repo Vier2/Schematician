@@ -5,62 +5,108 @@ import type {
     Get_Schema_By_UID_Response, Delete_Schema_Response, 
     Delete_Schema_Input, Delete_Schema_Payload, 
     Get_Instance_By_UID_Input, Get_Instance_By_UID_Response,
-    GraphQl_Instance, GraphQL_Selection, } from "./types"
+     GraphQL_Selection, } from "./types"
 import type { Schema, 
     Update_Schema_Data, 
-    GraphQL_Schema, Schema_Association_Update, Schema_Element_Update} from "@schematician/shared"
+    GraphQL_Schema, Schema_Association_Update, Schema_Element_Update, GraphQL_Instance,
+    Data_Type} from "@schematician/shared"
 import { goto } from "$app/navigation"
-function Build_GraphQL_Selection(
-    selection: GraphQL_Selection[],
-    indentation_level = 3
+export function Build_GraphQL_Selection(
+    selection: GraphQL_Selection[]
 ): string {
-    const indentation = '    '.repeat(indentation_level)
-
     return selection
-        .map(field => {
-            if (typeof field === 'string') {
-                return `${indentation}${field}`
+        .map(item => {
+            if (typeof item === 'string') {
+                return item
             }
 
-            const nested_selection =
-                Build_GraphQL_Selection(
-                    field.selection,
-                    indentation_level + 1
-                )
+            if ('fragment_on' in item) {
+                return `
+                    ... on ${item.fragment_on} {
+                        ${Build_GraphQL_Selection(
+                    item.selection
+                )}
+                    }
+                `
+            }
 
-            return `${indentation}${field.field} {
-${nested_selection}
-${indentation}}`
+            return `
+                ${item.field} {
+                    ${Build_GraphQL_Selection(
+                item.selection
+            )}
+                }
+            `
         })
         .join('\n')
 }
 export async function Create_Instance(
     api_url: string,
-    schema_uid: string
-): Promise<GraphQl_Instance> {
+    schema_uid: string,
+): Promise<GraphQL_Instance> {
     const result =
         await Send_GraphQL_Request<
             Create_Instance_Response,
             Create_Instance_Input
         >({
             api_url,
+
             operation_type: 'mutation',
+
             operation_name: 'Create_Instance',
+
             field_name: 'create_instance',
 
             variables: [
                 {
                     name: 'schema_uid',
                     type: 'String!'
-                }
+
+                },
+
             ],
 
             input_data: {
-                schema_uid
+                schema_uid,
             },
 
             selection: [
-                'uid'
+                '__typename',
+
+                {
+                    fragment_on: 'Atomic_Instance',
+                    selection: [
+                        'uid',
+                        'schema_uid',
+                        'data_type',
+                        'value'
+                    ]
+                },
+
+                {
+                    fragment_on: 'Composite_Instance',
+                    selection: [
+                        'uid',
+                        'schema_uid',
+                        'data_type',
+
+                        {
+                            field: 'objects',
+                            selection: [
+                                'schema_element_uid'
+                            ]
+                        }
+                    ]
+                },
+
+                {
+                    fragment_on: 'Array_Instance',
+                    selection: [
+                        'uid',
+                        'schema_uid',
+                        'data_type'
+                    ]
+                }
             ]
         })
 
@@ -319,12 +365,73 @@ export async function Get_Schema_By_UID(
 
     return response.schema
 }
+export function Build_Instance_Selection(
+    depth: number
+): GraphQL_Selection[] {
+    const atomic_selection: GraphQL_Selection[] = [
+        'uid',
+        'schema_uid',
+        'data_type',
+        'value'
+    ]
 
+    const composite_selection: GraphQL_Selection[] = [
+        'uid',
+        'schema_uid',
+        'data_type'
+    ]
+
+    const array_selection: GraphQL_Selection[] = [
+        'uid',
+        'schema_uid',
+        'data_type'
+    ]
+
+    if (depth > 0) {
+        const recursive_selection =
+            Build_Instance_Selection(depth - 1)
+
+        composite_selection.push({
+            field: 'objects',
+            selection: [
+                'schema_element_uid',
+                {
+                    field: 'instance',
+                    selection: recursive_selection
+                }
+            ]
+        })
+
+        array_selection.push({
+            field: 'items',
+            selection: recursive_selection
+        })
+    }
+
+    return [
+        '__typename',
+
+        {
+            fragment_on: 'Atomic_Instance',
+            selection: atomic_selection
+        },
+
+        {
+            fragment_on: 'Composite_Instance',
+            selection: composite_selection
+        },
+
+        {
+            fragment_on: 'Array_Instance',
+            selection: array_selection
+        }
+    ]
+}
 export async function Get_Instance_By_UID(
     api_url: string,
     uid: string,
     token?: string
-): Promise<GraphQl_Instance | null> {
+): Promise<GraphQL_Instance | null> {
     const response =
         await Send_GraphQL_Request<
             Get_Instance_By_UID_Response,
@@ -346,18 +453,7 @@ export async function Get_Instance_By_UID(
                 uid
             },
 
-            selection: [
-                'uid',
-                'schema_uid',
-                'value',
-                {
-                    field: 'objects',
-                    selection: [
-                        'schema_uid',
-                        'value'
-                    ]
-                }
-            ],
+            selection: Build_Instance_Selection(2),
 
             token
         })
@@ -474,7 +570,8 @@ export function Convert_Schema_To_Update_Data(
 export function Create_Instantiate_Button(
     button: HTMLButtonElement,
     api_url: string,
-    schema_uid: string
+    schema_uid: string,
+    data_type: Data_Type
 ) {
     button.addEventListener('click', async function () {
         const instance = await Create_Instance(api_url, schema_uid)
