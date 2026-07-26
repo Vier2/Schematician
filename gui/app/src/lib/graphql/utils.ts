@@ -224,7 +224,7 @@ function Build_Schema_Selection(
                     'index',
                     'required',
                     'cardinality',
-
+                    'uid',
                     {
                         field: 'element',
                         selection:
@@ -276,6 +276,7 @@ function Build_Schema_Selection(
                 'index',
                 'required',
                 'cardinality',
+                'uid',
 
                 {
                     field: 'element',

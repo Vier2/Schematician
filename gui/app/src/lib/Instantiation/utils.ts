@@ -203,6 +203,7 @@ export function Render_Search_Schema_Value_Recursive(
 
         schema.elements?.forEach(
             schema_element => {
+             
                 Render_Search_Schema_Value_Recursive(
                     schema_element.element,
                     target_container,
@@ -754,6 +755,13 @@ export function Render_Schema_Value_Recursive(
 
         schema.elements?.forEach(
             schema_element => {
+                console.log({
+                    composite_schema: schema.name,
+                    element_schema: schema_element.element.name,
+                    schema_element_uid:
+                        schema_element.uid,
+                    current_path: path
+                })
                 Render_Schema_Value_Recursive(
                     schema_element.element,
                     target_container,
@@ -883,7 +891,7 @@ export function Create_Instance_Node(
                 objects:
                     schema.elements?.map(
                         schema_element => ({
-                            schema_element_uid:
+                            element_relationship_uid:
                                 schema_element.uid!,
                             instance:
                                 Create_Instance_Node(
@@ -1018,7 +1026,7 @@ export function Get_Instance_Node(
                 current_instance.objects.find(
                     current_object =>
                         current_object
-                            .schema_element_uid ===
+                            .element_relationship_uid ===
                         segment.schema_element_uid
                 )
 

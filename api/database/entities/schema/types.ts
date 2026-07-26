@@ -6,7 +6,7 @@ export type Schema_Link_Role =
     | 'HAS_IDENTIFIER'
 
 export interface GraphQL_Schema_Link_Input {
-    child_schema_uid: string
+    element_schema_uid: string
     role: Schema_Link_Role
     index?: number | null
     required?: boolean | null
@@ -28,12 +28,12 @@ export interface Schema_Value_Link_Properties {
 export type Schema_Link_Input =
     | {
         role: 'HAS_ELEMENT'
-        child_schema_uid: string
+        element_schema_uid: string
         properties: Schema_Element_Link_Properties
     }
     | {
         role: 'HAS_PROPERTY' | 'HAS_IDENTIFIER'
-        child_schema_uid: string
+        element_schema_uid: string
         properties: Schema_Value_Link_Properties
     }
 

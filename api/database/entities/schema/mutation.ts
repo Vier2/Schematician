@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { db_delete_schema, db_get_schema_elements } from './repository.js'
 import { builder, Data_Type_Enum } from '../../builder.js'
 import { Schema_Ref } from '../../schema.js'
-import type { Update_Schema_Data, Delete_Schema_Result , GraphQL_Schema_Element} from '@schematician/shared'
+import type { Update_Schema_Data, Delete_Schema_Result , GraphQL_Schema_Element, JSON_Value} from '@schematician/shared'
 import type { GraphQL_Schema_Link_Input, Schema_Element_Update } from './types.js'
 
 /**
@@ -148,7 +148,7 @@ Schema_Element_Ref.implement({
             resolve: schema_element =>
                 schema_element.element
         }),
-
+        uid: t.exposeString('uid'),
         required: t.exposeBoolean('required'),
 
         cardinality: t.expose('cardinality', {
@@ -166,7 +166,7 @@ export const Schema_Link_Input_Ref =
 
 Schema_Link_Input_Ref.implement({
     fields: t => ({
-        child_schema_uid: t.string({
+        element_schema_uid: t.string({
             required: true
         }),
 
@@ -284,22 +284,31 @@ builder.mutationFields(t => ({
         nullable: true,
 
         args: {
-            parent_schema_uid: t.arg.string({
-                required: true
-            }),
+            composite_schema_uid:
+                t.arg.string({
+                    required: true
+                }),
 
-            link: t.arg({
-                type: Schema_Link_Input_Ref,
-                required: true
-            })
+            link:
+                t.arg({
+                    type: Schema_Link_Input_Ref,
+                    required: true
+                })
         },
 
-        resolve: (_root, args, context) => {
+        resolve: (
+            _root,
+            args,
+            context
+        ) => {
             if (!context.user) {
-                throw new Error('Unauthorized')
+                throw new Error(
+                    'Unauthorized'
+                )
             }
 
-            const link = args.link
+            const link =
+                args.link
 
             if (link.role === 'HAS_ELEMENT') {
                 if (
@@ -308,39 +317,61 @@ builder.mutationFields(t => ({
                     link.cardinality == null
                 ) {
                     throw new Error(
-                        'HAS_ELEMENT requires index, required, and cardinality.'
+                        [
+                            'HAS_ELEMENT requires',
+                            'index, required,',
+                            'and cardinality.'
+                        ].join(' ')
                     )
                 }
 
                 return db_create_schema_link(
                     context.driver,
                     context.user.id,
-                    args.parent_schema_uid,
+                    args.composite_schema_uid,
                     {
                         role: 'HAS_ELEMENT',
-                        child_schema_uid:
-                            link.child_schema_uid,
-                        properties: {
-                            index: link.index,
-                            required: link.required,
-                            cardinality: link.cardinality,
-                            uid: uuidv4()
 
+                        element_schema_uid:
+                            link.element_schema_uid,
+
+                        properties: {
+                            index:
+                                link.index,
+
+                            required:
+                                link.required,
+
+                            cardinality:
+                                link.cardinality
                         }
                     }
+                )
+            }
+
+            if (
+                link.role !== 'HAS_PROPERTY' &&
+                link.role !== 'HAS_IDENTIFIER'
+            ) {
+                throw new Error(
+                    `Unsupported schema link role: ${link.role}`
                 )
             }
 
             return db_create_schema_link(
                 context.driver,
                 context.user.id,
-                args.parent_schema_uid,
+                args.composite_schema_uid,
                 {
-                    role: link.role,
-                    child_schema_uid:
-                        link.child_schema_uid,
+                    role:
+                        link.role,
+
+                    element_schema_uid:
+                        link.element_schema_uid,
+
                     properties: {
-                        value: link.value
+                        value:
+                            link.value as JSON_Value
                     }
                 }
             )

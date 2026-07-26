@@ -166,21 +166,21 @@ async function Create_Composite_Instance_Objects(
     for (const object of instance.objects) {
         if (
             used_schema_element_uids.has(
-                object.schema_element_uid
+                object.element_relationship_uid
             )
         ) {
             throw new Error(
                 [
                     `Composite instance ${instance.uid}`,
                     'contains more than one value for',
-                    `schema element ${object.schema_element_uid}.`,
+                    `schema element ${object.element_relationship_uid}.`,
                     'Use an array instance for an array-cardinality element.'
                 ].join(' ')
             )
         }
 
         used_schema_element_uids.add(
-            object.schema_element_uid
+            object.element_relationship_uid
         )
 
         await Validate_Composite_Object(
@@ -236,7 +236,7 @@ async function Create_Composite_Object_Link(
                 object.instance.uid,
 
             schema_element_uid:
-                object.schema_element_uid
+                object.element_relationship_uid
         }
     )
 
@@ -259,12 +259,12 @@ async function Validate_Composite_Object(
     const result = await transaction.run(
         `
         MATCH
-            (parent_schema:Schema {
-                uid: $parent_schema_uid
+            (composite_schema:Schema {
+                uid: $composite_schema_uid
             })
             -[schema_element:HAS_ELEMENT]->
             (element_schema:Schema {
-                uid: $child_schema_uid
+                uid: $element_schema_uid
             })
 
         WHERE
@@ -282,13 +282,13 @@ async function Validate_Composite_Object(
                 AS element_data_type
         `,
         {
-            parent_schema_uid:
+            composite_schema_uid:
                 parent_instance.schema_uid,
 
             schema_element_uid:
-                object.schema_element_uid,
+                object.element_relationship_uid,
 
-            child_schema_uid:
+            element_schema_uid:
                 object.instance.schema_uid
         }
     )
@@ -298,7 +298,7 @@ async function Validate_Composite_Object(
     if (!record) {
         throw new Error(
             [
-                `Schema element ${object.schema_element_uid}`,
+                `Schema element ${object.element_relationship_uid}`,
                 `does not belong to schema ${parent_instance.schema_uid}`,
                 'or does not reference child schema',
                 `${object.instance.schema_uid}.`
@@ -315,7 +315,7 @@ async function Validate_Composite_Object(
          */
         throw new Error(
             [
-                `Schema element ${object.schema_element_uid}`,
+                `Schema element ${object.element_relationship_uid}`,
                 'has Array cardinality.',
                 'It cannot currently be instantiated as a normal',
                 'single composite object.'

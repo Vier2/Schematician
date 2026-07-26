@@ -1447,6 +1447,7 @@ export function Convert_GraphQL_Schema_To_Schema(
         data_type: graphql_schema.data_type,
 
         elements: graphql_schema.elements?.map(element => ({
+            uid: element.uid,
             element: Convert_GraphQL_Schema_To_Schema(element.element),
             required: element.required,
             index: element.index,

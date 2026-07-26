@@ -20,12 +20,19 @@ export interface GraphQL_Constraints {
     uppercase?: boolean
 }
 export interface GraphQL_Schema_Element {
-    uid: string,
+    /**
+     * UID of this specific HAS_ELEMENT relationship.
+     */
+    uid: string
+
+    /**
+     * Child Schema node referenced by the relationship.
+     */
     element: GraphQL_Schema
+
+    index: number
     required: boolean
     cardinality: Cardinality
-    index: number
-
 }
 
 export interface Create_Schema_Link_Result {
@@ -53,6 +60,33 @@ export interface GraphQL_Schema_Association {
     value: JSON_Value
 }
 
+export interface Schema_Element_Link_Create_Input {
+    role: 'HAS_ELEMENT'
+
+    element_schema_uid: string
+
+    properties: {
+        index: number
+        required: boolean
+        cardinality: Cardinality
+    }
+}
+
+export interface Schema_Association_Link_Create_Input {
+    role:
+    | 'HAS_PROPERTY'
+    | 'HAS_IDENTIFIER'
+
+    element_schema_uid: string
+
+    properties: {
+        value: JSON_Value
+    }
+}
+
+export type Schema_Link_Create_Input =
+    | Schema_Element_Link_Create_Input
+    | Schema_Association_Link_Create_Input
 
 export type GraphQL_Instance =
 | GraphQL_Atomic_Instance
@@ -69,9 +103,26 @@ interface GraphQL_Instance_Base {
     data_type: Data_Type
 }
 export interface GraphQL_Instance_Object {
-    schema_element_uid: string
-
+    element_relationship_uid: string
     instance: GraphQL_Instance
+}
+
+export interface Schema_Element_Update_Input {
+    /**
+     * UID of the HAS_ELEMENT relationship.
+     *
+     * Undefined only for a genuinely new element.
+     */
+    uid?: string
+
+    /**
+     * UID of the child Schema node.
+     */
+    element_uid: string
+
+    index: number
+    required: boolean
+    cardinality: Cardinality
 }
 
 export interface GraphQL_Atomic_Instance

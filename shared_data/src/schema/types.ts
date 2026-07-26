@@ -1,3 +1,4 @@
+import { GraphQL_Instance } from "../graphql/types"
 
 export interface Schema_Element_Update {
     element_uid: string
@@ -65,6 +66,7 @@ export type Data_Type_Map = {
 }
 export type Cardinality = 'Single' | 'Array'
 export interface Schema_Element {
+    uid?: string
     element: Schema
     required: boolean
     index: number
@@ -95,12 +97,31 @@ export type Schema<T extends Data_Type = Data_Type> =
 
 export interface Schema_Instance {
     schema: Schema
-    root: Instance_Node
+    root: GraphQL_Instance
 }
 
+
+export type Instance_Path =
+    Instance_Path_Segment[]
+
+export type Instance_Path_Segment =
+    | {
+        type: 'Object'
+        schema_element_uid: string
+    }
+    | {
+        type: 'Array_Item'
+        index: number
+    }
 export interface Instance_Node {
     value?: unknown
     elements?: Instance_Node[]
+}
+
+export interface Rendered_Node {
+    schema: Schema
+    element: HTMLElement
+    path: Instance_Path
 }
 export interface Schema_Association_Update {
     schema_uid: string;

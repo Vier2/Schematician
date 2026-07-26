@@ -92,7 +92,7 @@ Instance_Object_Ref.implement({
     fields: t => ({
         schema_element_uid:
             t.exposeString(
-                'schema_element_uid'
+                'element_relationship_uid'
             ),
 
         instance: t.field({
