@@ -19,6 +19,12 @@ export interface GraphQL_Constraints {
     lowercase?: boolean
     uppercase?: boolean
 }
+
+export interface GraphQL_Instance_Value {
+    instance_uid: string
+    schema_uid: string
+    value: JSON_Value | null
+}
 export interface GraphQL_Schema_Element {
     /**
      * UID of this specific HAS_ELEMENT relationship.
@@ -84,6 +90,30 @@ export interface Schema_Association_Link_Create_Input {
     }
 }
 
+
+export interface Schema_Node_Record {
+    uid: string
+    data_type: Data_Type
+}
+
+export interface Schema_Element_Record {
+    relationship_uid: string
+    index: number
+    element_schema_uid: string
+}
+
+export interface Instance_Node_Update {
+    uid:
+    string
+
+    schema_uid:
+    string
+
+    data_type: Data_Type
+
+    value_json: JSON_Value
+}
+
 export type Schema_Link_Create_Input =
     | Schema_Element_Link_Create_Input
     | Schema_Association_Link_Create_Input
@@ -96,6 +126,14 @@ export type GraphQL_Instance =
 export interface GraphQL_Instance_Value {
     schema_uid: string
     value: JSON_Value
+}
+
+export interface Create_Array_Item_Result {
+    item:
+    GraphQL_Instance
+
+    index:
+    number
 }
 interface GraphQL_Instance_Base {
     uid: string
@@ -144,3 +182,4 @@ export interface GraphQL_Array_Instance
 
     items: GraphQL_Instance[]
 }
+

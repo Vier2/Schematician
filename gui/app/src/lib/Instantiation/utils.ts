@@ -1,14 +1,23 @@
-import type { Instance_Node, Schema, 
+import type { Schema, 
     Schema_Instance, Instance_Path, 
-    JSON_Value, GraphQL_Instance, GraphQL_Atomic_Instance } from "@schematician/shared"
+    GraphQL_Instance_Value,
+    Create_Array_Item_Result,
+    JSON_Value, GraphQL_Instance, GraphQL_Atomic_Instance, GraphQL_Array_Instance } from "@schematician/shared"
 import type { Rendered_Node, Rendered_Search_Value } from "$lib/Schema/models"
 import { Make_Bold_P_Element, 
     Apply_Hover_Highlight, Apply_Length_Value_CSS,
     Add_Flex_Style, Apply_Descending_Indentation,
     Make_Schema_Input_View, Make_Schema_Label
  } from "$lib/shared/utils"
-
-
+import type { Update_Instance_Values_Response, 
+    Remove_Array_Item_Response,
+    Create_Array_Item_Input,
+    Create_Array_Item_Response,
+    Remove_Array_Item_Input,
+    Save_Instance_Response, Save_Instance_Input, GraphQL_Field_Selection,
+GraphQL_Inline_Fragment } from "$lib/graphql/types"
+import { Send_GraphQL_Request, Build_Instance_Selection } from "$lib/graphql/utils"
+import { json } from "@sveltejs/kit"
  
 
 function Link_State(
@@ -212,7 +221,7 @@ export function Render_Search_Schema_Value_Recursive(
                         ...path,
                         {
                             type: 'Object',
-                            schema_element_uid:
+                            element_relationship_uid:
                                 schema_element.uid!
                         }
                     ],
@@ -262,6 +271,7 @@ export function Render_Search_Schema_Value_Recursive(
     return rendered_values
 }
 export function Render_Schema_Node(
+    api_url: string,
     schema: Schema,
     parent: HTMLElement,
     depth: number,
@@ -338,6 +348,7 @@ export function Render_Schema_Node(
             schema_element => {
                 console.log(`schema element in render node ${schema_element.element.name}`)
                 Render_Schema_Node(
+                    api_url,
                     schema_element.element,
                     parent,
                     depth + 1,
@@ -346,7 +357,7 @@ export function Render_Schema_Node(
                         ...path,
                         {
                             type: 'Object',
-                            schema_element_uid:
+                            element_relationship_uid:
                                 schema_element.uid!
                         }
                     ],
@@ -387,6 +398,7 @@ export function Render_Schema_Node(
             instance.items.forEach(
                 (_item, item_index) => {
                     Render_Schema_Node(
+                        api_url,
                         item_schema,
                         parent,
                         depth + 1,
@@ -417,16 +429,13 @@ export function Render_Schema_Node(
 
         add_instance_button.addEventListener(
             'click',
-            () => {
-                const {
-                    item_path
-                } = Add_Array_Item(
-                    state,
-                    schema,
-                    path
-                )
-
+            async function() {
+                const {item_path} = await Add_Array_Item(
+                    api_url,
+                    state,    path)
+                
                 Render_Schema_Node(
+                    api_url,
                     item_schema,
                     parent,
                     depth + 1,
@@ -591,13 +600,274 @@ export function Add_Event_Map_Elements(
     )
 }
 
+
+
+export async function Update_Instance_Values(
+    client_url: string,
+    root_instance_uid: string,
+    values: GraphQL_Instance_Value[]
+): Promise<GraphQL_Instance_Value[]> {
+    const response =
+        await fetch(
+            client_url,
+            {
+                method: 'POST',
+
+                headers: {
+                    'Content-Type':
+                        'application/json'
+                },
+
+                credentials:
+                    'include',
+
+                body:
+                    JSON.stringify({
+                        query: `
+                            mutation Update_Instance_Values(
+                                $root_instance_uid: String!,
+                                $values:
+                                    [Instance_Value_Update_Input!]!
+                            ) {
+                                update_instance_values(
+                                    root_instance_uid:
+                                        $root_instance_uid,
+
+                                    values:
+                                        $values
+                                ) {
+                                    instance_uid
+                                    schema_uid
+                                    value
+                                }
+                            }
+                        `,
+
+                        variables: {
+                            root_instance_uid,
+                            values
+                        }
+                    })
+            }
+        )
+
+    if (!response.ok) {
+        throw new Error(
+            [
+                'Instance update request failed.',
+                `HTTP status: ${response.status}.`
+            ].join(' ')
+        )
+    }
+
+    const result =
+        await response.json()as Update_Instance_Values_Response
+
+    if (
+        result.errors &&
+        result.errors.length > 0
+    ) {
+        throw new Error(
+            result.errors
+                .map(error => error.message)
+                .join('\n')
+        )
+    }
+
+    if (!result.data) {
+        throw new Error(
+            'The instance update returned no data.'
+        )
+    }
+
+    return result.data
+        .update_instance_values
+}
+
+
+
+export async function Save_Instance(
+    api_url: string,
+    instance: GraphQL_Instance
+): Promise<GraphQL_Instance> {
+    const result =
+        await Send_GraphQL_Request<
+            Save_Instance_Response,
+            Save_Instance_Input
+        >({
+            api_url,
+
+            operation_type:
+                'mutation',
+
+            operation_name:
+                'Save_Instance',
+
+            field_name:
+                'save_instance',
+
+            variables: [
+                {
+                    name:
+                        'instance',
+
+                    type:
+                        'JSON!'
+                }
+            ],
+
+            input_data: {
+                instance
+            },
+
+            selection: [
+                '__typename',
+
+                {
+                    fragment_on:
+                        'Atomic_Instance',
+
+                    selection: [
+                        'uid',
+                        'schema_uid',
+                        'data_type',
+                        'value'
+                    ]
+                },
+
+                {
+                    fragment_on:
+                        'Composite_Instance',
+
+                    selection: [
+                        'uid',
+                        'schema_uid',
+                        'data_type'
+                    ]
+                },
+
+                {
+                    fragment_on:
+                        'Array_Instance',
+
+                    selection: [
+                        'uid',
+                        'schema_uid',
+                        'data_type'
+                    ]
+                }
+            ]
+        })
+
+    const saved_instance =
+        result.save_instance
+
+    if (!saved_instance) {
+        throw new Error(
+            [
+                `Could not save instance "${instance.uid}".`,
+                'The root instance was not found or is not owned by the current user.'
+            ].join(' ')
+        )
+    }
+
+    return instance
+}
+export function Collect_Instance_Values(
+    instance: GraphQL_Instance,
+    values: GraphQL_Instance_Value[] = []
+): GraphQL_Instance_Value[] {
+    if (
+        instance.data_type === 'String' ||
+        instance.data_type === 'Number' ||
+        instance.data_type === 'Boolean'
+    ) {
+        values.push({
+            instance_uid:
+                instance.uid,
+
+            schema_uid:
+                instance.schema_uid,
+
+            value:
+                instance.value
+        })
+
+        return values
+    }
+
+    if (instance.data_type === 'Composite') {
+        for (const object of instance.objects) {
+            Collect_Instance_Values(
+                object.instance,
+                values
+            )
+        }
+
+        return values
+    }
+    if (instance.data_type === 'Array') {
+        for (const item of instance.items) {
+            Collect_Instance_Values(
+                item,
+                values
+            )
+        }
+    }
+
+    return values
+}
 export function Add_Save_Instance_Function(
     button: HTMLButtonElement,
-    state: Schema_Instance
-) {
-    button.addEventListener('click', function() {
-        console.log(`Instance State ${JSON.stringify(state)}`)
-    })
+    state: Schema_Instance,
+    client_url: string
+): void {
+    button.addEventListener(
+        'click',
+        async (): Promise<void> => {
+            const original_text =
+                button.textContent ??
+                'Save'
+
+            try {
+                button.disabled = true
+                button.textContent =
+                    'Saving...'
+
+                console.log(
+                    'Saving instance state:',
+                    state.root
+                )
+
+                await Save_Instance(
+                    client_url,
+                    state.root
+                )
+
+                button.textContent =
+                    'Saved'
+            } catch (error) {
+                console.error(
+                    'Could not save instance:',
+                    error
+                )
+
+                button.textContent =
+                    'Save failed'
+            } finally {
+                window.setTimeout(
+                    () => {
+                        button.disabled =
+                            false
+
+                        button.textContent =
+                            original_text
+                    },
+                    1200
+                )
+            }
+        }
+    )
 }
 export function Render_Adjacent_Elements(
     current_index: number,
@@ -645,11 +915,13 @@ export function Add_Hierarchical_Elements(
     map_div: HTMLDivElement,
     top_level_schema: Schema,
     state: Schema_Instance,
+    api_url:string
 
 ) {
     console.log(`
         schema in add hiercahical elements ${JSON.stringify(top_level_schema)}`)
     return Render_Schema_Node(
+        api_url,
         top_level_schema,
         map_div,
         0,
@@ -770,7 +1042,7 @@ export function Render_Schema_Value_Recursive(
                         ...path,
                         {
                             type: 'Object',
-                            schema_element_uid:
+                            element_relationship_uid:
                                 schema_element.uid!
                         }
                     ],
@@ -851,154 +1123,237 @@ export function Render_Parent_Context(
 
     return div
 }
-export function Create_Instance_State(
-    schema: Schema
-): Schema_Instance {
-    return {
-        schema,
-        root: Create_Instance_Node(schema)
-    }
-}
 
-export function Create_Instance_Node(
-    schema: Schema
-): GraphQL_Instance {
-    if (!schema.uid) {
-        throw new Error(
-            `Cannot create an instance for schema "${schema.name}" because the schema has no UID.`
-        )
-    }
 
-    const base = {
-        uid: crypto.randomUUID(),
-        schema_uid: schema.uid
-    }
-
-    switch (schema.data_type) {
-        case 'String':
-        case 'Number':
-        case 'Boolean':
-            return {
-                ...base,
-                data_type: schema.data_type,
-                value: null
-            }
-
-        case 'Composite':
-            return {
-                ...base,
-                data_type: 'Composite',
-                objects:
-                    schema.elements?.map(
-                        schema_element => ({
-                            element_relationship_uid:
-                                schema_element.uid!,
-                            instance:
-                                Create_Instance_Node(
-                                    schema_element.element
-                                )
-                        })
-                    ) ?? []
-            }
-
-        case 'Array': {
-            const item_schema_element =
-                schema.elements?.[0]
-
-            if (!item_schema_element) {
-                throw new Error(
-                    `Array schema "${schema.name}" has no item schema.`
-                )
-            }
-
-            if (schema.elements?.length !== 1) {
-                throw new Error(
-                    `Array schema "${schema.name}" must contain exactly one item schema.`
-                )
-            }
-
-            return {
-                ...base,
-                data_type: 'Array',
-                items: [
-                    Create_Instance_Node(
-                        item_schema_element.element
-                    )
-                ]
-            }
-        }
-
-        default: {
-            const exhaustive_check: never =
-                schema.data_type
-
-            throw new Error(
-                `Unsupported schema data type: ${exhaustive_check}`
-            )
-        }
-    }
-}
-export function Add_Array_Item(
+export async function Remove_Array_Item(
+    api_url: string,
     state: Schema_Instance,
-    array_schema: Schema,
-    array_path: Instance_Path
-): {
-    item: GraphQL_Instance
-    item_path: Instance_Path
-    index: number
-} {
+    array_path: Instance_Path,
+    item_index: number
+): Promise<void> {
     const array_instance =
         Get_Instance_Node(
             state,
             array_path
         )
 
-    if (array_instance.data_type !== 'Array') {
-        throw new Error(
-            `Instance at the supplied path is not an array.`
-        )
-    }
-
-    const item_schema_element =
-        array_schema.elements?.[0]
-
-    if (!item_schema_element) {
-        throw new Error(
-            `Array schema ${array_schema.name} does not define an item schema.`
-        )
-    }
-
     if (
-        array_schema.elements?.length !== 1
+        array_instance.data_type !==
+        'Array'
     ) {
         throw new Error(
-            `Array schema ${array_schema.name} must have exactly one item schema.`
+            'Instance at the supplied path is not an array.'
         )
     }
 
     const item =
-        Create_Instance_Node(
-            item_schema_element.element
+        array_instance.items[
+        item_index
+        ]
+
+    if (!item) {
+        throw new Error(
+            `Array item index "${item_index}" does not exist.`
+        )
+    }
+
+    const removed =
+        await Request_Remove_Array_Item(
+            api_url,
+            array_instance.uid,
+            item.uid
         )
 
-    array_instance.items.push(item)
+    if (!removed) {
+        throw new Error(
+            `Could not remove array item "${item.uid}".`
+        )
+    }
 
-    const index =
+    /*
+     * Change local state only after the server succeeds.
+     */
+    array_instance.items.splice(
+        item_index,
+        1
+    )
+}
+
+export async function Request_Remove_Array_Item(
+    api_url: string,
+    array_instance_uid: string,
+    item_instance_uid: string
+): Promise<boolean> {
+    const result =
+        await Send_GraphQL_Request<
+            Remove_Array_Item_Response,
+            Remove_Array_Item_Input
+        >({
+            api_url,
+
+            operation_type:
+                'mutation',
+
+            operation_name:
+                'Remove_Array_Item',
+
+            field_name:
+                'remove_array_item',
+
+            variables: [
+                {
+                    name:
+                        'array_instance_uid',
+
+                    type:
+                        'String!'
+                },
+
+                {
+                    name:
+                        'item_instance_uid',
+
+                    type:
+                        'String!'
+                }
+            ],
+
+            input_data: {
+                array_instance_uid,
+                item_instance_uid
+            },
+
+            /*
+             * Your current Send_GraphQL_Request always places a
+             * selection set after the field. GraphQL scalar fields
+             * cannot have selection sets.
+             *
+             * This issue is addressed in section 13.
+             */
+            selection: []
+        })
+
+    return result.remove_array_item
+}
+export async function Add_Array_Item(
+    api_url: string,
+    state: Schema_Instance,
+    array_path: Instance_Path
+): Promise<{
+    item: GraphQL_Instance
+    item_path: Instance_Path
+    index: number
+}> {
+    const array_instance =
+        Get_Instance_Node(
+            state,
+            array_path
+        )
+
+    if (
+        array_instance.data_type !==
+        'Array'
+    ) {
+        throw new Error(
+            'Instance at the supplied path is not an array.'
+        )
+    }
+
+    const result =
+        await Request_Create_Array_Item(
+            api_url,
+            array_instance.uid
+        )
+
+    if (!Array.isArray(array_instance.items)) {
+        array_instance.items = []
+    }
+
+    /*
+     * New server-created items are appended.
+     *
+     * Do not construct a sparse client array based on a database
+     * relationship index.
+     */
+    array_instance.items.push(
+        result.item
+    )
+
+    const local_index =
         array_instance.items.length - 1
 
     const item_path: Instance_Path = [
         ...array_path,
         {
-            type: 'Array_Item',
-            index
+            type:
+                'Array_Item',
+
+            index:
+                local_index
         }
     ]
 
     return {
-        item,
+        item:
+            result.item,
+
         item_path,
-        index
+
+        index:
+            local_index
     }
+}
+
+export async function Request_Create_Array_Item(
+    api_url: string,
+    array_instance_uid: string
+): Promise<Create_Array_Item_Result> {
+    const result =
+        await Send_GraphQL_Request<
+            Create_Array_Item_Response,
+            Create_Array_Item_Input
+        >({
+            api_url,
+
+            operation_type:
+                'mutation',
+
+            operation_name:
+                'Create_Array_Item',
+
+            field_name:
+                'create_array_item',
+
+            variables: [
+                {
+                    name:
+                        'array_instance_uid',
+
+                    type:
+                        'String!'
+                }
+            ],
+
+            input_data: {
+                array_instance_uid
+            },
+
+            selection: [
+                'index',
+
+                {
+                    field:
+                        'item',
+
+                    selection:
+                        Build_Instance_Selection(
+                            5
+                        )
+                }
+            ]
+        })
+
+    return result.create_array_item
 }
 export function Get_Instance_Node(
     state: Schema_Instance,
@@ -1027,7 +1382,7 @@ export function Get_Instance_Node(
                     current_object =>
                         current_object
                             .element_relationship_uid ===
-                        segment.schema_element_uid
+                        segment.element_relationship_uid
                 )
 
             if (!object) {
@@ -1036,7 +1391,7 @@ export function Get_Instance_Node(
                         'Composite instance',
                         current_instance.uid,
                         'does not contain schema element',
-                        segment.schema_element_uid
+                        segment.element_relationship_uid
                     ].join(' ')
                 )
             }

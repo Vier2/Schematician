@@ -1,10 +1,9 @@
 import { Driver, ManagedTransaction } from 'neo4j-driver'
 import type { GraphQL_Schema ,GraphQL_Schema_Element,
-     Cardinality, Create_Schema_Link_Result } from '@schematician/shared'
+     Cardinality, Schema_Link_Create_Input } from '@schematician/shared'
 import type { Search_Query, Field_Role, Update_Schema_Data } from '@schematician/shared'
 import type { Delete_Schema_Result, Data_Type, 
-    Schema_Association_Update, Schema_Element_Update } from '@schematician/shared'
-import type { Schema_Link_Role, Schema_Link_Input } from './types.js'
+    Schema_Association_Update, Schema_Element_Update_Input } from '@schematician/shared'
 import { v4 as uuidv4 } from 'uuid'
 export async function db_get_all_schemas(
     driver: Driver,
@@ -22,6 +21,9 @@ export async function db_get_all_schemas(
         await session.close()
     }
 }
+
+
+
 export async function db_get_schema_by_uid(
     driver: Driver,
     user_uid: string,
@@ -51,45 +53,116 @@ export async function db_get_schema_by_uid(
 async function Create_Schema_Link_In_Transaction(
     transaction: ManagedTransaction,
     user_uid: string,
-    parent_schema_uid: string,
-    child_schema_uid: string,
-    role: Schema_Link_Role,
-    index?: number,
-    value?: unknown
+    composite_schema_uid: string,
+    link: Schema_Link_Create_Input
 ): Promise<void> {
-    const result = await transaction.run(
+    let query: string
+    let parameters: Record<string, unknown>
+
+    if (link.role === 'HAS_ELEMENT') {
+        const relationship_uid =
+            uuidv4()
+
+        query = `
+            MATCH
+                (user:User {
+                    uid: $user_uid
+                })
+                -[:OWNS]->
+                (parent:Schema {
+                    uid: $composite_schema_uid
+                })
+
+            MATCH
+                (user)
+                -[:OWNS]->
+                (child:Schema {
+                    uid: $element_schema_uid
+                })
+
+            CREATE
+                (parent)-[relationship:HAS_ELEMENT {
+                    uid: $relationship_uid,
+                    index: $index,
+                    required: $required,
+                    cardinality: $cardinality
+                }]->(child)
+
+            RETURN relationship
         `
-        MATCH
-            (u:User {uid: $user_uid})
-            -[:OWNS]->
-            (parent:Schema {uid: $parent_schema_uid})
 
-        MATCH
-            (u)-[:OWNS]->
-            (child:Schema {uid: $child_schema_uid})
-
-        MERGE
-            (parent)-[relationship:${role}]->(child)
-
-        SET
-            relationship.index = $index,
-            relationship.value = $value
-        `,
-        {
+        parameters = {
             user_uid,
-            parent_schema_uid,
-            child_schema_uid,
-            index: index ?? null,
-            value: value ?? null
-        }
-    )
+            composite_schema_uid,
 
-    if (result.summary.counters.updates().relationshipsCreated === 0) {
-        /*
-         * MERGE may have matched an existing relationship, so this does not
-         * always indicate failure. The MATCH clauses failing would simply
-         * produce no records, however.
-         */
+            element_schema_uid:
+                link.element_schema_uid,
+
+            relationship_uid,
+
+            index:
+                link.properties.index,
+
+            required:
+                link.properties.required,
+
+            cardinality:
+                link.properties.cardinality
+        }
+    } else {
+        query = `
+            MATCH
+                (user:User {
+                    uid: $user_uid
+                })
+                -[:OWNS]->
+                (parent:Schema {
+                    uid: $composite_schema_uid
+                })
+
+            MATCH
+                (user)
+                -[:OWNS]->
+                (child:Schema {
+                    uid: $element_schema_uid
+                })
+
+            CREATE
+                (parent)-[relationship:${link.role} {
+                    value: $value
+                }]->(child)
+
+            RETURN relationship
+        `
+
+        parameters = {
+            user_uid,
+            composite_schema_uid,
+
+            element_schema_uid:
+                link.element_schema_uid,
+
+            value:
+                link.properties.value
+        }
+    }
+
+    const result =
+        await transaction.run(
+            query,
+            parameters
+        )
+
+    if (result.records.length === 0) {
+        throw new Error(
+            [
+                `Could not create ${link
+                    .role} relationship.`,
+                `Parent schema: ${composite_schema_uid}.`,
+                `Child schema: ${link.element_schema_uid}.`,
+                'The user or one of the schemas was not found.'
+            ].join(' ')
+        )
     }
 }
 export async function db_create_schema(
@@ -167,11 +240,21 @@ export async function db_create_schema(
                 /*
                  * Elements are ordered structural connections.
                  */
-                for (const [index, child_schema] of elements.entries()) {
-                    if (!child_schema.element.uid) {
+                for (
+                    const [fallback_index, schema_element]
+                    of elements.entries()
+                ) {
+                    const element_schema_uid =
+                        schema_element.element.uid
+
+                    if (!element_schema_uid) {
                         throw new Error(
-                            `Element "${child_schema.element.name}" has no uid. ` +
-                            'Referenced schemas must be created before they can be linked.'
+                            [
+                                `Element "${schema_element.element.name}"`,
+                                'has no UID.',
+                                'Referenced schemas must be created',
+                                'before they can be linked.'
+                            ].join(' ')
                         )
                     }
 
@@ -179,9 +262,23 @@ export async function db_create_schema(
                         transaction,
                         user_uid,
                         schema.uid,
-                        child_schema.element.uid,
-                        'HAS_ELEMENT',
-                        index
+                        {
+                            role: 'HAS_ELEMENT',
+
+                            element_schema_uid,
+
+                            properties: {
+                                index:
+                                    schema_element.index ??
+                                    fallback_index,
+
+                                required:
+                                    schema_element.required,
+
+                                cardinality:
+                                    schema_element.cardinality
+                            }
+                        }
                     )
                 }
 
@@ -189,10 +286,13 @@ export async function db_create_schema(
                  * Properties are schema associations. Their values belong to
                  * the relationship, not the child Schema node.
                  */
-                for (const [index, property] of properties.entries()) {
-                    if (!property.schema.uid) {
+                for (const property of properties) {
+                    const property_schema_uid =
+                        property.schema.uid
+
+                    if (!property_schema_uid) {
                         throw new Error(
-                            `Property schema "${property.schema.name}" has no uid.`
+                            `Property schema "${property.schema.name}" has no UID.`
                         )
                     }
 
@@ -200,20 +300,30 @@ export async function db_create_schema(
                         transaction,
                         user_uid,
                         schema.uid,
-                        property.schema.uid,
-                        'HAS_PROPERTY',
-                        index,
-                        property.value
+                        {
+                            role: 'HAS_PROPERTY',
+
+                            element_schema_uid:
+                                property_schema_uid,
+
+                            properties: {
+                                value:
+                                    property.value
+                            }
+                        }
                     )
                 }
 
                 /*
                  * Identifiers follow the same association model.
                  */
-                for (const [index, identifier] of identifiers.entries()) {
-                    if (!identifier.schema.uid) {
+                for (const identifier of identifiers) {
+                    const identifier_schema_uid =
+                        identifier.schema.uid
+
+                    if (!identifier_schema_uid) {
                         throw new Error(
-                            `Identifier schema "${identifier.schema.name}" has no uid.`
+                            `Identifier schema "${identifier.schema.name}" has no UID.`
                         )
                     }
 
@@ -221,13 +331,19 @@ export async function db_create_schema(
                         transaction,
                         user_uid,
                         schema.uid,
-                        identifier.schema.uid,
-                        'HAS_IDENTIFIER',
-                        index,
-                        identifier.value
+                        {
+                            role: 'HAS_IDENTIFIER',
+
+                            element_schema_uid:
+                                identifier_schema_uid,
+
+                            properties: {
+                                value:
+                                    identifier.value
+                            }
+                        }
                     )
                 }
-
                 return record.get('schema').properties as GraphQL_Schema
             }
         )
@@ -241,108 +357,51 @@ export async function db_create_schema(
 export async function db_create_schema_link(
     driver: Driver,
     user_uid: string,
-    parent_schema_uid: string,
-    link: Schema_Link_Input
+    composite_schema_uid: string,
+    link: Schema_Link_Create_Input
 ): Promise<GraphQL_Schema | null> {
-    const session = driver.session()
+    const session =
+        driver.session()
 
     try {
-        let query: string
-        let parameters: Record<string, unknown>
+        return await session.executeWrite(
+            async transaction => {
+                await Create_Schema_Link_In_Transaction(
+                    transaction,
+                    user_uid,
+                    composite_schema_uid,
+                    link
+                )
 
-        if (link.role === 'HAS_ELEMENT') {
-            const schema_element_uid =
-                uuidv4()
-
-            query = `
-                MATCH
-                    (u:User {uid: $user_uid})
-                    -[:OWNS]->
-                    (parent:Schema {
-                        uid: $parent_schema_uid
-                    })
-
-                MATCH
-                    (u)
-                    -[:OWNS]->
-                    (child:Schema {
-                        uid: $child_schema_uid
-                    })
-
-                CREATE
-                    (parent)-[r:HAS_ELEMENT {
-                        uid: $schema_element_uid,
-                        index: $index,
-                        required: $required,
-                        cardinality: $cardinality
-                    }]->(child)
-
-                RETURN parent
-            `
-
-            parameters = {
-                user_uid,
-                parent_schema_uid,
-                child_schema_uid:
-                    link.child_schema_uid,
-
-                schema_element_uid,
-
-                index:
-                    link.properties.index,
-
-                required:
-                    link.properties.required,
-
-                cardinality:
-                    link.properties.cardinality
-            }
-        } else {
-            query = `
-                MATCH
-                    (u:User {uid: $user_uid})
-                    -[:OWNS]->
-                    (parent:Schema {
-                        uid: $parent_schema_uid
-                    })
-
-                MATCH
-                    (u)
-                    -[:OWNS]->
-                    (child:Schema {
-                        uid: $child_schema_uid
-                    })
-
-                CREATE
-                    (parent)-[r:${link.role}]->(child)
-
-                        SET r.value = $value
+                const result =
+                    await transaction.run(
+                        `
+                        MATCH
+                            (user:User {
+                                uid: $user_uid
+                            })
+                            -[:OWNS]->
+                            (parent:Schema {
+                                uid: $composite_schema_uid
+                            })
 
                         RETURN parent
-            `
+                        `,
+                        {
+                            user_uid,
+                            composite_schema_uid
+                        }
+                    )
 
-            parameters = {
-                user_uid,
-                parent_schema_uid,
-                child_schema_uid:
-                    link.child_schema_uid,
+                const record =
+                    result.records[0]
 
-                value:
-                    link.properties.value
+                return record
+                    ? record.get('parent')
+                        .properties as GraphQL_Schema
+                    : null
             }
-        }
-
-        const result = await session.run(
-            query,
-            parameters
         )
-
-        const record = result.records[0]
-
-        return record
-            ? record.get('parent')
-                .properties as GraphQL_Schema
-            : null
     } finally {
         await session.close()
     }
@@ -352,7 +411,7 @@ export async function db_create_schema_link(
 export async function db_get_schema_elements(
     driver: Driver,
     user_uid: string,
-    parent_schema_uid: string
+    composite_schema_uid: string
 ): Promise<GraphQL_Schema_Element[]> {
     const session = driver.session()
 
@@ -362,7 +421,7 @@ export async function db_get_schema_elements(
             MATCH
                 (u:User {uid: $user_uid})
                 -[:OWNS]->
-                (parent:Schema {uid: $parent_schema_uid})
+                (parent:Schema {uid: $composite_schema_uid})
 
             MATCH
                 (parent)
@@ -380,7 +439,7 @@ export async function db_get_schema_elements(
             `,
             {
                 user_uid,
-                parent_schema_uid
+                composite_schema_uid
             }
         )
 
@@ -587,61 +646,100 @@ export async function db_search_schemas(
 async function Replace_Schema_Element_Links(
     transaction: ManagedTransaction,
     user_uid: string,
-    parent_schema_uid: string,
-    elements: Schema_Element_Update[]
+    composite_schema_uid: string,
+    elements: Schema_Element_Update_Input[]
 ): Promise<void> {
     await transaction.run(
         `
         MATCH
-            (u:User {uid: $user_uid})
+            (user:User {
+                uid: $user_uid
+            })
             -[:OWNS]->
-            (parent:Schema {uid: $parent_schema_uid})
+            (parent:Schema {
+                uid: $composite_schema_uid
+            })
 
-        MATCH (parent)-[r:HAS_ELEMENT]->()
-        DELETE r
+        OPTIONAL MATCH
+            (parent)-[relationship:HAS_ELEMENT]->()
+
+        DELETE relationship
         `,
         {
             user_uid,
-            parent_schema_uid
+            composite_schema_uid
         }
     )
 
-    for (const schema_element of elements) {
-        await transaction.run(
-            `
-            MATCH
-                (u:User {uid: $user_uid})
-                -[:OWNS]->
-                (parent:Schema {uid: $parent_schema_uid})
+    const relationship_inputs =
+        elements.map(schema_element => ({
+            relationship_uid:
+                schema_element.uid ??
+                uuidv4(),
 
-            MATCH
-                (u)
-                -[:OWNS]->
-                (child:Schema {uid: $child_schema_uid})
+            element_schema_uid:
+                schema_element.element_uid,
 
-            CREATE (parent)-[r:HAS_ELEMENT]->(child)
+            index:
+                schema_element.index,
 
-            SET
-                r.index = $index,
-                r.required = $required,
-                r.cardinality = $cardinality
-            `,
-            {
-                user_uid,
-                parent_schema_uid,
-                child_schema_uid: schema_element.element_uid,
-                index: schema_element.index,
-                required: schema_element.required,
-                cardinality: schema_element.cardinality
-            }
-        )
-    }
+            required:
+                schema_element.required,
+
+            cardinality:
+                schema_element.cardinality
+        }))
+
+    await transaction.run(
+        `
+        UNWIND
+            $relationship_inputs
+            AS relationship_input
+
+        MATCH
+            (user:User {
+                uid: $user_uid
+            })
+            -[:OWNS]->
+            (parent:Schema {
+                uid: $composite_schema_uid
+            })
+
+        MATCH
+            (user)
+            -[:OWNS]->
+            (child:Schema {
+                uid:
+                    relationship_input.element_schema_uid
+            })
+
+        CREATE
+            (parent)-[relationship:HAS_ELEMENT {
+                uid:
+                    relationship_input.relationship_uid,
+
+                index:
+                    relationship_input.index,
+
+                required:
+                    relationship_input.required,
+
+                cardinality:
+                    relationship_input.cardinality
+            }]->(child)
+        `,
+        {
+            user_uid,
+            composite_schema_uid,
+            relationship_inputs
+        }
+    )
 }
 
 async function Replace_Schema_Links(
     transaction: ManagedTransaction,
     user_uid: string,
-    parent_schema_uid: string,
+    composite_schema_uid: string,
     relationship_type:
         | 'HAS_ELEMENT'
         | 'HAS_PROPERTY'
@@ -659,7 +757,7 @@ async function Replace_Schema_Links(
             (u:User {uid: $user_uid})
             -[:OWNS]->
             (parent:Schema {
-                uid: $parent_schema_uid
+                uid: $composite_schema_uid
             })
 
         OPTIONAL MATCH
@@ -669,7 +767,7 @@ async function Replace_Schema_Links(
         `,
         {
             user_uid,
-            parent_schema_uid
+            composite_schema_uid
         }
     )
 
@@ -685,7 +783,7 @@ async function Replace_Schema_Links(
             (u:User {uid: $user_uid})
             -[:OWNS]->
             (parent:Schema {
-                uid: $parent_schema_uid
+                uid: $composite_schema_uid
             })
 
         MATCH
@@ -703,7 +801,7 @@ async function Replace_Schema_Links(
         `,
         {
             user_uid,
-            parent_schema_uid,
+            composite_schema_uid,
             associations
         }
     )

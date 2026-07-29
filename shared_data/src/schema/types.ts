@@ -107,7 +107,7 @@ export type Instance_Path =
 export type Instance_Path_Segment =
     | {
         type: 'Object'
-        schema_element_uid: string
+        element_relationship_uid: string
     }
     | {
         type: 'Array_Item'

@@ -93,7 +93,7 @@ export async function Create_Instance(
                         {
                             field: 'objects',
                             selection: [
-                                'schema_element_uid'
+                                'element_relationship_uid'
                             ]
                         }
                     ]
@@ -395,7 +395,7 @@ export function Build_Instance_Selection(
         composite_selection.push({
             field: 'objects',
             selection: [
-                'schema_element_uid',
+                'element_relationship_uid',
                 {
                     field: 'instance',
                     selection: recursive_selection
@@ -454,7 +454,7 @@ export async function Get_Instance_By_UID(
                 uid
             },
 
-            selection: Build_Instance_Selection(2),
+            selection: Build_Instance_Selection(5),
 
             token
         })

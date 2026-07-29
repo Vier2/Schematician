@@ -7,9 +7,13 @@ import type {
     GraphQL_Atomic_Instance,
     GraphQL_Composite_Instance, 
     GraphQL_Instance_Object,
-    GraphQL_Array_Instance, Data_Type
+    GraphQL_Array_Instance, Data_Type,
+    Create_Array_Item_Result,
+    Instance_Node_Update,
+    Schema_Node_Record,
+    Schema_Element_Record
      } from '@schematician/shared'
-
+import { v4 as uuidv4 } from 'uuid'
 
 
 export async function db_get_all_instances(
@@ -62,7 +66,330 @@ export async function db_create_instance(
         await session.close()
     }
 }
+export async function db_remove_array_item(
+    driver: Driver,
+    user_uid: string,
+    array_instance_uid: string,
+    item_instance_uid: string
+): Promise<boolean> {
+    const session =
+        driver.session()
 
+    try {
+        return await session.executeWrite(
+            async transaction => {
+                const verification_result =
+                    await transaction.run(
+                        `
+                        MATCH
+                            (user:User {
+                                uid: $user_uid
+                            })
+                            -[:OWNS]->
+                            (root:Instance)
+
+                        MATCH
+                            (root)
+                            -[
+                                :HAS_OBJECT|HAS_ITEM
+                                *0..
+                            ]->
+                            (array:Instance {
+                                uid:
+                                    $array_instance_uid,
+
+                                data_type:
+                                    'Array'
+                            })
+
+                        MATCH
+                            (array)
+                            -[:HAS_ITEM]->
+                            (item:Instance {
+                                uid:
+                                    $item_instance_uid
+                            })
+
+                        RETURN
+                            item.uid
+                                AS item_uid
+                        `,
+                        {
+                            user_uid,
+                            array_instance_uid,
+                            item_instance_uid
+                        }
+                    )
+
+                if (
+                    verification_result.records.length ===
+                    0
+                ) {
+                    return false
+                }
+
+                await transaction.run(
+                    `
+                    MATCH
+                        (item:Instance {
+                            uid:
+                                $item_instance_uid
+                        })
+
+                    OPTIONAL MATCH
+                        (item)
+                        -[
+                            :HAS_OBJECT|HAS_ITEM
+                            *0..
+                        ]->
+                        (descendant:Instance)
+
+                    WITH
+                        collect(
+                            DISTINCT descendant
+                        ) AS nodes_to_delete
+
+                    UNWIND
+                        nodes_to_delete AS node_to_delete
+
+                    DETACH DELETE
+                        node_to_delete
+                    `,
+                    {
+                        item_instance_uid
+                    }
+                )
+
+                await Reindex_Array_Items_In_Transaction(
+                    transaction,
+                    array_instance_uid
+                )
+
+                return true
+            }
+        )
+    } finally {
+        await session.close()
+    }
+}
+async function Reindex_Array_Items_In_Transaction(
+    transaction: ManagedTransaction,
+    array_instance_uid: string
+): Promise<void> {
+    const result =
+        await transaction.run(
+            `
+            MATCH
+                (array:Instance {
+                    uid:
+                        $array_instance_uid
+                })
+                -[
+                    relationship:HAS_ITEM
+                ]->
+                (item:Instance)
+
+            RETURN
+                item.uid
+                    AS item_uid,
+
+                relationship.index
+                    AS current_index
+
+            ORDER BY
+                relationship.index
+            `,
+            {
+                array_instance_uid
+            }
+        )
+
+    for (
+        const [new_index, record]
+        of result.records.entries()
+    ) {
+        const item_uid =
+            record.get(
+                'item_uid'
+            ) as string
+
+        await transaction.run(
+            `
+            MATCH
+                (array:Instance {
+                    uid:
+                        $array_instance_uid
+                })
+                -[
+                    relationship:HAS_ITEM
+                ]->
+                (item:Instance {
+                    uid:
+                        $item_uid
+                })
+
+            SET
+                relationship.index =
+                    $new_index
+            `,
+            {
+                array_instance_uid,
+                item_uid,
+                new_index
+            }
+        )
+    }
+}
+
+export async function db_move_array_item(
+    driver: Driver,
+    user_uid: string,
+    array_instance_uid: string,
+    item_instance_uid: string,
+    target_index: number
+): Promise<boolean> {
+    const session =
+        driver.session()
+
+    try {
+        return await session.executeWrite(
+            async transaction => {
+                const result =
+                    await transaction.run(
+                        `
+                        MATCH
+                            (user:User {
+                                uid: $user_uid
+                            })
+                            -[:OWNS]->
+                            (root:Instance)
+
+                        MATCH
+                            (root)
+                            -[
+                                :HAS_OBJECT|HAS_ITEM
+                                *0..
+                            ]->
+                            (array:Instance {
+                                uid:
+                                    $array_instance_uid,
+
+                                data_type:
+                                    'Array'
+                            })
+
+                        MATCH
+                            (array)
+                            -[
+                                relationship:HAS_ITEM
+                            ]->
+                            (item:Instance)
+
+                        RETURN
+                            item.uid
+                                AS item_uid,
+
+                            relationship.index
+                                AS current_index
+
+                        ORDER BY
+                            relationship.index
+                        `,
+                        {
+                            user_uid,
+                            array_instance_uid
+                        }
+                    )
+
+                if (
+                    result.records.length ===
+                    0
+                ) {
+                    return false
+                }
+
+                const item_uids =
+                    result.records.map(
+                        record =>
+                            record.get(
+                                'item_uid'
+                            ) as string
+                    )
+
+                const current_index =
+                    item_uids.indexOf(
+                        item_instance_uid
+                    )
+
+                if (current_index === -1) {
+                    return false
+                }
+
+                if (
+                    target_index < 0 ||
+                    target_index >=
+                    item_uids.length
+                ) {
+                    throw new Error(
+                        [
+                            `Target index "${target_index}"`,
+                            'is outside the array bounds.'
+                        ].join(' ')
+                    )
+                }
+
+                const [
+                    moved_item_uid
+                ] =
+                    item_uids.splice(
+                        current_index,
+                        1
+                    )
+
+                item_uids.splice(
+                    target_index,
+                    0,
+                    moved_item_uid!
+                )
+
+                for (
+                    const [index, item_uid]
+                    of item_uids.entries()
+                ) {
+                    await transaction.run(
+                        `
+                        MATCH
+                            (array:Instance {
+                                uid:
+                                    $array_instance_uid
+                            })
+                            -[
+                                relationship:HAS_ITEM
+                            ]->
+                            (item:Instance {
+                                uid:
+                                    $item_uid
+                            })
+
+                        SET
+                            relationship.index =
+                                $index
+                        `,
+                        {
+                            array_instance_uid,
+                            item_uid,
+                            index
+                        }
+                    )
+                }
+
+                return true
+            }
+        )
+    } finally {
+        await session.close()
+    }
+}
 
 async function Create_Instance_Node(
     transaction: ManagedTransaction,
@@ -116,6 +443,170 @@ async function Create_Instance_Node(
                 'Check schema ownership and data-type compatibility.'
             ].join(' ')
         )
+    }
+}
+export async function db_create_array_item(
+    driver: Driver,
+    user_uid: string,
+    array_instance_uid: string
+): Promise<Create_Array_Item_Result> {
+    const session =
+        driver.session()
+
+    try {
+        return await session.executeWrite(
+            async transaction => {
+                const array_result =
+                    await transaction.run(
+                        `
+                        MATCH
+                            (user:User {
+                                uid: $user_uid
+                            })
+                            -[:OWNS]->
+                            (root:Instance)
+
+                        MATCH
+                            (root)
+                            -[
+                                :HAS_OBJECT|HAS_ITEM
+                                *0..
+                            ]->
+                            (array:Instance {
+                                uid:
+                                    $array_instance_uid,
+
+                                data_type:
+                                    'Array'
+                            })
+
+                        MATCH
+                            (array_schema:Schema {
+                                uid:
+                                    array.schema_uid
+                            })
+                            -[
+                                item_schema_relationship:
+                                    HAS_ELEMENT
+                            ]->
+                            (item_schema:Schema)
+
+                        OPTIONAL MATCH
+                            (array)
+                            -[
+                                existing_relationship:
+                                    HAS_ITEM
+                            ]->
+                            (:Instance)
+
+                        RETURN
+                            item_schema.uid
+                                AS item_schema_uid,
+
+                            item_schema_relationship.uid
+                                AS item_schema_relationship_uid,
+
+                            count(
+                                existing_relationship
+                            ) AS item_count
+                        `,
+                        {
+                            user_uid,
+                            array_instance_uid
+                        }
+                    )
+
+                if (
+                    array_result.records.length ===
+                    0
+                ) {
+                    throw new Error(
+                        [
+                            `Array instance "${array_instance_uid}"`,
+                            'was not found or is not owned by the current user.'
+                        ].join(' ')
+                    )
+                }
+
+                if (
+                    array_result.records.length !==
+                    1
+                ) {
+                    throw new Error(
+                        [
+                            `The schema for array instance`,
+                            `"${array_instance_uid}"`,
+                            'must have exactly one item schema.'
+                        ].join(' ')
+                    )
+                }
+
+                const record =
+                    array_result.records[0]
+
+                const item_schema_uid =
+                    record!.get(
+                        'item_schema_uid'
+                    ) as string
+
+                const raw_item_count =
+                    record!.get(
+                        'item_count'
+                    )
+
+                const index =
+                    typeof raw_item_count ===
+                        'number'
+                        ? raw_item_count
+                        : raw_item_count.toNumber()
+
+                const item =
+                    await Create_Instance_From_Schema_In_Transaction(
+                        transaction,
+                        item_schema_uid,
+                        user_uid
+                    )
+
+                await transaction.run(
+                    `
+                    MATCH
+                        (array:Instance {
+                            uid:
+                                $array_instance_uid
+                        })
+
+                    MATCH
+                        (item:Instance {
+                            uid:
+                                $item_instance_uid
+                        })
+
+                    CREATE
+                        (array)-[
+                            relationship:HAS_ITEM {
+                                index:
+                                    $index
+                            }
+                        ]->(item)
+                    `,
+                    {
+                        array_instance_uid,
+
+                        item_instance_uid:
+                            item.uid,
+
+                        index
+                    }
+                )
+
+                return {
+                    item,
+                    index
+                }
+            }
+        )
+    } finally {
+        await session.close()
     }
 }
 async function Set_Atomic_Instance_Value(
@@ -482,6 +973,7 @@ async function Create_Array_Item_Link(
         )
     }
 }
+
 async function Create_Array_Instance_Items(
     transaction: ManagedTransaction,
     user_uid: string,
@@ -529,28 +1021,202 @@ export async function db_get_instance_by_uid(
     user_uid: string,
     instance_uid: string
 ): Promise<GraphQL_Instance | null> {
-    const session = driver.session()
+    const session =
+        driver.session()
 
     try {
-        const result = await session.run(
+        return await session.executeRead(
+            transaction =>
+                Get_Instance_By_UID_In_Transaction(
+                    transaction,
+                    user_uid,
+                    instance_uid
+                )
+        )
+    } finally {
+        await session.close()
+    }
+}
+
+async function Get_Composite_Instance_Objects_In_Transaction(
+    transaction: ManagedTransaction,
+    user_uid: string,
+    composite_instance_uid: string
+): Promise<GraphQL_Instance_Object[]> {
+    const result =
+        await transaction.run(
             `
             MATCH
-                (u:User {uid: $user_uid})
+                (user:User {
+                    uid: $user_uid
+                })
                 -[:OWNS]->
-                (i:Instance {uid: $instance_uid})
+                (composite:Instance {
+                    uid: $composite_instance_uid,
+                    data_type: 'Composite'
+                })
 
-            OPTIONAL MATCH
-                (i)-[:HAS_VALUE]->(iv:InstanceValue)
+            MATCH
+                (composite)
+                -[
+                    relationship:HAS_OBJECT
+                ]->
+                (child:Instance)
 
             RETURN
-                i,
-                collect(
-                    CASE
-                        WHEN iv IS NULL
-                        THEN null
-                        ELSE iv.properties
-                    END
-                ) AS objects
+                relationship.element_relationship_uid
+                    AS element_relationship_uid,
+
+                child.uid
+                    AS child_instance_uid,
+
+                relationship.index
+                    AS relationship_index
+
+            ORDER BY
+                relationship.index
+            `,
+            {
+                user_uid,
+                composite_instance_uid
+            }
+        )
+
+    const objects:
+        GraphQL_Instance_Object[] = []
+
+    for (const record of result.records) {
+        const child_instance_uid =
+            record.get(
+                'child_instance_uid'
+            ) as string
+
+        const child_instance =
+            await Get_Instance_By_UID_In_Transaction(
+                transaction,
+                user_uid,
+                child_instance_uid
+            )
+
+        if (!child_instance) {
+            throw new Error(
+                [
+                    `Composite instance "${composite_instance_uid}"`,
+                    `references missing child instance "${child_instance_uid}".`
+                ].join(' ')
+            )
+        }
+
+        objects.push({
+            element_relationship_uid:
+                record.get(
+                    'element_relationship_uid'
+                ) as string,
+
+            instance:
+                child_instance
+        })
+    }
+
+    return objects
+}
+
+async function Get_Array_Instance_Items_In_Transaction(
+    transaction: ManagedTransaction,
+    user_uid: string,
+    array_instance_uid: string
+): Promise<GraphQL_Instance[]> {
+    const result =
+        await transaction.run(
+            `
+            MATCH
+                (user:User {
+                    uid: $user_uid
+                })
+                -[:OWNS]->
+                (array:Instance {
+                    uid: $array_instance_uid,
+                    data_type: 'Array'
+                })
+
+            MATCH
+                (array)
+                -[
+                    relationship:HAS_ITEM
+                ]->
+                (item:Instance)
+
+            RETURN
+                item.uid
+                    AS item_instance_uid,
+
+                relationship.index
+                    AS item_index
+
+            ORDER BY
+                relationship.index
+            `,
+            {
+                user_uid,
+                array_instance_uid
+            }
+        )
+
+    const items:
+        GraphQL_Instance[] = []
+
+    for (const record of result.records) {
+        const item_instance_uid =
+            record.get(
+                'item_instance_uid'
+            ) as string
+
+        const item =
+            await Get_Instance_By_UID_In_Transaction(
+                transaction,
+                user_uid,
+                item_instance_uid
+            )
+
+        if (!item) {
+            throw new Error(
+                [
+                    `Array instance "${array_instance_uid}"`,
+                    `references missing item instance "${item_instance_uid}".`
+                ].join(' ')
+            )
+        }
+
+        items.push(item)
+    }
+
+    return items
+}
+async function Get_Instance_By_UID_In_Transaction(
+    transaction: ManagedTransaction,
+    user_uid: string,
+    instance_uid: string
+): Promise<GraphQL_Instance | null> {
+    const result =
+        await transaction.run(
+            `
+            MATCH
+                (user:User {
+                    uid: $user_uid
+                })
+                -[:OWNS]->
+                (instance:Instance {
+                    uid: $instance_uid
+                })
+
+            OPTIONAL MATCH
+                (instance)
+                -[:HAS_VALUE]->
+                (instance_value:InstanceValue)
+
+            RETURN
+                instance,
+                instance_value
             `,
             {
                 user_uid,
@@ -558,62 +1224,1066 @@ export async function db_get_instance_by_uid(
             }
         )
 
-        const record = result.records[0]
+    const record =
+        result.records[0]
 
-        if (!record) {
-            return null
-        }
-
-        const instance_properties =
-            record.get('i').properties
-
-        const objects =
-            (
-                record.get('objects') as
-                Array<GraphQL_Instance_Value | null>
-            ).filter(
-                (
-                    object
-                ): object is GraphQL_Instance_Value =>
-                    object !== null
-            )
-
-        return {
-            ...instance_properties,
-
-            objects:
-                objects.length > 0
-                    ? objects
-                    : undefined
-        }
+    if (!record) {
+        return null
     }
-    finally {
-        await session.close()
+
+    const instance_properties =
+        record.get('instance').properties
+
+    const data_type =
+        instance_properties.data_type as
+        GraphQL_Instance['data_type']
+
+    const schema_uid =
+        instance_properties.schema_uid as string
+
+    switch (data_type) {
+        case 'String':
+        case 'Number':
+        case 'Boolean': {
+            const instance_value_node =
+                record.get(
+                    'instance_value'
+                )
+
+            return {
+              
+
+                uid:
+                    instance_properties.uid,
+
+                schema_uid,
+
+                data_type,
+
+                value:
+                    instance_value_node
+                        ? instance_value_node
+                            .properties
+                            .value
+                        : null
+            }
+        }
+
+        case 'Composite': {
+            const objects =
+                await Get_Composite_Instance_Objects_In_Transaction(
+                    transaction,
+                    user_uid,
+                    instance_uid
+                )
+
+            return {
+
+
+                uid:
+                    instance_properties.uid,
+
+                schema_uid,
+
+                data_type:
+                    'Composite',
+
+                objects
+            }
+        }
+
+        case 'Array': {
+            const items =
+                await Get_Array_Instance_Items_In_Transaction(
+                    transaction,
+                    user_uid,
+                    instance_uid
+                )
+
+            return {
+               
+
+                uid:
+                    instance_properties.uid,
+
+                schema_uid,
+
+                data_type:
+                    'Array',
+
+                items
+            }
+        }
+
+        default: {
+            const exhaustive_check: never =
+                data_type
+
+            throw new Error(
+                `Unsupported instance data type: ${exhaustive_check}`
+            )
+        }
     }
 }
-export async function db_update_instance(
+export function Collect_Instance_Values(
+    instance: GraphQL_Instance,
+    values: GraphQL_Instance_Value[] = []
+): GraphQL_Instance_Value[] {
+    if (
+        instance.data_type === 'String' ||
+        instance.data_type === 'Number' ||
+        instance.data_type === 'Boolean'
+    ) {
+        values.push({
+            instance_uid:
+                instance.uid,
+
+            schema_uid:
+                instance.schema_uid,
+
+            value:
+                instance.value
+        })
+
+        return values
+    }
+
+    if (instance.data_type === 'Composite') {
+        for (const object of instance.objects) {
+            Collect_Instance_Values(
+                object.instance,
+                values
+            )
+        }
+
+        return values
+    }
+    if (instance.data_type === 'Array') {
+
+        for (const item of instance.items) {
+            Collect_Instance_Values(
+                item,
+                values
+            )
+        }
+    }
+
+    return values
+}
+export async function db_update_instance_values(
     driver: Driver,
-    uid: string,
-    updates: Partial<GraphQL_Instance>
-): Promise<GraphQL_Instance | null> {
-    const session = driver.session()
+    user_uid: string,
+    root_instance_uid: string,
+    values: GraphQL_Instance_Value[]
+): Promise<GraphQL_Instance_Value[]> {
+    if (values.length === 0) {
+        return []
+    }
+
+    const session =
+        driver.session()
+
     try {
-        const result = await session.run(
-            `
-            MATCH (s:Instance {uid: $uid})
-            SET s += $updates
-            RETURN s
-            `,
-            { uid, updates }
+        return await session.executeWrite(
+            async transaction => {
+                const result =
+                    await transaction.run(
+                        `
+                        MATCH
+                            (user:User {
+                                uid: $user_uid
+                            })
+                            -[:OWNS]->
+                            (root:Instance {
+                                uid: $root_instance_uid
+                            })
+
+                        UNWIND
+                            $values AS value_update
+
+                        MATCH path =
+                            (root)
+                            -[:HAS_OBJECT|HAS_ITEM*0..]->
+                            (instance:Instance {
+                                uid:
+                                    value_update.instance_uid
+                            })
+
+                        SET
+                            instance.value_json =
+                                value_update.value_json
+
+                        RETURN
+                            instance.uid AS instance_uid,
+                            instance.schema_uid AS schema_uid,
+                            instance.value_json AS value_json
+                        `,
+                        {
+                            user_uid,
+                            root_instance_uid,
+
+                            values:
+                                values.map(value => ({
+                                    instance_uid:
+                                        value.instance_uid,
+
+                                    value_json:
+                                        value.value === null
+                                            ? null
+                                            : JSON.stringify(
+                                                value.value
+                                            )
+                                }))
+                        }
+                    )
+
+                return result.records.map(
+                    record => {
+                        const value_json =
+                            record.get(
+                                'value_json'
+                            ) as string | null
+
+                        return {
+                            instance_uid:
+                                record.get(
+                                    'instance_uid'
+                                ),
+
+                            schema_uid:
+                                record.get(
+                                    'schema_uid'
+                                ),
+
+                            value:
+                                value_json === null
+                                    ? null
+                                    : JSON.parse(
+                                        value_json
+                                    )
+                        }
+                    }
+                )
+            }
         )
-
-        const record = result.records[0]
-
-        return record ? record.get('s').properties : null
     } finally {
         await session.close()
     }
-} export async function db_get_instance_values(
+}
+function Collect_Instance_Node_Updates(
+    instance: GraphQL_Instance,
+    updates: Instance_Node_Update[] = []
+): Instance_Node_Update[] {
+    const is_atomic =
+        instance.data_type ===
+        'String' ||
+        instance.data_type ===
+        'Number' ||
+        instance.data_type ===
+        'Boolean'
+
+    updates.push({
+        uid:
+            instance.uid,
+
+        schema_uid:
+            instance.schema_uid,
+
+        data_type:
+            instance.data_type,
+
+        value_json:
+            is_atomic &&
+                instance.value !== null
+                ? JSON.stringify(
+                    instance.value
+                )
+                : null
+    })
+
+    if (
+        instance.data_type ===
+        'Composite'
+    ) {
+        for (
+            const object
+            of instance.objects
+        ) {
+            Collect_Instance_Node_Updates(
+                object.instance,
+                updates
+            )
+        }
+    }
+
+    if (
+        instance.data_type ===
+        'Array'
+    ) {
+        for (
+            const item
+            of instance.items
+        ) {
+            Collect_Instance_Node_Updates(
+                item,
+                updates
+            )
+        }
+    }
+
+    return updates
+}
+async function Get_Schema_Node_In_Transaction(
+    transaction: ManagedTransaction,
+    schema_uid: string
+): Promise<{
+    schema: Schema_Node_Record
+    elements: Schema_Element_Record[]
+}> {
+    const result =
+        await transaction.run(
+            `
+            MATCH
+                (schema:Schema {
+                    uid: $schema_uid
+                })
+
+            OPTIONAL MATCH
+                (schema)
+                -[
+                    element_relationship:
+                        HAS_ELEMENT
+                ]->
+                (child_schema:Schema)
+
+            RETURN
+                schema.uid
+                    AS schema_uid,
+
+                schema.data_type
+                    AS data_type,
+
+                element_relationship.uid
+                    AS relationship_uid,
+
+                element_relationship.index
+                    AS element_index,
+
+                child_schema.uid
+                    AS element_schema_uid
+
+            ORDER BY
+                element_relationship.index
+            `,
+            {
+                schema_uid
+            }
+        )
+
+    if (result.records.length === 0) {
+        throw new Error(
+            `Schema "${schema_uid}" was not found.`
+        )
+    }
+
+    const first_record =
+        result.records[0]
+
+    const schema: Schema_Node_Record = {
+        uid:
+            first_record!.get(
+                'schema_uid'
+            ),
+
+        data_type:
+            first_record!.get(
+                'data_type'
+            )
+    }
+
+    const elements: Schema_Element_Record[] =
+        result.records.flatMap(
+            record => {
+                const relationship_uid =
+                    record.get(
+                        'relationship_uid'
+                    )
+
+                const element_schema_uid =
+                    record.get(
+                        'element_schema_uid'
+                    )
+
+                if (
+                    !relationship_uid ||
+                    !element_schema_uid
+                ) {
+                    return []
+                }
+
+                const raw_index =
+                    record.get(
+                        'element_index'
+                    )
+
+                return [{
+                    relationship_uid,
+
+                    index:
+                        typeof raw_index ===
+                            'number'
+                            ? raw_index
+                            : raw_index.toNumber(),
+
+                    element_schema_uid
+                }]
+            }
+        )
+
+    return {
+        schema,
+        elements
+    }
+}
+export async function Create_Instance_From_Schema_In_Transaction(
+    transaction: ManagedTransaction,
+    schema_uid: string,
+    user_id: string
+): Promise<GraphQL_Instance> {
+    const {
+        schema,
+        elements
+    } =
+        await Get_Schema_Node_In_Transaction(
+            transaction,
+            schema_uid
+        )
+
+    const instance_uid =
+        uuidv4()
+
+    const instance_shell: GraphQL_Instance = {
+        uid:
+            instance_uid,
+
+        schema_uid,
+
+        data_type:
+            schema.data_type,
+
+        ...(
+            schema.data_type === 'Composite'
+                ? {
+                    objects: []
+                }
+                : schema.data_type === 'Array'
+                    ? {
+                        items: []
+                    }
+                    : {
+                        value: null
+                    }
+        )
+    } as GraphQL_Instance
+
+    await Create_Instance_Node(
+        transaction,
+        user_id,
+        instance_shell
+    )
+
+    switch (schema.data_type) {
+        case 'String':
+        case 'Number':
+        case 'Boolean':
+            return {
+                uid:
+                    instance_uid,
+
+                schema_uid,
+
+                data_type:
+                    schema.data_type,
+
+                value:
+                    null
+            }
+
+        case 'Composite': {
+            const objects:
+                GraphQL_Instance_Object[] = []
+
+            for (
+                const schema_element
+                of elements
+            ) {
+                const child_instance =
+                    await Create_Instance_From_Schema_In_Transaction(
+                        transaction,
+                        schema_element.element_schema_uid,
+                        user_id
+                    )
+
+                await transaction.run(
+                    `
+                    MATCH
+                        (parent:Instance {
+                            uid: $parent_instance_uid
+                        })
+
+                    MATCH
+                        (child:Instance {
+                            uid: $child_instance_uid
+                        })
+
+                    CREATE
+                        (parent)-[
+                            relationship:HAS_OBJECT {
+                                element_relationship_uid:
+                                    $element_relationship_uid,
+
+                                index:
+                                    $index
+                            }
+                        ]->(child)
+                    `,
+                    {
+                        parent_instance_uid:
+                            instance_uid,
+
+                        child_instance_uid:
+                            child_instance.uid,
+
+                        element_relationship_uid:
+                            schema_element.relationship_uid,
+
+                        index:
+                            schema_element.index
+                    }
+                )
+
+                objects.push({
+                    element_relationship_uid:
+                        schema_element.relationship_uid,
+
+                    instance:
+                        child_instance
+                })
+            }
+
+            return {
+                uid:
+                    instance_uid,
+
+                schema_uid,
+
+                data_type:
+                    'Composite',
+
+                objects
+            }
+        }
+
+        case 'Array': {
+            if (elements.length !== 1) {
+                throw new Error(
+                    [
+                        `Array schema "${schema_uid}"`,
+                        'must have exactly one HAS_ELEMENT relationship.'
+                    ].join(' ')
+                )
+            }
+
+            /*
+             * Arrays are created empty.
+             *
+             * Each item must be created explicitly through
+             * create_array_item.
+             */
+            return {
+                uid:
+                    instance_uid,
+
+                schema_uid,
+
+                data_type:
+                    'Array',
+
+                items:
+                    []
+            }
+        }
+
+        default: {
+            const exhaustive_check: never =
+                schema.data_type
+
+            throw new Error(
+                `Unsupported schema data type: ${exhaustive_check}`
+            )
+        }
+    }
+}
+
+export async function db_save_instance(
+    driver: Driver,
+    user_uid: string,
+    instance: GraphQL_Instance
+): Promise<GraphQL_Instance | null> {
+    const updates =
+        Collect_Instance_Node_Updates(
+            instance
+        )
+
+    const session =
+        driver.session()
+
+    try {
+        return await session.executeWrite(
+            async transaction => {
+                const ownership_result =
+                    await transaction.run(
+                        `
+                        MATCH
+                            (user:User {
+                                uid:
+                                    $user_uid
+                            })
+                            -[:OWNS]->
+                            (root:Instance {
+                                uid:
+                                    $root_instance_uid
+                            })
+
+                        RETURN
+                            root.uid
+                                AS root_uid
+                        `,
+                        {
+                            user_uid,
+
+                            root_instance_uid:
+                                instance.uid
+                        }
+                    )
+
+                if (
+                    ownership_result.records.length ===
+                    0
+                ) {
+                    return null
+                }
+
+                /*
+                 * Confirm that every submitted UID belongs to the
+                 * persisted root tree.
+                 */
+                const submitted_uids =
+                    updates.map(
+                        update =>
+                            update.uid
+                    )
+
+                const identity_result =
+                    await transaction.run(
+                        `
+                        MATCH
+                            (root:Instance {
+                                uid:
+                                    $root_instance_uid
+                            })
+
+                        MATCH
+                            (root)
+                            -[
+                                :HAS_OBJECT|HAS_ITEM
+                                *0..
+                            ]->
+                            (instance_node:Instance)
+
+                        WHERE
+                            instance_node.uid
+                            IN $submitted_uids
+
+                        RETURN
+                            collect(
+                                DISTINCT
+                                instance_node.uid
+                            ) AS matched_uids
+                        `,
+                        {
+                            root_instance_uid:
+                                instance.uid,
+
+                            submitted_uids
+                        }
+                    )
+                const matched_uids =
+                    identity_result.records[0]!
+                        .get(
+                            'matched_uids'
+                        ) as string[]
+
+                if (
+                    matched_uids.length !==
+                    submitted_uids.length
+                ) {
+                    const matched_uid_set =
+                        new Set(
+                            matched_uids
+                        )
+
+                    const invalid_uids =
+                        submitted_uids.filter(
+                            uid =>
+                                !matched_uid_set.has(
+                                    uid
+                                )
+                        )
+
+                    throw new Error(
+                        [
+                            'The submitted instance contains nodes',
+                            'that do not belong to the persisted root:',
+                            invalid_uids.join(', ')
+                        ].join(' ')
+                    )
+                }
+
+                await transaction.run(
+                    `
+                    UNWIND
+                        $updates AS update
+
+                    MATCH
+                        (instance_node:Instance {
+                            uid:
+                                update.uid
+                        })
+
+                    SET
+                        instance_node.value_json =
+                            update.value_json
+                    `,
+                    {
+                        updates
+                    }
+                )
+
+                return instance
+            }
+        )
+    } finally {
+        await session.close()
+    }
+}
+async function Create_Instance_Children_In_Transaction(
+    transaction: ManagedTransaction,
+    parent_instance: GraphQL_Instance
+): Promise<void> {
+    if (
+        parent_instance.data_type === 'String' ||
+        parent_instance.data_type === 'Number' ||
+        parent_instance.data_type === 'Boolean'
+    ) {
+        return
+    }
+
+    if (
+        parent_instance.data_type ===
+        'Composite'
+    ) {
+        for (
+            const [index, object]
+            of parent_instance.objects.entries()
+        ) {
+            const child_instance =
+                object.instance
+
+            const child_properties =
+                Get_Instance_Node_Properties(
+                    child_instance
+                )
+
+            const result =
+                await transaction.run(
+                    `
+                    MATCH
+                        (parent:Instance {
+                            uid: $parent_instance_uid
+                        })
+
+                    CREATE
+                        (child:Instance $child_properties)
+
+                    CREATE
+                        (parent)-[
+                            relationship:HAS_OBJECT {
+                                element_relationship_uid:
+                                    $element_relationship_uid,
+
+                                index:
+                                    $index
+                            }
+                        ]->(child)
+
+                    RETURN child
+                    `,
+                    {
+                        parent_instance_uid:
+                            parent_instance.uid,
+
+                        child_properties,
+
+                        element_relationship_uid:
+                            object.element_relationship_uid,
+
+                        index
+                    }
+                )
+
+            if (result.records.length === 0) {
+                throw new Error(
+                    [
+                        'Could not create composite child.',
+                        `Parent instance: ${parent_instance.uid}.`,
+                        `Child instance: ${child_instance.uid}.`
+                    ].join(' ')
+                )
+            }
+
+            await Create_Instance_Children_In_Transaction(
+                transaction,
+                child_instance
+            )
+        }
+
+        return
+    }
+    if (parent_instance.data_type === 'Array')
+    for (
+        const [index, item]
+        of parent_instance.items.entries()
+    ) {
+        const item_properties =
+            Get_Instance_Node_Properties(
+                item
+            )
+
+        const result =
+            await transaction.run(
+                `
+                MATCH
+                    (parent:Instance {
+                        uid: $parent_instance_uid
+                    })
+
+                CREATE
+                    (item:Instance $item_properties)
+
+                CREATE
+                    (parent)-[
+                        relationship:HAS_ITEM {
+                            index: $index
+                        }
+                    ]->(item)
+
+                RETURN item
+                `,
+                {
+                    parent_instance_uid:
+                        parent_instance.uid,
+
+                    item_properties,
+
+                    index
+                }
+            )
+
+        if (result.records.length === 0) {
+            throw new Error(
+                [
+                    'Could not create array item.',
+                    `Parent instance: ${parent_instance.uid}.`,
+                    `Item instance: ${item.uid}.`
+                ].join(' ')
+            )
+        }
+
+        await Create_Instance_Children_In_Transaction(
+            transaction,
+            item
+        )
+    }
+}
+
+function Get_Instance_Node_Properties(
+    instance: GraphQL_Instance
+): Record<string, unknown> {
+    const properties: Record<string, unknown> = {
+        uid:
+            instance.uid,
+
+        schema_uid:
+            instance.schema_uid,
+
+        data_type:
+            instance.data_type,
+
+        value_json:
+            null
+    }
+
+    if (
+        instance.data_type === 'String' ||
+        instance.data_type === 'Number' ||
+        instance.data_type === 'Boolean'
+    ) {
+        properties.value_json =
+            instance.value === null
+                ? null
+                : JSON.stringify(
+                    instance.value
+                )
+    }
+
+    return properties
+}
+export function Validate_Unique_Instance_UIDs(
+    instance: GraphQL_Instance,
+    encountered_uids:
+        Set<string> = new Set()
+): void {
+    if (encountered_uids.has(instance.uid)) {
+        throw new Error(
+            `Duplicate instance UID "${instance.uid}" in submitted instance tree.`
+        )
+    }
+
+    encountered_uids.add(
+        instance.uid
+    )
+
+    if (instance.data_type === 'Composite') {
+        for (const object of instance.objects) {
+            Validate_Unique_Instance_UIDs(
+                object.instance,
+                encountered_uids
+            )
+        }
+
+        return
+    }
+
+    if (instance.data_type === 'Array') {
+        for (const item of instance.items) {
+            Validate_Unique_Instance_UIDs(
+                item,
+                encountered_uids
+            )
+        }
+    }
+}
+export function Validate_Instance_Tree(
+    instance: unknown
+): asserts instance is GraphQL_Instance {
+    if (
+        typeof instance !== 'object' ||
+        instance === null
+    ) {
+        throw new Error(
+            'Instance must be an object.'
+        )
+    }
+
+    const candidate =
+        instance as Partial<GraphQL_Instance>
+
+    if (
+        typeof candidate.uid !== 'string' ||
+        candidate.uid.length === 0
+    ) {
+        throw new Error(
+            'Every instance requires a UID.'
+        )
+    }
+
+    if (
+        typeof candidate.schema_uid !== 'string' ||
+        candidate.schema_uid.length === 0
+    ) {
+        throw new Error(
+            `Instance "${candidate.uid}" requires a schema UID.`
+        )
+    }
+
+    switch (candidate.data_type) {
+        case 'String':
+        case 'Number':
+        case 'Boolean': {
+            if (!('value' in candidate)) {
+                throw new Error(
+                    `Atomic instance "${candidate.uid}" requires a value property.`
+                )
+            }
+
+            return
+        }
+
+        case 'Composite': {
+            if (
+                !('objects' in candidate) ||
+                !Array.isArray(candidate.objects)
+            ) {
+                throw new Error(
+                    `Composite instance "${candidate.uid}" requires an objects array.`
+                )
+            }
+
+            for (const object of candidate.objects) {
+                if (
+                    typeof object !== 'object' ||
+                    object === null ||
+                    typeof object.element_relationship_uid !==
+                    'string'
+                ) {
+                    throw new Error(
+                        `Composite instance "${candidate.uid}" contains an invalid object.`
+                    )
+                }
+
+                Validate_Instance_Tree(
+                    object.instance
+                )
+            }
+
+            return
+        }
+
+        case 'Array': {
+            if (
+                !('items' in candidate) ||
+                !Array.isArray(candidate.items)
+            ) {
+                throw new Error(
+                    `Array instance "${candidate.uid}" requires an items array.`
+                )
+            }
+
+            for (const item of candidate.items) {
+                Validate_Instance_Tree(item)
+            }
+
+            return
+        }
+
+        default:
+            throw new Error(
+                `Instance "${candidate.uid}" has an unsupported data type.`
+            )
+    }
+}
+export async function db_get_instance_values(
     driver: Driver,
     user_uid: string,
     instance_uid: string

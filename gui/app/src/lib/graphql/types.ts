@@ -1,5 +1,7 @@
 import type { Data_Type } from "@schematician/shared"
-import type { GraphQL_Schema, GraphQL_Instance } from "@schematician/shared"
+import type { 
+    GraphQL_Instance_Value,
+    GraphQL_Schema, GraphQL_Instance } from "@schematician/shared"
 
 
 
@@ -18,6 +20,26 @@ export interface Create_Schema_Input {
 export interface Create_Schema_Response {
     create_schema: GraphQL_Schema
 }
+export interface Save_Instance_Response {
+    data?: {
+        save_instance:
+        GraphQL_Instance | null
+    }
+
+    errors?: Array<{
+        message: string
+    }>
+}
+
+export interface Save_Instance_Response {
+    save_instance:
+    GraphQL_Instance | null
+}
+
+export interface Save_Instance_Input {
+    instance:
+    GraphQL_Instance
+}
 
 
 
@@ -35,6 +57,17 @@ export interface Get_Instance_By_UID_Input {
     uid: string
 }
 
+
+export interface Update_Instance_Values_Response {
+    data?: {
+        update_instance_values:
+        GraphQL_Instance_Value[]
+    }
+
+    errors?: {
+        message: string
+    }[]
+}
 
 export interface Get_Instance_By_UID_Response {
     instance: GraphQL_Instance | null
@@ -80,6 +113,34 @@ export interface GraphQL_Variable_Definition {
     type: GraphQL_Variable_Type
 }
 
+export interface Remove_Array_Item_Response {
+    remove_array_item:
+    boolean
+}
+
+
+export interface Create_Array_Item_Response {
+    create_array_item: {
+        item:
+        GraphQL_Instance
+
+        index:
+        number
+    }
+}
+
+export interface Create_Array_Item_Input {
+    array_instance_uid: string
+}
+
+
+export interface Remove_Array_Item_Input {
+    array_instance_uid:
+    string
+
+    item_instance_uid:
+    string
+}
 export type GraphQL_Selection =
     | string
     | GraphQL_Field_Selection

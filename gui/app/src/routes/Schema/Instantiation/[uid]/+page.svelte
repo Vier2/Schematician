@@ -84,7 +84,7 @@ import { Add_Hierarchical_Elements,
     Render_Schema_MetaData,
     Add_Event_Map_Elements,
     Render_Adjacent_Elements,
-    Add_Save_Instance_Function, Create_Instance_State,
+    Add_Save_Instance_Function,
     Add_Event_To_Map_Element, Render_Schema_Node
  } from "$lib/Instantiation/utils";
 import {  Apply_Descending_Indentation, Apply_Incremental_CSS_To_Children, Add_Header_For_Each_KeyValue, Convert_GraphQL_Schema_To_Schema } from "$lib/shared/utils";
@@ -109,15 +109,16 @@ import { Get_Instance_By_UID, Get_Schema_By_UID } from "$lib/graphql/utils";
                 )
             const schema = Convert_GraphQL_Schema_To_Schema(GraphQL_schema!)
             console.log(`schema ${JSON.stringify(schema)}`)
-            const state: Schema_Instance = $state(Create_Instance_State(schema)
-            )
-    
-            
+            const state: Schema_Instance = $state({
+                'root': instance!,
+                'schema': schema
+            })
+
             const Hierarchical_Path_Div: HTMLDivElement = document.getElementById('Hierarchical_Path_Div') as HTMLDivElement;
             Apply_Descending_Indentation(Hierarchical_Path_Div, 42)
             Apply_Incremental_CSS_To_Children(Hierarchical_Path_Div, 'fontSize', 15, 'px')
             const save_instance_button: HTMLButtonElement = document.getElementById('save_instance_button') as HTMLButtonElement
-            Add_Save_Instance_Function(save_instance_button, state)
+            Add_Save_Instance_Function(save_instance_button, state, PUBLIC_SERVER_API_URL)
 
             const Current_Instance_Div: HTMLDivElement = document.getElementById('Current_Instance_Div') as HTMLDivElement
             const Current_Schema_Div: HTMLDivElement = document.getElementById('Current_Schema_Div') as HTMLDivElement
@@ -127,6 +128,7 @@ import { Get_Instance_By_UID, Get_Schema_By_UID } from "$lib/graphql/utils";
             const previous_button: HTMLButtonElement = document.getElementById('Previous_Element_Button') as HTMLButtonElement
             const next_button: HTMLButtonElement = document.getElementById('Next_Element_Button') as HTMLButtonElement
             Render_Schema_Node(
+                PUBLIC_SERVER_API_URL,
                 state.schema,
                 Map_Div,
                 0,

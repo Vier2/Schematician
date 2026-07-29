@@ -90,7 +90,7 @@ Atomic_Instance_Ref.implement({
 
 Instance_Object_Ref.implement({
     fields: t => ({
-        schema_element_uid:
+        element_relationship_uid:
             t.exposeString(
                 'element_relationship_uid'
             ),
