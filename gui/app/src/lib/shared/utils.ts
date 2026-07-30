@@ -562,6 +562,7 @@ export async function Make_Searchable_Select(
             } else {
                 index = state.elements.length + 1
             }
+            console.log(`index ${index}`)
             /**set default, could choose to have user select later */
             const schema_element: Schema_Element = {
                 'element': schema,
@@ -581,7 +582,9 @@ export async function Make_Searchable_Select(
             overlay.style.display = 'none'
          
            
-        })
+        },
+            { once: true }
+)
         document.addEventListener('click', (e) => {
             const target = e.target as HTMLElement;
     
@@ -591,7 +594,8 @@ export async function Make_Searchable_Select(
               
                 
             }
-        });
+        }, { once: true }
+);
         overlay.addEventListener('click', event => {
             if (event.target === overlay) {
                 overlay.remove()
@@ -834,7 +838,8 @@ export async function Make_Searchable_Select_Schema(
             Connect_Input_View_To_State(input_view.input, state, schema, selection)
 
             
-        })
+        }, { once: true }
+)
         document.addEventListener('click', (e) => {
             const target = e.target as HTMLElement;
             
@@ -843,7 +848,8 @@ export async function Make_Searchable_Select_Schema(
                 select.style.display = 'none';
                 // overlay.remove()
             }
-        });
+        },     { once: true }
+);
         overlay.addEventListener('click', event => {
             if (event.target === overlay) {
                 overlay.remove()
