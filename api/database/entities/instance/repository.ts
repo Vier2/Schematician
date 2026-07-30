@@ -11,7 +11,9 @@ import type {
     Create_Array_Item_Result,
     Instance_Node_Update,
     Schema_Node_Record,
-    Schema_Element_Record
+    Schema_Element_Record,
+    Delete_Instance_Input,
+    Delete_Instance_Payload
      } from '@schematician/shared'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -2369,7 +2371,78 @@ export function Validate_Instance_Tree(
             )
     }
 }
+export async function db_delete_instance(
+    driver: Driver,
+    user_uid: string,
+    instance_uid: string
+): Promise<Delete_Instance_Payload> {
+    const session =
+        driver.session()
 
+    try {
+        return await session.executeWrite(
+            async transaction => {
+                const result =
+                    await transaction.run(
+                        `
+                        MATCH
+                            (user:User {
+                                uid: $user_uid
+                            })
+                            -[:OWNS]->
+                            (root:Instance {
+                                uid: $instance_uid
+                            })
+
+                        WITH root
+
+                        OPTIONAL MATCH
+                            (root)
+                            -[:HAS_OBJECT|HAS_ITEM*0..]->
+                            (instance:Instance)
+
+                        DETACH DELETE
+                            instance
+
+                        RETURN
+                            count(instance)
+                                AS deleted_count
+                        `,
+                        {
+                            user_uid,
+                            instance_uid
+                        }
+                    )
+
+                const deleted_count =
+                    Convert_Neo4j_Number(
+                        result.records[0]!.get(
+                            'deleted_count'
+                        )
+                    )
+
+                if (deleted_count === 0) {
+                    throw new Error(
+                        [
+                            `Instance "${instance_uid}"`,
+                            'was not found or is not owned by the current user.'
+                        ].join(' ')
+                    )
+                }
+
+                return {
+                    success: true,
+                    message:
+                        'Instance deleted successfully.',
+                    deleted_uid:
+                        instance_uid
+                }
+            }
+        )
+    } finally {
+        await session.close()
+    }
+}
 
 export async function db_search_instances(
     driver: Driver,

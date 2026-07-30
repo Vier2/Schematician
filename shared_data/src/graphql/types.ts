@@ -163,6 +163,19 @@ export interface Schema_Element_Update_Input {
     cardinality: Cardinality
 }
 
+export interface Delete_Instance_Input {
+    uid: string
+}
+
+export interface Delete_Instance_Payload {
+    success: boolean
+    message: string
+    deleted_uid: string
+}
+
+export interface Delete_Instance_Response {
+    delete_instance: Delete_Instance_Payload
+}
 export interface GraphQL_Atomic_Instance
     extends GraphQL_Instance_Base {
     data_type: 'String' | 'Number' | 'Boolean'

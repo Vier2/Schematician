@@ -38,7 +38,8 @@ function Link_State(
             state,
             stable_path
         )
-
+    console.log(`
+        instance in Link State ${JSON.stringify(state)}`)
     if (
         instance.data_type === 'Composite' ||
         instance.data_type === 'Array'
@@ -129,6 +130,7 @@ export function Link_Schema_Input_View_To_State(
     state: Schema_Instance,
     path: Instance_Path
 ): void {
+
     if (!input) {
         return
     }

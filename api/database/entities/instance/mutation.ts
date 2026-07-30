@@ -3,10 +3,12 @@ import { db_create_instance,
     db_save_instance,
     db_create_array_item,
     db_remove_array_item,
+    db_delete_instance,
     Validate_Instance_Tree, Validate_Unique_Instance_UIDs } from "./repository.js";
 import { Instance_Ref } from "./schema.js";
 import type { Data_Type,
     Create_Array_Item_Result,
+    Delete_Instance_Payload,
      GraphQL_Instance, GraphQL_Instance_Value, JSON_Value } from "@schematician/shared";
 import { db_get_schema_data_type } from "../schema/repository.js";
 import { v4 as uuidv4 } from 'uuid'
@@ -17,6 +19,23 @@ export const Create_Array_Item_Result_Ref =
         'Create_Array_Item_Result'
     )
 
+const Delete_Instance_Result_Ref =
+        builder.objectRef<Delete_Instance_Payload>(
+            'Delete_Instance_Result'
+        )
+
+Delete_Instance_Result_Ref.implement({
+    fields: t => ({
+        success: t.exposeBoolean('success'),
+        message: t.exposeString('message'),
+        deleted_uid: t.exposeString(
+            'deleted_uid',
+            {
+                nullable: true
+            }
+        )
+    })
+})
 Create_Array_Item_Result_Ref.implement({
     fields: t => ({
         item:
@@ -276,6 +295,28 @@ builder.mutationFields(t => ({
                 args.item_instance_uid
             )
         }
-    })
+    }),
+    delete_instance: t.field({
+        type: Delete_Instance_Result_Ref,
+    
+            args: {
+                uid: t.arg.string({
+                    required: true
+                })
+            },
+    
+            resolve: (_root, args, context) => {
+                if (!context.user) {
+                    throw new Error('Unauthorized')
+                }
+    
+                return db_delete_instance(
+                    context.driver,
+                    context.user.id,
+                    args.uid
+                )
+            }
+        })
+    
     
 }))

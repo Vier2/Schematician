@@ -444,7 +444,14 @@ export async function Render_Instance_Results(
     const delete_button = document.createElement('button')
     delete_button.textContent = 'x'
     delete_button.addEventListener('click', async function() {
-        await Delete_Instance()
+        const result = await Delete_Instance(
+            api_url,
+            instance.uid,
+            localStorage.getItem('token')?? ''
+        )
+        if (result.success) {
+            console.log(`deletion was successful `)
+        }
         container.remove()
     }
     )

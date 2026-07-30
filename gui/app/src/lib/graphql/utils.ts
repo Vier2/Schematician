@@ -9,7 +9,11 @@ import type {
 import type { Schema, 
     Update_Schema_Data, 
     GraphQL_Schema, Schema_Association_Update, Schema_Element_Update, GraphQL_Instance,
-    Data_Type} from "@schematician/shared"
+    Data_Type,
+    Delete_Instance_Input,
+    Delete_Instance_Payload,
+    Delete_Instance_Response
+} from "@schematician/shared"
 import { goto } from "$app/navigation"
 export function Build_GraphQL_Selection(
     selection: GraphQL_Selection[]
@@ -113,9 +117,47 @@ export async function Create_Instance(
     return result.create_instance
 }
 export async function Delete_Instance(
+    api_url: string,
+    uid: string,
+    token?: string
+): Promise<Delete_Instance_Payload> {
+    const response =
+        await Send_GraphQL_Request<
+            Delete_Instance_Response,
+            Delete_Instance_Input
+        >({
+            api_url,
 
-) {
+            operation_type:
+                'mutation',
 
+            operation_name:
+                'Delete_Instance',
+
+            field_name:
+                'delete_instance',
+
+            variables: [
+                {
+                    name: 'uid',
+                    type: 'String!'
+                }
+            ],
+
+            input_data: {
+                uid
+            },
+
+            selection: [
+                'success',
+                'message',
+                'deleted_uid'
+            ],
+
+            token
+        })
+
+    return response.delete_instance
 }
 export async function Delete_Schema(
     api_url: string,
