@@ -343,10 +343,13 @@ export function Render_Schema_Node(
                 `Schema and instance data types do not match for ${schema.name}.`
             )
         }
-
+        const element_relationship_uids = schema.elements?.map(element => element.uid)
+        console.log(`element relationship uids ${element_relationship_uids}`)
+        console.log( `schema elements ${JSON.stringify(schema.elements?.length)}`)
         schema.elements?.forEach(
             schema_element => {
                 console.log(`schema element in render node ${schema_element.element.name}`)
+            
                 Render_Schema_Node(
                     api_url,
                     schema_element.element,
@@ -1032,29 +1035,32 @@ export function Render_Schema_Value_Recursive(
 
         schema.elements?.forEach(
             schema_element => {
-                console.log({
-                    composite_schema: schema.name,
-                    element_schema: schema_element.element.name,
-                    schema_element_uid:
-                        schema_element.uid,
-                    current_path: path
-                })
-                Render_Schema_Value_Recursive(
-                    schema_element.element,
-                    target_container,
-                    state,
-                    [
-                        ...path,
-                        {
-                            type: 'Object',
-                            element_relationship_uid:
-                                schema_element.uid!
-                        }
-                    ],
-                    [...parents, schema],
-                    ancestry_level_visible,
-                    rendered_values
-                )
+                if (schema_element.uid != null) {
+
+                    console.log({
+                        composite_schema: schema.name,
+                        element_schema: schema_element.element.name,
+                        schema_element_uid:
+                            schema_element.uid,
+                        current_path: path
+                    })
+                    Render_Schema_Value_Recursive(
+                        schema_element.element,
+                        target_container,
+                        state,
+                        [
+                            ...path,
+                            {
+                                type: 'Object',
+                                element_relationship_uid:
+                                    schema_element.uid
+                            }
+                        ],
+                        [...parents, schema],
+                        ancestry_level_visible,
+                        rendered_values
+                    )
+                }
             }
         )
 
@@ -1366,12 +1372,14 @@ export function Get_Instance_Node(
 ): GraphQL_Instance {
     let current_instance =
         state.root
-
+    console.log(
+        `Instance path ${JSON.stringify(path)}`
+    )
     for (const segment of path) {
         if (segment.type === 'Object') {
             if (
                 current_instance.data_type !==
-                'Composite'
+                'Composite' 
             ) {
                 throw new Error(
                     [
@@ -1381,21 +1389,24 @@ export function Get_Instance_Node(
                     ].join(' ')
                 )
             }
-
-            const object =
-                current_instance.objects.find(
+            const object = segment.element_relationship_uid != null
+                ? current_instance.objects.find(
                     current_object =>
-                        current_object
-                            .element_relationship_uid ===
-                        segment.element_relationship_uid
+                        current_object.element_relationship_uid === segment.element_relationship_uid
                 )
+                : undefined;
 
+            if (segment.element_relationship_uid === null) {
+                continue
+            }
             if (!object) {
                 throw new Error(
                     [
                         'Composite instance',
                         current_instance.uid,
-                        'does not contain schema element',
+                        `does not contain has object relationship with a key of
+                        element_relationship = ${segment.element_relationship_uid}the schema s has element relationship uid 
+                        `,
                         segment.element_relationship_uid
                     ].join(' ')
                 )

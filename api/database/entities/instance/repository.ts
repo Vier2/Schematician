@@ -646,7 +646,7 @@ async function Set_Atomic_Instance_Value(
     }
 }
 
-async function Create_Composite_Instance_Objects(
+async function Persist_Submitted_Composite_Instance_Objects(
     transaction: ManagedTransaction,
     user_uid: string,
     instance: GraphQL_Composite_Instance
@@ -680,11 +680,6 @@ async function Create_Composite_Instance_Objects(
             object
         )
 
-        await Create_Instance_Recursively(
-            transaction,
-            user_uid,
-            object.instance
-        )
 
         await Create_Composite_Object_Link(
             transaction,
@@ -837,11 +832,26 @@ async function Create_Instance_Recursively(
             return
 
         case 'Composite':
-            await Create_Composite_Instance_Objects(
+            const {
+                schema,
+                elements
+            } =
+                await Get_Schema_Node_In_Transaction(
+                    transaction,
+                    instance.schema_uid
+                )
+            const updated_instance = await Add_Composite_Instance_Objects(
+                elements,
+                instance.uid,
                 transaction,
                 user_uid,
-                instance
+                instance.schema_uid
             )
+            // await Persist_Submitted_Composite_Instance_Objects(
+            //     transaction,
+            //     user_uid,
+            //     updated_instance
+            // )
 
             return
 
@@ -1704,6 +1714,88 @@ async function Get_Schema_Node_In_Transaction(
         elements
     }
 }
+
+export async function Add_Composite_Instance_Objects(
+    elements: Schema_Element_Record[],
+    instance_uid: string,
+    transaction: ManagedTransaction,
+    user_id: string,
+    schema_uid: string
+
+ ): Promise<GraphQL_Composite_Instance>{
+    const objects:
+        GraphQL_Instance_Object[] = []
+
+    for (
+        const schema_element
+        of elements
+    ) {
+        const child_instance =
+            await Create_Instance_From_Schema_In_Transaction(
+                transaction,
+                schema_element.element_schema_uid,
+                user_id
+            )
+
+        await transaction.run(
+            `
+                    MATCH
+                        (parent:Instance {
+                            uid: $parent_instance_uid
+                        })
+
+                    MATCH
+                        (child:Instance {
+                            uid: $child_instance_uid
+                        })
+
+                    CREATE
+                        (parent)-[
+                            relationship:HAS_OBJECT {
+                                element_relationship_uid:
+                                    $element_relationship_uid,
+
+                                index:
+                                    $index
+                            }
+                        ]->(child)
+                    `,
+            {
+                parent_instance_uid:
+                    instance_uid,
+
+                child_instance_uid:
+                    child_instance.uid,
+
+                element_relationship_uid:
+                    schema_element.relationship_uid,
+
+                index:
+                    schema_element.index
+            }
+        )
+
+        objects.push({
+            element_relationship_uid:
+                schema_element.relationship_uid,
+
+            instance:
+                child_instance
+        })
+    }
+
+    return {
+        uid:
+            instance_uid,
+
+        schema_uid,
+
+        data_type:
+            'Composite',
+
+        objects
+    }
+}
 export async function Create_Instance_From_Schema_In_Transaction(
     transaction: ManagedTransaction,
     schema_uid: string,
@@ -1769,78 +1861,13 @@ export async function Create_Instance_From_Schema_In_Transaction(
             }
 
         case 'Composite': {
-            const objects:
-                GraphQL_Instance_Object[] = []
-
-            for (
-                const schema_element
-                of elements
-            ) {
-                const child_instance =
-                    await Create_Instance_From_Schema_In_Transaction(
-                        transaction,
-                        schema_element.element_schema_uid,
-                        user_id
-                    )
-
-                await transaction.run(
-                    `
-                    MATCH
-                        (parent:Instance {
-                            uid: $parent_instance_uid
-                        })
-
-                    MATCH
-                        (child:Instance {
-                            uid: $child_instance_uid
-                        })
-
-                    CREATE
-                        (parent)-[
-                            relationship:HAS_OBJECT {
-                                element_relationship_uid:
-                                    $element_relationship_uid,
-
-                                index:
-                                    $index
-                            }
-                        ]->(child)
-                    `,
-                    {
-                        parent_instance_uid:
-                            instance_uid,
-
-                        child_instance_uid:
-                            child_instance.uid,
-
-                        element_relationship_uid:
-                            schema_element.relationship_uid,
-
-                        index:
-                            schema_element.index
-                    }
-                )
-
-                objects.push({
-                    element_relationship_uid:
-                        schema_element.relationship_uid,
-
-                    instance:
-                        child_instance
-                })
-            }
-
-            return {
-                uid:
-                    instance_uid,
-
-                schema_uid,
-
-                data_type:
-                    'Composite',
-
-                objects
-            }
+            return await Add_Composite_Instance_Objects(
+                elements,
+                instance_uid,
+                transaction,
+                user_id,
+                schema_uid
+            )
         }
 
         case 'Array': {
