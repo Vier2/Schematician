@@ -112,7 +112,11 @@ export async function Create_Instance(
 
     return result.create_instance
 }
+export async function Delete_Instance(
 
+) {
+
+}
 export async function Delete_Schema(
     api_url: string,
     uid: string,

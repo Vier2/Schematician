@@ -1,4 +1,4 @@
-import type { Schema, Schema_Instance, Data_Type,Instance_Path} from "@schematician/shared"
+import type { Schema, Schema_Instance, Data_Type,Instance_Path, GraphQL_Instance} from "@schematician/shared"
 
 
 export interface Input_View {
@@ -39,14 +39,7 @@ export interface Rendered_Node {
 
 
 
-export interface Search_Instance_Result {
-    uid: string
-    schema_uid: string
-    objects: {
-        field_schema_uid: string
-        value: unknown
-    }[]
-}
+
 
 export interface Search_Schema_Result {
     uid: string
@@ -57,7 +50,7 @@ export interface Search_Schema_Result {
 export type Search_Result =
     | {
         search_target: 'instances'
-        results: Search_Instance_Result[]
+        results: GraphQL_Instance[]
     }
     | {
         search_target: 'schemas'

@@ -2376,73 +2376,269 @@ export async function db_search_instances(
     user_uid: string,
     search_query: Search_Query
 ): Promise<GraphQL_Instance[]> {
-    const session = driver.session()
+    const session =
+        driver.session()
 
-    const filters = search_query.filters ?? []
-    const logic = search_query.logic === 'or' ? 'OR' : 'AND'
+    const filters =
+        search_query.filters ?? []
 
-    const where_parts: string[] = []
-    const match_parts: string[] = []
-    const params: Record<string, unknown> = { user_uid }
+    const logic =
+        search_query.logic === 'or'
+            ? 'OR'
+            : 'AND'
 
-    filters.forEach((filter, index) => {
-        params[`field_uid_${index}`] = filter.field_schema_uid
-        params[`value_${index}`] = filter.value
+    const where_parts:
+        string[] = []
 
-        match_parts.push(`
-            OPTIONAL MATCH (i)-[:HAS_VALUE]->(v_${index}:InstanceValue)-[:FOR_FIELD]->(field_${index}:Schema {uid: $field_uid_${index}})
-        `)
+    const params:
+        Record<string, unknown> = {
+        user_uid
+    }
 
-        if (filter.operator === 'has_field') {
-            where_parts.push(`field_${index} IS NOT NULL`)
-            return
+    filters.forEach(
+        (
+            filter,
+            index
+        ) => {
+            const field_uid_parameter =
+                `field_schema_uid_${index}`
+
+            const value_parameter =
+                `value_${index}`
+
+            params[field_uid_parameter] =
+                filter.field_schema_uid
+
+            /*
+             * The search begins at the candidate root and includes:
+             *
+             * - the root itself, because the path length may be zero;
+             * - composite descendants through HAS_OBJECT;
+             * - array descendants through HAS_ITEM.
+             */
+            const field_match = `
+                MATCH
+                    (candidate)
+                    -[
+                        :HAS_OBJECT|HAS_ITEM
+                        *0..
+                    ]->
+                    (field_instance:Instance {
+                        schema_uid:
+                            $${field_uid_parameter}
+                    })
+            `
+
+            switch (filter.operator) {
+                case 'has_field':
+                    where_parts.push(`
+                        EXISTS {
+                            ${field_match}
+                        }
+                    `)
+
+                    return
+
+                case 'equals':
+                    params[value_parameter] =
+                        filter.value
+
+                    where_parts.push(`
+                        EXISTS {
+                            ${field_match}
+
+                            WHERE
+                                field_instance.data_type IN [
+                                    'String',
+                                    'Number',
+                                    'Boolean'
+                                ]
+
+                                AND field_instance.value =
+                                    $${value_parameter}
+                        }
+                    `)
+
+                    return
+
+                case 'contains':
+                    params[value_parameter] =
+                        filter.value
+
+                    where_parts.push(`
+                        EXISTS {
+                            ${field_match}
+
+                            WHERE
+                                field_instance.data_type IN [
+                                    'String',
+                                    'Number',
+                                    'Boolean'
+                                ]
+
+                                AND field_instance.value
+                                    IS NOT NULL
+
+                                AND toLower(
+                                    toString(
+                                        field_instance.value
+                                    )
+                                )
+                                CONTAINS
+                                toLower(
+                                    toString(
+                                        $${value_parameter}
+                                    )
+                                )
+                        }
+                    `)
+
+                    return
+
+                case 'greater_than':
+                    params[value_parameter] =
+                        filter.value
+
+                    where_parts.push(`
+                        EXISTS {
+                            ${field_match}
+
+                            WHERE
+                                field_instance.data_type =
+                                    'Number'
+
+                                AND field_instance.value
+                                    IS NOT NULL
+
+                                AND field_instance.value >
+                                    $${value_parameter}
+                        }
+                    `)
+
+                    return
+
+                case 'less_than':
+                    params[value_parameter] =
+                        filter.value
+
+                    where_parts.push(`
+                        EXISTS {
+                            ${field_match}
+
+                            WHERE
+                                field_instance.data_type =
+                                    'Number'
+
+                                AND field_instance.value
+                                    IS NOT NULL
+
+                                AND field_instance.value <
+                                    $${value_parameter}
+                        }
+                    `)
+
+                    return
+
+                default: {
+                    const exhaustive_check =
+                        filter.operator
+
+                    throw new Error(
+                        `Unsupported search operator "${String(
+                            exhaustive_check
+                        )}".`
+                    )
+                }
+            }
         }
-
-        if (filter.operator === 'equals') {
-            where_parts.push(`field_${index} IS NOT NULL AND v_${index}.value = $value_${index}`)
-            return
-        }
-
-        if (filter.operator === 'contains') {
-            where_parts.push(`
-                field_${index} IS NOT NULL
-                AND toLower(toString(v_${index}.value))
-                    CONTAINS toLower(toString($value_${index}))
-            `)
-            return
-        }
-
-        if (filter.operator === 'greater_than') {
-            where_parts.push(`field_${index} IS NOT NULL AND v_${index}.value > $value_${index}`)
-            return
-        }
-
-        if (filter.operator === 'less_than') {
-            where_parts.push(`field_${index} IS NOT NULL AND v_${index}.value < $value_${index}`)
-            return
-        }
-    })
+    )
 
     const where_clause =
         where_parts.length > 0
-            ? `WHERE ${where_parts.join(` ${logic} `)}`
+            ? `
+                AND (
+                    ${where_parts.join(
+                `\n${logic}\n`
+            )}
+                )
+            `
             : ''
 
     try {
-        const result = await session.run(
-            `
-            MATCH (u:User {uid: $user_uid})-[:OWNS]->(i:Instance)
-            ${match_parts.join('\n')}
-            ${where_clause}
-            RETURN DISTINCT i
-            `,
-            params
-        )
+        return await session.executeRead(
+            async transaction => {
+                const result =
+                    await transaction.run(
+                        `
+                        MATCH
+                            (user:User {
+                                uid: $user_uid
+                            })
+                            -[:OWNS]->
+                            (candidate:Instance)
 
-        return result.records.map(record => ({
-            ...record.get('i').properties,
-            objects: []
-        }))
+                        /*
+                         * Create_Instance_Node gives ownership to every
+                         * descendant Instance. This condition prevents
+                         * descendants from being returned as separate
+                         * search results.
+                         */
+                        WHERE
+                            NOT EXISTS {
+                                MATCH
+                                    (:Instance)
+                                    -[
+                                        :HAS_OBJECT|HAS_ITEM
+                                    ]->
+                                    (candidate)
+                            }
+
+                            ${where_clause}
+
+                        RETURN DISTINCT
+                            candidate.uid
+                                AS instance_uid
+                        `,
+                        params
+                    )
+
+                const instances:
+                    GraphQL_Instance[] = []
+
+                for (
+                    const record
+                    of result.records
+                ) {
+                    const instance_uid =
+                        record.get(
+                            'instance_uid'
+                        ) as string
+
+                    const instance =
+                        await Get_Instance_By_UID_In_Transaction(
+                            transaction,
+                            user_uid,
+                            instance_uid
+                        )
+
+                    if (!instance) {
+                        throw new Error(
+                            [
+                                `Search returned instance`,
+                                `"${instance_uid}",`,
+                                'but the instance could not be reconstructed.'
+                            ].join(' ')
+                        )
+                    }
+
+                    instances.push(
+                        instance
+                    )
+                }
+
+                return instances
+            }
+        )
     } finally {
         await session.close()
     }

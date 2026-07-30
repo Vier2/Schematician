@@ -26,13 +26,13 @@
 import { Convert_GraphQL_Schema_To_Schema, Get_All_Schemas, Render_Options_Schema } from "$lib/shared/utils";
 import type { GraphQL_Response} from "$lib/graphql/types";
 import { Render_Search_Schema_Value_Recursive } from "$lib/Instantiation/utils";
-import type { Schema, GraphQL_Schema, Search_Query_Input, Search_Filter_Input, Filter_Operator } from "@schematician/shared";
+import type { Schema, GraphQL_Instance, GraphQL_Schema, Search_Query_Input, Search_Filter_Input, Filter_Operator } from "@schematician/shared";
 import { Create_Schema_Modal } from "$lib/shared/utils";
-import { Delete_Schema, Create_Instantiate_Button } from "$lib/graphql/utils";
+import { Delete_Schema, Delete_Instance, Create_Instantiate_Button, Get_Schema_By_UID } from "$lib/graphql/utils";
 import type { 
      Search_Schema_Result,
       Search_Result,  
-      Search_Instance_Result} from "$lib/Schema/models"; 
+      } from "$lib/Schema/models"; 
 import { PUBLIC_SERVER_API_URL, PUBLIC_CLIENT_API_URL } from "$env/static/public";
 function Handle_Search_Target_Select(select: HTMLSelectElement,
     container: HTMLDivElement,
@@ -234,49 +234,153 @@ function Handle_Add_Filter(button: HTMLButtonElement) {
     })
 }
 
+function Make_Instance_Selection(
+    depth: number
+): string {
+    const atomic_selection = `
+        ... on Atomic_Instance {
+            __typename
+            uid
+            schema_uid
+            data_type
+            value
+        }
+    `
+
+    if (depth <= 0) {
+        return `
+            ${atomic_selection}
+
+            ... on Composite_Instance {
+                __typename
+                uid
+                schema_uid
+                data_type
+            }
+
+            ... on Array_Instance {
+                __typename
+                uid
+                schema_uid
+                data_type
+            }
+        `
+    }
+
+    const child_selection =
+        Make_Instance_Selection(
+            depth - 1
+        )
+
+    return `
+        ${atomic_selection}
+
+        ... on Composite_Instance {
+            __typename
+            uid
+            schema_uid
+            data_type
+
+            objects {
+                element_relationship_uid
+
+                instance {
+                    ${child_selection}
+                }
+            }
+        }
+
+        ... on Array_Instance {
+            __typename
+            uid
+            schema_uid
+            data_type
+
+            items {
+                ${child_selection}
+            }
+        }
+    `
+}
 export async function Submit_Search(
     search_query_state: Search_Query_Input,
     api_url: string
 ): Promise<Search_Result | undefined> {
-    if (search_query_state.search_target === 'instances') {
+     if (
+        search_query_state.search_target ===
+        'instances'
+    ) {
+        const instance_selection =
+            Make_Instance_Selection(4)
+
         const query = `
-            query Search($query: Search_Query_Input!) {
-                search_instances(query: $query) {
-                    uid
-                    schema_uid
-                    objects {
-                        field_schema_uid
-                        value
-                    }
+            query Search(
+                $query: Search_Query_Input!
+            ) {
+                search_instances(
+                    query: $query
+                ) {
+                    ${instance_selection}
                 }
             }
         `
 
-        const response = await fetch(api_url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`
-            },
-            body: JSON.stringify({
-                query,
-                variables: { query: search_query_state }
-            })
-        })
+        const response =
+            await fetch(
+                api_url,
+                {
+                    method:
+                        'POST',
+
+                    headers: {
+                        'Content-Type':
+                            'application/json',
+
+                        Authorization:
+                            `Bearer ${
+                                localStorage.getItem(
+                                    'token'
+                                ) ?? ''
+                            }`
+                    },
+
+                    body:
+                        JSON.stringify({
+                            query,
+
+                            variables: {
+                                query:
+                                    search_query_state
+                            }
+                        })
+                }
+            )
 
         const result =
-            (await response.json()) as GraphQL_Response<{
-                search_instances: Search_Instance_Result[]
+            (
+                await response.json()
+            ) as GraphQL_Response<{
+                search_instances:
+                    GraphQL_Instance[]
             }>
 
         if (result.errors) {
-            console.error('GraphQL Errors:', result.errors)
+            console.error(
+                'GraphQL Errors:',
+                result.errors
+            )
+
             return
         }
 
         return {
-            search_target: 'instances',
-            results: result.data?.search_instances ?? []
+            search_target:
+                'instances',
+
+            results:
+                result.data
+                    ?.search_instances ??
+                []
         }
     }
 
@@ -317,7 +421,41 @@ export async function Submit_Search(
         results: result.data?.search_schemas ?? []
     }
 }
+export async function Render_Instance_Results(
+    instance: GraphQL_Instance,
+    client_url: string,
+    api_url: string
+) {
+        const container = document.createElement('div')
+    container.style.border = '2px solid black'
+    const name = document.createElement('p')
+    const schema = await Get_Schema_By_UID(api_url,
+        instance.schema_uid,
+        1, localStorage.getItem('token') ?? undefined,
+    )
+    name.textContent = `${schema?.name} instance`
+    const data_type = document.createElement('p')
+    data_type.textContent = instance.data_type
 
+    const edit_url: HTMLAnchorElement = document.createElement('a') as HTMLAnchorElement
+    edit_url.href = `${client_url}/Schema/Instantiation/${instance.uid}` /**TODO:Add id dir later*/
+    edit_url.textContent = 'Edit'
+    /**TODO:Add Delete Button*/
+    const delete_button = document.createElement('button')
+    delete_button.textContent = 'x'
+    delete_button.addEventListener('click', async function() {
+        await Delete_Instance()
+        container.remove()
+    }
+    )
+    const button:HTMLButtonElement = document.createElement('button')
+    
+    container.appendChild(name)
+    container.appendChild(data_type)
+    container.appendChild(edit_url)
+    container.appendChild(delete_button)
+    return container
+}
 export function Handle_Submit_Search(
     button: HTMLButtonElement,
     search_query_state: Search_Query_Input,
@@ -328,11 +466,22 @@ export function Handle_Submit_Search(
     button.addEventListener('click', async function () {
         console.log(`search query state ${JSON.stringify(search_query_state)}`)
         const search_result = await Submit_Search(search_query_state, api_url)
-        if (search_result?.search_target == "schemas") {
+        if (search_result?.search_target === "schemas") {
             search_result.results.forEach(schema => {
                 const schema_container = Render_Schema_Result(schema, client_url, api_url)
                 results_container.appendChild(schema_container)
             });
+        }
+        if (search_result?.search_target === 'instances') {
+            search_result.results.forEach(async (instance) => {
+                const instance_container = await Render_Instance_Results(
+                    instance,
+                    client_url,
+                    api_url
+                )
+                results_container.appendChild(instance_container)
+            })
+            console.log(`instance results ${JSON.stringify(search_result.results)}`)
         }
     })
 }
