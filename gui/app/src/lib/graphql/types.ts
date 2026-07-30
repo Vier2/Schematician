@@ -108,6 +108,7 @@ export type GraphQL_Variable_Type =
     | 'JSON!'
     | `${string}_Input`
     | `${string}_Input!`
+    
 export interface GraphQL_Variable_Definition {
     name: string
     type: GraphQL_Variable_Type

@@ -1192,6 +1192,63 @@ async function Get_Array_Instance_Items_In_Transaction(
 
     return items
 }
+function Convert_Neo4j_Number(
+    value: unknown
+): number {
+    if (typeof value === 'number') {
+        if (!Number.isFinite(value)) {
+            throw new Error(
+                `Number "${value}" is not finite.`
+            )
+        }
+
+        return value
+    }
+
+    if (typeof value === 'string') {
+        const trimmed_value =
+            value.trim()
+
+        if (trimmed_value === '') {
+            throw new Error(
+                'An empty string cannot be converted to a number.'
+            )
+        }
+
+        const converted_value =
+            Number(trimmed_value)
+
+        if (!Number.isFinite(converted_value)) {
+            throw new Error(
+                `Could not convert "${value}" to a finite number.`
+            )
+        }
+
+        return converted_value
+    }
+
+    if (
+        typeof value === 'object' &&
+        value !== null &&
+        'toNumber' in value &&
+        typeof value.toNumber === 'function'
+    ) {
+        const converted_value =
+            value.toNumber()
+
+        if (!Number.isFinite(converted_value)) {
+            throw new Error(
+                `Neo4j number "${String(value)}" is not finite.`
+            )
+        }
+
+        return converted_value
+    }
+
+    throw new Error(
+        `Could not convert "${String(value)}" to a number.`
+    )
+}
 async function Get_Instance_By_UID_In_Transaction(
     transaction: ManagedTransaction,
     user_uid: string,
@@ -1209,14 +1266,8 @@ async function Get_Instance_By_UID_In_Transaction(
                     uid: $instance_uid
                 })
 
-            OPTIONAL MATCH
-                (instance)
-                -[:HAS_VALUE]->
-                (instance_value:InstanceValue)
-
             RETURN
-                instance,
-                instance_value
+                instance
             `,
             {
                 user_uid,
@@ -1241,33 +1292,52 @@ async function Get_Instance_By_UID_In_Transaction(
     const schema_uid =
         instance_properties.schema_uid as string
 
+    const uid =
+        instance_properties.uid as string
+
     switch (data_type) {
         case 'String':
-        case 'Number':
-        case 'Boolean': {
-            const instance_value_node =
-                record.get(
-                    'instance_value'
-                )
-
             return {
-              
-
-                uid:
-                    instance_properties.uid,
-
+                uid,
                 schema_uid,
-
-                data_type,
+                data_type: 'String',
 
                 value:
-                    instance_value_node
-                        ? instance_value_node
-                            .properties
-                            .value
+                    typeof instance_properties.value_json ===
+                        'string'
+                        ? instance_properties.value_json
                         : null
             }
-        }
+
+        case 'Number':
+            return {
+                uid,
+                schema_uid,
+                data_type: 'Number',
+
+                value:
+                    instance_properties.value_json ===
+                        null ||
+                        instance_properties.value_json ===
+                        undefined
+                        ? null
+                        : Convert_Neo4j_Number(
+                            instance_properties.value_json
+                        )
+            }
+
+        case 'Boolean':
+            return {
+                uid,
+                schema_uid,
+                data_type: 'Boolean',
+
+                value:
+                    typeof instance_properties.value_json ===
+                        'boolean'
+                        ? instance_properties.value_json
+                        : null
+            }
 
         case 'Composite': {
             const objects =
@@ -1278,13 +1348,8 @@ async function Get_Instance_By_UID_In_Transaction(
                 )
 
             return {
-
-
-                uid:
-                    instance_properties.uid,
-
+                uid,
                 schema_uid,
-
                 data_type:
                     'Composite',
 
@@ -1301,13 +1366,8 @@ async function Get_Instance_By_UID_In_Transaction(
                 )
 
             return {
-               
-
-                uid:
-                    instance_properties.uid,
-
+                uid,
                 schema_uid,
-
                 data_type:
                     'Array',
 
@@ -1315,14 +1375,13 @@ async function Get_Instance_By_UID_In_Transaction(
             }
         }
 
-        default: {
-            const exhaustive_check: never =
-                data_type
-
+        default:
             throw new Error(
-                `Unsupported instance data type: ${exhaustive_check}`
+                [
+                    `Instance "${instance_uid}"`,
+                    `has unsupported data type "${String(data_type)}".`
+                ].join(' ')
             )
-        }
     }
 }
 export function Collect_Instance_Values(
@@ -2283,36 +2342,7 @@ export function Validate_Instance_Tree(
             )
     }
 }
-export async function db_get_instance_values(
-    driver: Driver,
-    user_uid: string,
-    instance_uid: string
-): Promise<GraphQL_Instance_Value[]> {
-    const session = driver.session()
 
-    try {
-        const result = await session.run(
-            `
-            MATCH (u:User {uid: $user_uid})-[:OWNS]->(i:Instance {uid: $instance_uid})
-            OPTIONAL MATCH (i)-[:HAS_VALUE]->(v:InstanceValue)-[:FOR_FIELD]->(field:Schema)
-            RETURN collect({
-                field_schema_uid: field.uid,
-                value: v.value
-            }) AS objects
-            `,
-            { user_uid, instance_uid }
-        )
-
-        const objects = result.records[0]?.get('objects') ?? []
-
-        return objects.filter(
-            (object: GraphQL_Instance_Value) =>
-                object.schema_uid !== null
-        )
-    } finally {
-        await session.close()
-    }
-}
 
 export async function db_search_instances(
     driver: Driver,

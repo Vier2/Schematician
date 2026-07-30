@@ -27,8 +27,11 @@
     .Grid_3_Column {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
-        height: 80vh;
+        height: 95vh;
         max-width: 100%;
+        /* Prevents siblings from stretching to match each other */
+        align-items: start; 
+
     }
   
     .map {
@@ -50,7 +53,9 @@
         /* Schema Meta Data, Schema Value Box, Schema Instant Data */
         display: grid;
         grid-template-rows: 20% 79% 1%;
-        gap: 10%
+        gap: 10%;
+        height: 100%;
+        
     }
     .Right_Column {
         /* Map & Next Element Arrow */
@@ -72,6 +77,9 @@
     overflow-wrap: break-word;
     flex-direction: column;
     overflow-x: hidden;
+    height: 100%;
+    overflow-y: scroll;
+
   }
  
 </style>

@@ -820,7 +820,7 @@ export function Collect_Instance_Values(
 export function Add_Save_Instance_Function(
     button: HTMLButtonElement,
     state: Schema_Instance,
-    client_url: string
+    api_url: string
 ): void {
     button.addEventListener(
         'click',
@@ -839,11 +839,16 @@ export function Add_Save_Instance_Function(
                     state.root
                 )
 
-                await Save_Instance(
-                    client_url,
+                console.log(
+                    `instance before saving
+                    ${JSON.stringify(state.root)}`
+                )
+                const result = await Save_Instance(
+                    api_url,
                     state.root
                 )
-
+                console.log(`
+                    saved instance ${result}`)
                 button.textContent =
                     'Saved'
             } catch (error) {
