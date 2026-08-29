@@ -1,4 +1,4 @@
-import { GraphQL_Instance } from "../graphql/types"
+import { GraphQL_Instance, JSON_Value } from "../graphql/types"
 
 export interface Schema_Element_Update {
     element_uid: string
@@ -56,6 +56,7 @@ export type Data_Type =
     | 'Boolean'
     | 'Composite'
     | 'Array'
+    
 
 export type Data_Type_Map = {
     String: string
@@ -82,11 +83,16 @@ type BaseSchema<T extends Data_Type> = {
     /**
      * Graphic representing schema
      */
-    image?: string
-    rules?: string
-    logic?: string
+    image_url?: string | null
+    rules?: Rule[]
     constraints?: Constraint_Map[T]
     relationships?: string
+}
+interface Computational_Schema<
+    T extends Data_Type
+> extends BaseSchema<T> {
+
+    computations: Computation[]
 }
 type EnumPart<T extends Data_Type> = {
     enumerations: Data_Type_Map[T][]
@@ -175,7 +181,7 @@ export interface Update_Schema_Data {
     name: string
     data_type: Data_Type
 
-    image?: string
+    image_url?: string | null
     rules?: string
     logic?: string
     relationships?: string
@@ -242,3 +248,375 @@ export interface Search_Query_Input {
         direction: 'asc' | 'desc'
     }
 }
+
+type execution = 'Sequential' | 'Concurrent'
+
+
+
+
+export interface Computation {
+    uid: string
+    name: string
+
+    inputs: Computation_Input[]
+    outputs: Computation_Output[]
+
+    operations: Operation_Invocation[]
+
+    control_flow?: Control_Flow[]
+
+    execution_mode?: Execution_Mode
+}
+export interface Computation_Input {
+    uid: string
+    name: string
+
+    schema_uid: string
+
+    constraints?: Constraint[]
+}
+
+export interface Computation_Output {
+    uid: string
+    name: string
+
+    schema_uid: string
+
+    source: Value_Source
+}
+
+export type Value_Source =
+    | Literal_Source
+    | Input_Source
+    | Element_Source
+    | Operation_Output_Source
+
+export interface Literal_Source {
+    type: 'Literal'
+    value: unknown
+}
+
+export interface Input_Source {
+    type: 'Input'
+    input_uid: string
+}
+
+export interface Element_Source {
+    type: 'Element'
+    element_uid: string
+}
+
+export interface Operation_Output_Source {
+    type: 'Operation_Output'
+    operation_uid: string
+    output_uid: string
+}
+
+export interface Operation_Definition {
+    uid: string
+    name: string
+
+    inputs: Operation_Input[]
+    outputs: Operation_Output[]
+
+    implementation: Operation_Implementation
+}
+
+export interface Operation_Input {
+    uid: string
+    schema: Schema
+    cardinality: 'Single' | 'Multiple'
+    required: boolean
+}
+
+export interface Operation_Output {
+    uid: string
+    schema: Schema
+    cardinality: 'Single' | 'Multiple'
+}
+export interface Operation_Invocation {
+    uid: string
+
+    operation_uid: string
+
+    arguments: Operation_Argument[]
+}
+export interface Operation_Argument {
+    parameter_uid: string
+    source: Value_Source
+}
+
+export interface Branch {
+    type: 'Branch'
+
+    condition: Value_Source
+
+    cases: Branch_Case[]
+}
+
+export interface Branch_Case {
+    match: Match_Condition
+
+    operations: Operation_Invocation[]
+}
+
+export interface Rule {
+    uid: string
+    name: string
+
+    relation: Relation_Instance
+
+    enforcement?: Rule_Enforcement
+    resolvers?: Rule_Resolver[]
+
+}
+/**
+ * Example: 
+ * Known B, C → derive A
+ * Known A, C → derive B
+ * Known A, B → derive C
+ */
+export interface Rule_Resolver {
+    knowns: string[]
+    target: string
+
+    computation_uid: string
+}
+export interface Equality_Relation {
+    type: 'Equality'
+
+    left: Value_Source
+    right: Value_Source
+}
+export type Match_Condition =
+    | {
+        type: 'Equals'
+        value: unknown
+    }
+    | {
+        type: 'Predicate'
+        operation_uid: string
+    }
+
+/**make discriminated union according to data type of operand */
+type operator = '>'|  '<'|  '=' | 'contains'
+
+
+export interface Range {
+    value_map: Value_Map[]
+
+
+}
+
+export interface Value_Map {
+    value: string
+    operations: Operation[]
+
+}
+
+
+
+interface Operation_Invocation {
+    operation: Operation
+
+    arguments: Argument_Binding[]
+}
+
+interface Argument_Binding {
+    parameter_uid: string
+
+    source:
+    | Literal
+    | Variable_Reference
+    | Object_Reference
+    | Operation_Output_Reference
+}
+
+type Mathematical_Expression =
+    | Literal
+    | Variable_Reference
+    | Operation_Invocation
+    | Function_Invocation
+    | Vector
+    | Matrix
+/**Test one before making all of them */
+
+type Objective_type = 
+    'Solve' |
+    'Evaluate' |
+    'Substitute' |
+    'Transform' |
+    'Describe' |
+    'Factor' |
+    'Differentiate' |
+    'Integrate' |
+    'Expand' |
+    'Graph' |
+    'Isolate' 
+interface Solve_Inputs {
+    statements: Mathematical_Statement[]
+    targets: Mathematical_Object[]
+    knowns?: Value_Binding[]
+    domain?: Mathematical_Domain
+    assumptions?: Mathematical_Statement[]
+}
+interface Solve_Output {
+    solutions: Solution_Set
+}
+
+interface Evaluate_Inputs {
+    object: Mathematical_Object
+    bindings?: Value_Binding[]
+    assumptions?: Mathematical_Statement[]
+    precision?: number
+}
+
+interface Evaluate_Output {
+    result: Mathematical_Value
+    trace?: Evaluation_Step[]
+}
+
+interface Substitution {
+    target: Mathematical_Object
+    replacement: Mathematical_Object
+}
+
+interface Transform_Inputs {
+    object: Mathematical_Object
+    target_form?: Mathematical_Form
+    rules?: Transformation_Rule[]
+}
+
+interface Transform_Inputs {
+    object: Mathematical_Object
+    target_form?: Mathematical_Form
+    rules?: Transformation_Rule[]
+}
+type Transform_Type =
+    | 'Simplify'
+    | 'Expand'
+    | 'Factor'
+    | 'Substitute'
+    | 'Rewrite'
+    | 'Rearrange'
+
+interface Simplify_Inputs {
+    object: Mathematical_Object
+    assumptions?: Mathematical_Statement[]
+    criterion?: Simplification_Criterion
+}
+
+interface Simplification_Criterion  {
+    metric: 'term_count' | 'operation_count' | 'depth' | 'custom'
+}
+
+interface Factor_Inputs {
+    expression: Mathematical_Expression
+    domain?: Mathematical_Domain
+}
+interface Factor_Output {
+    factored_expression: Mathematical_Expression
+}
+
+
+interface Expand_Inputs {
+    expression: Mathematical_Expression
+    scope?: Expansion_Scope
+}
+
+interface Expand_Output {
+    expanded_expression: Mathematical_Expression
+}
+
+interface Differentiate_Inputs {
+    expression: Mathematical_Object
+    with_respect_to: Variable
+    order?: number
+    point?: Mathematical_Value
+}
+
+interface Differentiate_Output {
+    derivative: Mathematical_Object
+}
+interface Differentiate_Output {
+    derivative: Mathematical_Object
+}
+
+interface Integrate_Output {
+    result: Mathematical_Object
+}
+
+interface Graph_Inputs {
+    object: Mathematical_Object
+
+    variables?: Variable[]
+
+    domain?: Domain_Restriction[]
+
+    viewport?: {
+        x_min?: number
+        x_max?: number
+        y_min?: number
+        y_max?: number
+    }
+}
+
+interface Graph_Output {
+    representation: Graph_Representation
+}
+export interface Describe_Input {
+    y_function: string
+    function: string
+}
+export type Objective_Input_Map = {
+    Solve: Solve_Inputs
+    Describe: Describe_Input
+
+
+}
+interface Base_Objective<T extends string, I, O> {
+    type: T
+    inputs: I
+    output?: O
+}
+
+
+type Solve_Objective =
+    Base_Objective<
+        'Solve',
+        Solve_Inputs,
+        Solve_Output
+    >
+
+type Evaluate_Objective =
+    Base_Objective<
+        'Evaluate',
+        Evaluate_Inputs,
+        Evaluate_Output
+    >
+
+type Factor_Objective =
+    Base_Objective<
+        'Factor',
+        Factor_Inputs,
+        Factor_Output
+    >
+
+export interface Atomic_Operation_Implementation {
+    type: 'Atomic'
+    executor_uid: string
+}
+
+export interface Composite_Operation_Implementation {
+    type: 'Composite'
+    computation: Computation
+}
+
+export type Operation_Implementation =
+    | Atomic_Operation_Implementation
+    | Composite_Operation_Implementation
+
+
+export type Atomic_Executor = (
+    inputs: Record<string, unknown>
+) => Record<string, unknown>

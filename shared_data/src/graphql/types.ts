@@ -49,7 +49,7 @@ export interface GraphQL_Schema {
     name: string
     uid: string
     data_type: Data_Type
-    image?: string
+    image_url?: string | null
     rules?: string
     logic?: string
     relationships?: string
