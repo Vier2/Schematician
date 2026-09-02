@@ -286,6 +286,10 @@ export interface Execution_Context {
         string,
         Values
     >
+    branch_outputs: Record<
+        string,
+        unknown
+    >
 }
 export type Value_Source =
     | Literal_Source
@@ -295,7 +299,16 @@ export type Value_Source =
     | {
         type: 'Computation_Input'
         input_uid: string
+    } 
+      | {
+          type: 'Branch_Output'
+          branch_uid: string
+      }
+    |  {
+        type: 'Collection'
+        items: Value_Source[]
     }
+
 
 export interface Literal_Source {
     type: 'Literal'
@@ -351,7 +364,7 @@ export interface Operation_Argument {
 }
 
 export interface Branch {
-    type: 'Branch'
+    uid: string
 
     condition: Value_Source
 

@@ -5,6 +5,7 @@ import type { Schema,
     Values,
     Operation_Invocation,
     Execution_Context,
+    Branch,
      Rule, Atomic_Executor } from "@schematician/shared";
 
 
@@ -283,6 +284,14 @@ export const Atomic_Executors:
 
         return {
             count: items.length
+        }
+    },
+    'builtin.number.power': inputs => {
+        const base = inputs.base as number
+        const exponent = inputs.exponent as number
+
+        return {
+            power: base ** exponent
         }
     }
 }
@@ -592,14 +601,28 @@ export function execute_computation(
 
     const context: Execution_Context = {
         computation_inputs: inputs,
-        operation_outputs: {}
+        operation_outputs: {},
+        branch_outputs: {}
     }
 
     for (const invocation of computation.operations) {
 
-        context.operation_outputs[invocation.uid] =
+        context.operation_outputs[
+            invocation.uid
+        ] =
             execute_operation_invocation(
                 invocation,
+                context
+            )
+    }
+
+    for (const branch of computation.branches ?? []) {
+
+        context.branch_outputs[
+            branch.uid
+        ] =
+            execute_branch(
+                branch,
                 context
             )
     }
@@ -632,16 +655,333 @@ function resolve_value_source(
             return context.computation_inputs[
                 source.input_uid
             ]
-
+        case 'Branch_Output':
+            return context.branch_outputs[
+                source.branch_uid
+            ]
+        case 'Collection':
+            return source.items.map(
+                item =>
+                    resolve_value_source(
+                        item,
+                        context
+                    )
+            )
         case 'Operation_Output':
-            return context.operation_outputs[source.operation_uid][source.output_uid]
+            return context.operation_outputs
+                [source.operation_uid][source.output_uid]
     }
 }
-const mean_result = execute_operation(
-    Mean_Operation,
+
+
+export const Base_Schema: Schema<'Number'> = {
+    uid: 'math.power.base',
+    name: 'Base',
+    data_type: 'Number'
+}
+
+export const Exponent_Schema: Schema<'Number'> = {
+    uid: 'math.power.exponent',
+    name: 'Exponent',
+    data_type: 'Number'
+}
+
+export const Power_Result_Schema: Schema<'Number'> = {
+    uid: 'math.power.result',
+    name: 'Power',
+    data_type: 'Number'
+}
+
+
+export const Power_Operation: Operation_Definition = {
+    uid: 'math.operation.power',
+    name: 'Power',
+
+    inputs: [
+        {
+            uid: 'base',
+            schema: Base_Schema,
+            cardinality: 'Single',
+            required: true
+        },
+
+        {
+            uid: 'exponent',
+            schema: Exponent_Schema,
+            cardinality: 'Single',
+            required: true
+        }
+    ],
+
+    outputs: [
+        {
+            uid: 'power',
+            schema: Power_Result_Schema,
+            cardinality: 'Single'
+        }
+    ],
+
+    implementation: {
+        type: 'Atomic',
+        executor_uid: 'builtin.number.power'
+    }
+}
+
+export const Piecewise_Input_Schema: Schema<'Number'> = {
+    uid: 'math.piecewise.input',
+    name: 'Piecewise Input',
+    data_type: 'Number'
+}
+
+export const Piecewise_Output_Schema: Schema<'Number'> = {
+    uid: 'math.piecewise.output',
+    name: 'Piecewise Output',
+    data_type: 'Number'
+}
+
+
+
+
+
+
+
+
+function execute_branch(
+    branch: Branch,
+    context: Execution_Context
+): unknown {
+
+    const condition =
+        resolve_value_source(
+            branch.condition,
+            context
+        )
+
+    const selected_case =
+        branch.cases.find(
+            branch_case =>
+                branch_case.equals === condition
+        )
+
+    if (!selected_case) {
+        throw new Error(
+            `No branch case matched: ${condition}`
+        )
+    }
+
+    for (
+        const invocation
+        of selected_case.operations
+    ) {
+
+        context.operation_outputs[
+            invocation.uid
+        ] =
+            execute_operation_invocation(
+                invocation,
+                context
+            )
+    }
+
+    return resolve_value_source(
+        selected_case.output!,
+        context
+    )
+}
+
+
+export const Piecewise_Branch: Branch = {
+    uid: 'piecewise.branch',
+
+    condition: {
+        type: 'Operation_Output',
+        operation_uid:
+            'piecewise.x_greater_than_3',
+        output_uid: 'result'
+    },
+
+    cases: [
+        {
+            equals: true,
+
+            operations: [
+                {
+                    uid: 'piecewise.square_x',
+
+                    operation: Power_Operation,
+
+                    arguments: [
+                        {
+                            input_uid: 'base',
+
+                            source: {
+                                type: 'Computation_Input',
+                                input_uid: 'x'
+                            }
+                        },
+
+                        {
+                            input_uid: 'exponent',
+
+                            source: {
+                                type: 'Literal',
+                                value: 2
+                            }
+                        }
+                    ]
+                }
+            ],
+
+            output: {
+                type: 'Operation_Output',
+                operation_uid:
+                    'piecewise.square_x',
+                output_uid: 'power'
+            }
+        },
+
+        {
+            equals: false,
+
+            operations: [
+                {
+                    uid: 'piecewise.add_one',
+
+                    operation: Addition_Operation,
+
+                    arguments: [
+                        {
+                            input_uid: 'addends',
+
+                            source: {
+                                type: 'Collection',
+
+                                items: [
+                                    {
+                                        type: 'Computation_Input',
+                                        input_uid: 'x'
+                                    },
+
+                                    {
+                                        type: 'Literal',
+                                        value: 1
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ],
+
+            output: {
+                type: 'Operation_Output',
+                operation_uid:
+                    'piecewise.add_one',
+                output_uid: 'sum'
+            }
+        }
+    ]
+}
+const Compare_X_To_Three: Operation_Invocation = {
+    uid: 'piecewise.x_greater_than_3',
+
+    operation: Greater_Than_Operation,
+
+    arguments: [
+        {
+            input_uid: 'left',
+
+            source: {
+                type: 'Computation_Input',
+                input_uid: 'x'
+            }
+        },
+
+        {
+            input_uid: 'right',
+
+            source: {
+                type: 'Literal',
+                value: 3
+            }
+        }
+    ]
+}
+export const Piecewise_Computation: Computation = {
+    uid: 'math.computation.test_piecewise',
+    name: 'Test Piecewise Function',
+
+    inputs: [
+        {
+            uid: 'x',
+            schema: Piecewise_Input_Schema,
+            cardinality: 'Single'
+        }
+    ],
+
+    operations: [
+        Compare_X_To_Three
+    ],
+
+    branches: [
+        Piecewise_Branch
+    ],
+
+    outputs: [
+        {
+            uid: 'result',
+
+            schema: Piecewise_Output_Schema,
+
+            source: {
+                type: 'Branch_Output',
+                branch_uid: 'piecewise.branch'
+            }
+        }
+    ]
+}
+export const Piecewise_Operation:
+    Operation_Definition = {
+
+    uid: 'math.operation.test_piecewise',
+    name: 'Test Piecewise Function',
+
+    inputs: [
+        {
+            uid: 'x',
+            schema: Piecewise_Input_Schema,
+            cardinality: 'Single',
+            required: true
+        }
+    ],
+
+    outputs: [
+        {
+            uid: 'result',
+            schema: Piecewise_Output_Schema,
+            cardinality: 'Single'
+        }
+    ],
+
+    implementation: {
+        type: 'Composite',
+        computation: Piecewise_Computation
+    }
+}
+
+const result_1 = execute_operation(
+    Piecewise_Operation,
     {
-        values: [3, 5, 7]
+        x: 5
     }
 )
 
-console.log(mean_result)
+const result_2 = execute_operation(
+    Piecewise_Operation,
+    {
+        x: 2
+    }
+)
+
+console.log(`result 1 ${JSON.stringify(result_1)}`)
+console.log(`result 2 ${JSON.stringify(result_2)}`)
