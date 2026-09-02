@@ -264,32 +264,38 @@ export interface Computation {
     operations: Operation_Invocation[]
 
     control_flow?: Control_Flow[]
-
-    execution_mode?: Execution_Mode
+    branches?: Branch[]
 }
 export interface Computation_Input {
     uid: string
-    name: string
-
-    schema_uid: string
-
-    constraints?: Constraint[]
+    schema: Schema
+    cardinality: 'Single' | 'Multiple'
 }
 
 export interface Computation_Output {
     uid: string
-    name: string
-
-    schema_uid: string
-
+    schema: Schema
     source: Value_Source
 }
+export type Values = Record<string, unknown>
 
+export interface Execution_Context {
+    computation_inputs: Values
+
+    operation_outputs: Record<
+        string,
+        Values
+    >
+}
 export type Value_Source =
     | Literal_Source
     | Input_Source
     | Element_Source
     | Operation_Output_Source
+    | {
+        type: 'Computation_Input'
+        input_uid: string
+    }
 
 export interface Literal_Source {
     type: 'Literal'
@@ -337,12 +343,10 @@ export interface Operation_Output {
 export interface Operation_Invocation {
     uid: string
 
-    operation_uid: string
-
     arguments: Operation_Argument[]
 }
 export interface Operation_Argument {
-    parameter_uid: string
+    input_uid: string
     source: Value_Source
 }
 
@@ -355,9 +359,11 @@ export interface Branch {
 }
 
 export interface Branch_Case {
-    match: Match_Condition
+    equals: unknown
 
     operations: Operation_Invocation[]
+
+    output?: Value_Source
 }
 
 export interface Rule {
@@ -415,11 +421,12 @@ export interface Value_Map {
 }
 
 
+export interface Operation_Invocation {
+    uid: string
 
-interface Operation_Invocation {
-    operation: Operation
+    operation: Operation_Definition
 
-    arguments: Argument_Binding[]
+    arguments: Operation_Argument[]
 }
 
 interface Argument_Binding {

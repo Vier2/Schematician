@@ -1,5 +1,54 @@
-import type { Schema, Operation_Definition, Rule, Atomic_Executor } from "@schematician/shared";
+import type { Schema, 
+    Operation_Definition,
+    Computation,
+    Value_Source,
+    Values,
+    Operation_Invocation,
+    Execution_Context,
+     Rule, Atomic_Executor } from "@schematician/shared";
 
+
+
+export const Count_Schema: Schema<'Number'> = {
+    uid: 'math.count',
+    name: 'Count',
+    data_type: 'Number'
+}
+
+export const Countable_Item_Schema: Schema = {
+    uid: 'math.countable_item',
+    name: 'Countable Item',
+    data_type: 'Composite'
+}
+
+export const Expression_Schema: Schema<'Composite'> = {
+    uid: 'math.expression',
+    name: 'Expression',
+    data_type: 'Composite'
+}
+export const Equation_Schema: Schema<'Composite'> = {
+    uid: 'math.equation',
+    name: 'Equation',
+    data_type: 'Composite',
+
+    elements: [
+        {
+            uid: 'left',
+            cardinality: 'Single',
+            index: 0,
+            required: true,
+            element: Expression_Schema
+        },
+
+        {
+            uid: 'right',
+            cardinality: 'Single',
+            index: 1,
+            required: true,
+            element: Expression_Schema
+        }
+    ]
+}
 export const Variable_Schema: Schema<'Number'> = {
     uid: 'math.variable',
     name: 'Variable',
@@ -228,6 +277,13 @@ export const Atomic_Executors:
         return {
             result: left > right
         }
+    },
+    'builtin.collection.count':  inputs => {
+        const items = inputs.items as unknown[]
+
+        return {
+            count: items.length
+        }
     }
 }
 
@@ -285,6 +341,167 @@ export const Greater_Than_Operation:
     }
 }
 
+export const Mean_Input_Schema: Schema<'Number'> = {
+    uid: 'math.mean.input',
+    name: 'Mean Input',
+    data_type: 'Number'
+}
+
+export const Mean_Result_Schema: Schema<'Number'> = {
+    uid: 'math.mean.result',
+    name: 'Mean',
+    data_type: 'Number'
+}
+export const Count_Operation: Operation_Definition = {
+    uid: 'math.operation.count',
+    name: 'Count',
+
+    inputs: [
+        {
+            uid: 'items',
+            schema: Countable_Item_Schema,
+            cardinality: 'Multiple',
+            required: true
+        }
+    ],
+
+    outputs: [
+        {
+            uid: 'count',
+            schema: Count_Schema,
+            cardinality: 'Single'
+        }
+    ],
+
+    implementation: {
+        type: 'Atomic',
+        executor_uid: 'builtin.collection.count'
+    }
+}
+export const Mean_Computation: Computation = {
+    uid: 'math.computation.mean',
+    name: 'Arithmetic Mean Computation',
+
+    inputs: [
+        {
+            uid: 'values',
+            schema: Mean_Input_Schema,
+            cardinality: 'Multiple'
+        }
+    ],
+
+    operations: [
+        {
+            uid: 'mean.add_values',
+
+            operation: Addition_Operation,
+
+            arguments: [
+                {
+                    input_uid: 'addends',
+
+                    source: {
+                        type: 'Computation_Input',
+                        input_uid: 'values'
+                    }
+                }
+            ]
+        },
+
+        {
+            uid: 'mean.count_values',
+
+            operation: Count_Operation,
+
+            arguments: [
+                {
+                    input_uid: 'items',
+
+                    source: {
+                        type: 'Computation_Input',
+                        input_uid: 'values'
+                    }
+                }
+            ]
+        },
+
+        {
+            uid: 'mean.divide',
+
+            operation: Division_Operation,
+
+            arguments: [
+                {
+                    input_uid: 'dividend',
+
+                    source: {
+                        type: 'Operation_Output',
+                        operation_uid: 'mean.add_values',
+                        output_uid: 'sum'
+                    }
+                },
+
+                {
+                    input_uid: 'divisor',
+
+                    source: {
+                        type: 'Operation_Output',
+                        operation_uid: 'mean.count_values',
+                        output_uid: 'count'
+                    }
+                }
+            ]
+        }
+    ],
+
+    outputs: [
+        {
+            uid: 'mean',
+
+            schema: Mean_Result_Schema,
+
+            source: {
+                type: 'Operation_Output',
+                operation_uid: 'mean.divide',
+                output_uid: 'quotient'
+            }
+        }
+    ]
+}
+export const Mean_Operation: Operation_Definition = {
+    uid: 'math.operation.mean',
+    name: 'Arithmetic Mean',
+
+    inputs: [
+        {
+            uid: 'values',
+            schema: Mean_Input_Schema,
+            cardinality: 'Multiple',
+            required: true
+        }
+    ],
+
+    outputs: [
+        {
+            uid: 'mean',
+            schema: Mean_Result_Schema,
+            cardinality: 'Single'
+        }
+    ],
+
+    implementation: {
+        type: 'Composite',
+
+        computation: Mean_Computation         // Addition invocation
+            // Count inv ocation
+            // Division invocation
+        
+    }
+}
+
+
+
+
 
 export function execute_atomic_operation(
     operation: Operation_Definition,
@@ -320,4 +537,111 @@ const result = execute_atomic_operation(
 )
 
 console.log(result)
+export function execute_operation(
+    operation: Operation_Definition,
+    inputs: Values
+): Values {
 
+    if (operation.implementation.type === 'Atomic') {
+
+        const executor =
+            Atomic_Executors[
+            operation.implementation.executor_uid
+            ]
+
+        if (!executor) {
+            throw new Error(
+                `Executor not found: ${operation.implementation.executor_uid
+                }`
+            )
+        }
+
+        return executor(inputs)
+    }
+
+    return execute_computation(
+        operation.implementation.computation,
+        inputs
+    )
+}
+
+function execute_operation_invocation(
+    invocation: Operation_Invocation,
+    context: Execution_Context
+): Values {
+
+    const inputs: Values = {}
+
+    for (const argument of invocation.arguments) {
+        inputs[argument.input_uid] =
+            resolve_value_source(
+                argument.source,
+                context
+            )
+    }
+
+    return execute_operation(
+        invocation.operation,
+        inputs
+    )
+}
+export function execute_computation(
+    computation: Computation,
+    inputs: Values
+): Values {
+
+    const context: Execution_Context = {
+        computation_inputs: inputs,
+        operation_outputs: {}
+    }
+
+    for (const invocation of computation.operations) {
+
+        context.operation_outputs[invocation.uid] =
+            execute_operation_invocation(
+                invocation,
+                context
+            )
+    }
+
+    const outputs: Values = {}
+
+    for (const output of computation.outputs) {
+
+        outputs[output.uid] =
+            resolve_value_source(
+                output.source,
+                context
+            )
+    }
+
+    return outputs
+}
+
+function resolve_value_source(
+    source: Value_Source,
+    context: Execution_Context
+): unknown {
+
+    switch (source.type) {
+
+        case 'Literal':
+            return source.value
+
+        case 'Computation_Input':
+            return context.computation_inputs[
+                source.input_uid
+            ]
+
+        case 'Operation_Output':
+            return context.operation_outputs[source.operation_uid][source.output_uid]
+    }
+}
+const mean_result = execute_operation(
+    Mean_Operation,
+    {
+        values: [3, 5, 7]
+    }
+)
+
+console.log(mean_result)
