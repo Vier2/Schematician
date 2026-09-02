@@ -2,14 +2,35 @@ import type { Schema,
     Operation_Definition,
     Computation,
     Value_Source,
-    Values,
+    Runtime_Value,
+    Operation_Trace,
     Operation_Invocation,
     Execution_Context,
     Branch,
+    Computation_Trace,
+    GraphQL_Instance,
+    Runtime_Values,
+    GraphQL_Atomic_Instance,
+    Atomic_Values,
+    Operation_Execution_Result,
      Rule, Atomic_Executor } from "@schematician/shared";
 
+import { 
+    Addend_Schema,
+    Sum_Schema,
+    Factor_Schema,
+    Product_Schema,
+    Dividend_Schema,
+    Divisor_Schema,
+    Quotient_Schema,
+    Number_Schema,
+    Boolean_Schema } from "./object.js";
 
-
+import { get_boolean_value,
+    get_atomic_value,
+    get_number_value,
+    create_execution_context
+ } from "./objectives/utils.js";
 export const Count_Schema: Schema<'Number'> = {
     uid: 'math.count',
     name: 'Count',
@@ -22,98 +43,7 @@ export const Countable_Item_Schema: Schema = {
     data_type: 'Composite'
 }
 
-export const Expression_Schema: Schema<'Composite'> = {
-    uid: 'math.expression',
-    name: 'Expression',
-    data_type: 'Composite'
-}
-export const Equation_Schema: Schema<'Composite'> = {
-    uid: 'math.equation',
-    name: 'Equation',
-    data_type: 'Composite',
 
-    elements: [
-        {
-            uid: 'left',
-            cardinality: 'Single',
-            index: 0,
-            required: true,
-            element: Expression_Schema
-        },
-
-        {
-            uid: 'right',
-            cardinality: 'Single',
-            index: 1,
-            required: true,
-            element: Expression_Schema
-        }
-    ]
-}
-export const Variable_Schema: Schema<'Number'> = {
-    uid: 'math.variable',
-    name: 'Variable',
-    data_type: 'Number',
-    /**WIll have to change data type to include string or number */
-    elements: [
-        // symbol
-        // value domain
-    ]
-}
-export const Number_Schema: Schema<'Number'> = {
-    uid: 'math.number',
-    name: 'Number',
-    data_type: 'Number'
-}
-
-export const Addend_Schema: Schema<'Number'> = {
-    uid: 'math.addend',
-    name: 'Addend',
-    data_type: 'Number'
-}
-
-export const Sum_Schema: Schema<'Number'> = {
-    uid: 'math.sum',
-    name: 'Sum',
-    data_type: 'Number'
-}
-
-export const Factor_Schema: Schema<'Number'> = {
-    uid: 'math.factor',
-    name: 'Factor',
-    data_type: 'Number'
-}
-
-export const Product_Schema: Schema<'Number'> = {
-    uid: 'math.product',
-    name: 'Product',
-    data_type: 'Number'
-}
-
-export const Dividend_Schema: Schema<'Number'> = {
-    uid: 'math.dividend',
-    name: 'Dividend',
-    data_type: 'Number'
-}
-
-export const Divisor_Schema: Schema<'Number'> = {
-    uid: 'math.divisor',
-    name: 'Divisor',
-    data_type: 'Number'
-}
-
-export const Quotient_Schema: Schema<'Number'> = {
-    uid: 'math.quotient',
-    name: 'Quotient',
-    data_type: 'Number'
-}
-
-
-export const Boolean_Schema: Schema<'Boolean'> = {
-    uid: 'math.boolean',
-    name: 'Boolean',
-    data_type: 'Boolean'
-}
 
 
 
@@ -389,74 +319,109 @@ export const Count_Operation: Operation_Definition = {
 }
 export const Mean_Computation: Computation = {
     uid: 'math.computation.mean',
+
     name: 'Arithmetic Mean Computation',
 
     inputs: [
         {
             uid: 'values',
-            schema: Mean_Input_Schema,
-            cardinality: 'Multiple'
+
+            schema:
+                Mean_Input_Schema,
+
+            cardinality:
+                'Array'
         }
     ],
 
     operations: [
+
         {
             uid: 'mean.add_values',
 
-            operation: Addition_Operation,
+            operation:
+                Addition_Operation,
 
             arguments: [
                 {
-                    input_uid: 'addends',
+                    input_uid:
+                        'addends',
 
                     source: {
-                        type: 'Computation_Input',
-                        input_uid: 'values'
+                        type:
+                            'Computation_Input',
+
+                        input_uid:
+                            'values'
                     }
                 }
             ]
         },
+
 
         {
             uid: 'mean.count_values',
 
-            operation: Count_Operation,
+            operation:
+                Count_Operation,
 
             arguments: [
                 {
-                    input_uid: 'items',
+                    input_uid:
+                        'items',
 
                     source: {
-                        type: 'Computation_Input',
-                        input_uid: 'values'
+                        type:
+                            'Computation_Input',
+
+                        input_uid:
+                            'values'
                     }
                 }
             ]
         },
 
+
         {
             uid: 'mean.divide',
 
-            operation: Division_Operation,
+            operation:
+                Division_Operation,
 
             arguments: [
-                {
-                    input_uid: 'dividend',
 
-                    source: {
-                        type: 'Operation_Output',
-                        operation_uid: 'mean.add_values',
-                        output_uid: 'sum'
+                {
+                    input_uid:
+                        'dividend',
+
+                    source:  {
+                        type:
+                            'Operation_Output',
+
+                        operation_uid:
+                            'mean.add_values',
+
+                        output_uid:
+                            'sum'
+                    
+
                     }
                 },
 
+
                 {
-                    input_uid: 'divisor',
+                    input_uid:
+                        'divisor',
 
                     source: {
-                        type: 'Operation_Output',
-                        operation_uid: 'mean.count_values',
-                        output_uid: 'count'
+                        type:
+                            'Operation_Output',
+
+                        operation_uid:
+                            'mean.count_values',
+
+                        output_uid:
+                            'count'
                     }
                 }
             ]
@@ -467,12 +432,18 @@ export const Mean_Computation: Computation = {
         {
             uid: 'mean',
 
-            schema: Mean_Result_Schema,
+            schema:
+                Mean_Result_Schema,
 
             source: {
-                type: 'Operation_Output',
-                operation_uid: 'mean.divide',
-                output_uid: 'quotient'
+                type:
+                    'Operation_Output',
+
+                operation_uid:
+                    'mean.divide',
+
+                output_uid:
+                    'quotient'
             }
         }
     ]
@@ -545,78 +516,391 @@ const result = execute_atomic_operation(
     }
 )
 
-console.log(result)
-export function execute_operation(
-    operation: Operation_Definition,
-    inputs: Values
-): Values {
+export function unwrap_runtime_value(
+    value: Runtime_Value
+): unknown {
 
-    if (operation.implementation.type === 'Atomic') {
+    if (Array.isArray(value)) {
+
+        return value.map(
+            instance =>
+                unwrap_instance_value(
+                    instance
+                )
+        )
+    }
+
+    return unwrap_instance_value(
+        value
+    )
+}
+export function unwrap_instance_value(
+    instance: GraphQL_Instance
+): unknown {
+
+    switch (instance.data_type) {
+
+        case 'String':
+        case 'Number':
+        case 'Boolean':
+
+            return instance.value
+
+
+        case 'Array':
+
+            return instance.items.map(
+                item =>
+                    unwrap_instance_value(
+                        item
+                    )
+            )
+
+
+        case 'Composite':
+
+            /*
+             * A Composite cannot automatically
+             * become one primitive value.
+             *
+             * Handle this later when an atomic
+             * operation actually requires one.
+             */
+            return instance
+    }
+}
+export function unwrap_runtime_values(
+    inputs: Runtime_Values
+): Atomic_Values {
+
+    const atomic_inputs:
+        Atomic_Values = {}
+
+    for (
+        const [uid, value]
+        of Object.entries(inputs)
+    ) {
+
+        atomic_inputs[uid] =
+            unwrap_runtime_value(
+                value
+            )
+    }
+
+    return atomic_inputs
+}
+
+console.log(result)
+
+export function wrap_atomic_outputs(
+    invocation_uid: string,
+    operation: Operation_Definition,
+    atomic_outputs: Atomic_Values
+): Runtime_Values {
+
+    const outputs:
+        Runtime_Values = {}
+
+    for (
+        const output_definition
+        of operation.outputs
+    ) {
+
+        const raw_value =
+            atomic_outputs[
+            output_definition.uid
+            ]
+
+        if (raw_value === undefined) {
+            throw new Error(
+                `Atomic operation ${operation.name
+                } did not return expected output "${output_definition.uid
+                }".`
+            )
+        }
+
+        if (
+            output_definition.cardinality ===
+            'Multiple'
+        ) {
+
+            if (!Array.isArray(raw_value)) {
+                throw new Error(
+                    `Output ${output_definition.uid
+                    } must be an array.`
+                )
+            }
+
+            outputs[
+                output_definition.uid
+            ] =
+                raw_value.map(
+                    (value, index) =>
+                        create_instance_from_value(
+                            output_definition.schema,
+                            value,
+                            `${invocation_uid}.${output_definition.uid}.${index}`
+                        )
+                )
+
+            continue
+        }
+
+        outputs[
+            output_definition.uid
+        ] =
+            create_instance_from_value(
+                output_definition.schema,
+                raw_value,
+                `${invocation_uid}.${output_definition.uid}`
+            )
+    }
+
+    return outputs
+}
+export function create_instance_from_value(
+    schema: Schema,
+    value: unknown,
+    uid: string
+): GraphQL_Instance {
+
+    switch (schema.data_type) {
+
+        case 'Number':
+
+            return {
+                uid,
+                schema_uid: schema.uid!,
+                data_type: 'Number',
+                value: value as number
+
+                // Add the other required
+                // GraphQL_Instance_Base fields.
+            }
+
+
+        case 'String':
+
+            return {
+                uid,
+                schema_uid: schema.uid!,
+                data_type: 'String',
+                value: value as string
+
+                // other base fields
+            }
+
+
+        case 'Boolean':
+
+            return {
+                uid,
+                schema_uid: schema.uid!,
+                data_type: 'Boolean',
+                value: value as boolean
+
+                // other base fields
+            }
+
+
+        default:
+
+            throw new Error(
+                `Automatic output creation is not yet implemented for ${schema.data_type}.`
+            )
+    }
+}
+export function execute_operation(
+    invocation_uid: string,
+    operation: Operation_Definition,
+    inputs: Runtime_Values
+): {
+    outputs: Runtime_Values
+    trace: Operation_Trace
+} {
+
+    if (
+        operation.implementation.type ===
+        'Atomic'
+    ) {
 
         const executor =
             Atomic_Executors[
-            operation.implementation.executor_uid
+            operation
+                .implementation
+                .executor_uid
             ]
 
         if (!executor) {
+
             throw new Error(
-                `Executor not found: ${operation.implementation.executor_uid
+                `Atomic executor not found: ${operation
+                    .implementation
+                    .executor_uid
                 }`
             )
         }
 
-        return executor(inputs)
+        /*
+         * GraphQL instances
+         * ↓
+         * primitive JS values
+         */
+        const atomic_inputs =
+            unwrap_runtime_values(
+                inputs
+            )
+
+        /*
+         * Actual primitive mathematical
+         * operation occurs here.
+         */
+        const atomic_outputs =
+            executor(
+                atomic_inputs
+            )
+
+        /*
+         * primitive JS values
+         * ↓
+         * GraphQL instances
+         */
+        const outputs =
+            wrap_atomic_outputs(
+                invocation_uid,
+                operation,
+                atomic_outputs
+            )
+
+        return {
+            outputs,
+
+            trace: {
+                invocation_uid,
+
+                operation_uid:
+                    operation.uid,
+
+                operation_name:
+                    operation.name,
+
+                inputs,
+
+                outputs,
+
+                children: []
+            }
+        }
     }
 
-    return execute_computation(
-        operation.implementation.computation,
-        inputs
-    )
+
+    /*
+     * Composite operations recursively
+     * execute their computation.
+     */
+
+    const composite_execution =
+        execute_computation(
+            operation
+                .implementation
+                .computation,
+
+            inputs
+        )
+
+    return {
+        outputs:
+            composite_execution.outputs,
+
+        trace: {
+            invocation_uid,
+
+            operation_uid:
+                operation.uid,
+
+            operation_name:
+                operation.name,
+
+            inputs,
+
+            outputs:
+                composite_execution.outputs,
+
+            children:
+                composite_execution
+                    .trace
+                    .operations
+        }
+    }
 }
 
-function execute_operation_invocation(
+export function execute_operation_invocation(
     invocation: Operation_Invocation,
     context: Execution_Context
-): Values {
+): Operation_Execution_Result {
 
-    const inputs: Values = {}
+    const inputs:
+        Runtime_Values = {}
 
     for (const argument of invocation.arguments) {
-        inputs[argument.input_uid] =
+
+        inputs[
+            argument.input_uid
+        ] =
             resolve_value_source(
                 argument.source,
                 context
             )
     }
 
-    return execute_operation(
-        invocation.operation,
-        inputs
+    const execution =
+        execute_operation(
+            invocation.uid,
+            invocation.operation,
+            inputs
+        )
+
+    context.operation_outputs[
+        invocation.uid
+    ] =
+        execution.outputs
+
+    context.operation_traces.push(
+        execution.trace
     )
+
+    return execution
 }
 export function execute_computation(
     computation: Computation,
-    inputs: Values
-): Values {
+    inputs: Runtime_Values,
+    available_instances:
+        GraphQL_Instance[] = []
+): {
+    outputs: Runtime_Values
+    trace: Computation_Trace
+} {
 
-    const context: Execution_Context = {
-        computation_inputs: inputs,
-        operation_outputs: {},
-        branch_outputs: {}
+    const context =
+        create_execution_context(
+            inputs,
+            available_instances
+        )
+
+    for (
+        const invocation
+        of computation.operations
+    ) {
+        execute_operation_invocation(
+            invocation,
+            context
+        )
     }
 
-    for (const invocation of computation.operations) {
-
-        context.operation_outputs[
-            invocation.uid
-        ] =
-            execute_operation_invocation(
-                invocation,
-                context
-            )
-    }
-
-    for (const branch of computation.branches ?? []) {
+    for (
+        const branch
+        of computation.branches ?? []
+    ) {
 
         context.branch_outputs[
             branch.uid
@@ -627,49 +911,156 @@ export function execute_computation(
             )
     }
 
-    const outputs: Values = {}
+    const outputs:
+        Runtime_Values = {}
 
-    for (const output of computation.outputs) {
+    for (
+        const output
+        of computation.outputs
+    ) {
 
-        outputs[output.uid] =
+        outputs[
+            output.uid
+        ] =
             resolve_value_source(
                 output.source,
                 context
             )
     }
 
-    return outputs
+    return {
+        outputs,
+
+        trace: {
+            computation_uid:
+                computation.uid,
+
+            computation_name:
+                computation.name,
+
+            inputs,
+
+            operations:
+                context.operation_traces,
+
+            outputs
+        }
+    }
 }
 
-function resolve_value_source(
+export function resolve_value_source(
     source: Value_Source,
     context: Execution_Context
-): unknown {
+): Runtime_Value {
 
     switch (source.type) {
 
-        case 'Literal':
-            return source.value
+        case 'Instance':
+            return source.instance
 
-        case 'Computation_Input':
-            return context.computation_inputs[
+
+        case 'Instance_Reference': {
+
+            const instance =
+                context.available_instances.get(
+                    source.instance_uid
+                )
+
+            if (!instance) {
+                throw new Error(
+                    `Instance not found: ${source.instance_uid}`
+                )
+            }
+
+            return instance
+        }
+
+
+        case 'Computation_Input': {
+
+            const value =
+                context.computation_inputs[
                 source.input_uid
-            ]
-        case 'Branch_Output':
-            return context.branch_outputs[
-                source.branch_uid
-            ]
-        case 'Collection':
-            return source.items.map(
-                item =>
+                ]
+
+            if (value === undefined) {
+                throw new Error(
+                    `Computation input not found: ${source.input_uid}`
+                )
+            }
+
+            return value
+        }
+
+
+        case 'Operation_Output': {
+
+            const operation_outputs =
+                context.operation_outputs[
+                source.operation_uid
+                ]
+
+            if (!operation_outputs) {
+                throw new Error(
+                    `Operation outputs not found: ${source.operation_uid}`
+                )
+            }
+
+            const output =
+                operation_outputs[
+                source.output_uid
+                ]
+
+            if (output === undefined) {
+                throw new Error(
+                    `Operation output not found: ${source.operation_uid}.${source.output_uid}`
+                )
+            }
+
+            return output
+        }
+
+
+        case 'Collection': {
+
+            const items:
+                GraphQL_Instance[] = []
+
+            for (const item_source of source.items) {
+
+                const resolved =
                     resolve_value_source(
-                        item,
+                        item_source,
                         context
                     )
-            )
-        case 'Operation_Output':
-            return context.operation_outputs
-                [source.operation_uid][source.output_uid]
+
+                if (Array.isArray(resolved)) {
+                    items.push(...resolved)
+                }
+                else {
+                    items.push(resolved)
+                }
+            }
+
+            return items
+        }
+
+
+        case 'Branch_Output': {
+
+            const output =
+                context.branch_outputs[
+                source.branch_uid
+                ]
+
+            if (output === undefined) {
+                throw new Error(
+                    `Branch output not found: ${source.branch_uid}`
+                )
+            }
+
+            return output
+        }
     }
 }
 
@@ -746,10 +1137,10 @@ export const Piecewise_Output_Schema: Schema<'Number'> = {
 
 
 
-function execute_branch(
+export function execute_branch(
     branch: Branch,
     context: Execution_Context
-): unknown {
+): Runtime_Value {
 
     const condition =
         resolve_value_source(
@@ -757,32 +1148,67 @@ function execute_branch(
             context
         )
 
-    const selected_case =
-        branch.cases.find(
-            branch_case =>
-                branch_case.equals === condition
-        )
 
-    if (!selected_case) {
+    /*
+     * A branch condition must resolve
+     * to one instance.
+     */
+    if (Array.isArray(condition)) {
+
         throw new Error(
-            `No branch case matched: ${condition}`
+            'Branch condition cannot be an array.'
         )
     }
 
+
+    /*
+     * Currently branch matching is based
+     * upon the value of an atomic instance.
+     */
+    const condition_value =
+        get_atomic_value(
+            condition
+        )
+
+
+    const selected_case =
+        branch.cases.find(
+            branch_case =>
+                branch_case.equals ===
+                condition_value
+        )
+
+
+    if (!selected_case) {
+
+        throw new Error(
+            `No branch matched condition: ${String(
+                condition_value
+            )
+            }`
+        )
+    }
+
+
+    /*
+     * Only execute operations belonging
+     * to the selected branch.
+     */
     for (
         const invocation
         of selected_case.operations
     ) {
 
-        context.operation_outputs[
-            invocation.uid
-        ] =
-            execute_operation_invocation(
-                invocation,
-                context
-            )
+        execute_operation_invocation(
+            invocation,
+            context
+        )
     }
 
+
+    /*
+     * Resolve the branch's declared output.
+     */
     return resolve_value_source(
         selected_case.output!,
         context
@@ -790,42 +1216,127 @@ function execute_branch(
 }
 
 
-export const Piecewise_Branch: Branch = {
-    uid: 'piecewise.branch',
+
+
+
+
+
+export const Number_One_Instance:
+    GraphQL_Atomic_Instance = {
+
+    uid: 'math.instance.number.1',
+
+    schema_uid:
+        Number_Schema.uid!,
+
+    data_type:
+        'Number',
+
+    value:
+        1
+
+    // other GraphQL_Instance_Base
+    // fields required by your actual model
+}
+
+
+export const Number_Two_Instance:
+    GraphQL_Atomic_Instance = {
+
+    uid: 'math.instance.number.2',
+
+    schema_uid:
+        Number_Schema.uid!,
+
+    data_type:
+        'Number',
+
+    value:
+        2
+
+    // required base fields
+}
+
+
+export const Number_Three_Instance:
+    GraphQL_Atomic_Instance = {
+
+    uid: 'math.instance.number.3',
+
+    schema_uid:
+        Number_Schema.uid!,
+
+    data_type:
+        'Number',
+
+    value:
+        3
+
+    // required base fields
+}
+
+export const Piecewise_Branch:
+    Branch = {
+
+    uid:
+        'piecewise.branch',
 
     condition: {
-        type: 'Operation_Output',
+        type:
+            'Operation_Output',
+
         operation_uid:
             'piecewise.x_greater_than_3',
-        output_uid: 'result'
+
+        output_uid:
+            'result'
     },
 
     cases: [
+
+        /*
+         * x > 3
+         *
+         * result = x²
+         */
         {
-            equals: true,
+            equals:
+                true,
 
             operations: [
                 {
-                    uid: 'piecewise.square_x',
+                    uid:
+                        'piecewise.square_x',
 
-                    operation: Power_Operation,
+                    operation:
+                        Power_Operation,
 
                     arguments: [
+
                         {
-                            input_uid: 'base',
+                            input_uid:
+                                'base',
 
                             source: {
-                                type: 'Computation_Input',
-                                input_uid: 'x'
+                                type:
+                                    'Computation_Input',
+
+                                input_uid:
+                                    'x'
                             }
                         },
 
+
                         {
-                            input_uid: 'exponent',
+                            input_uid:
+                                'exponent',
 
                             source: {
-                                type: 'Literal',
-                                value: 2
+                                type:
+                                    'Instance',
+
+                                instance:
+                                    Number_Two_Instance
                             }
                         }
                     ]
@@ -833,38 +1344,61 @@ export const Piecewise_Branch: Branch = {
             ],
 
             output: {
-                type: 'Operation_Output',
+                type:
+                    'Operation_Output',
+
                 operation_uid:
                     'piecewise.square_x',
-                output_uid: 'power'
+
+                output_uid:
+                    'power'
             }
         },
 
+
+        /*
+         * x <= 3
+         *
+         * result = x + 1
+         */
         {
-            equals: false,
+            equals:
+                false,
 
             operations: [
                 {
-                    uid: 'piecewise.add_one',
+                    uid:
+                        'piecewise.add_one',
 
-                    operation: Addition_Operation,
+                    operation:
+                        Addition_Operation,
 
                     arguments: [
                         {
-                            input_uid: 'addends',
+                            input_uid:
+                                'addends',
 
                             source: {
-                                type: 'Collection',
+                                type:
+                                    'Collection',
 
                                 items: [
-                                    {
-                                        type: 'Computation_Input',
-                                        input_uid: 'x'
-                                    },
 
                                     {
-                                        type: 'Literal',
-                                        value: 1
+                                        type:
+                                            'Computation_Input',
+
+                                        input_uid:
+                                            'x'
+                                    },
+
+
+                                    {
+                                        type:
+                                            'Instance',
+
+                                        instance:
+                                            Number_One_Instance
                                     }
                                 ]
                             }
@@ -874,35 +1408,53 @@ export const Piecewise_Branch: Branch = {
             ],
 
             output: {
-                type: 'Operation_Output',
+                type:
+                    'Operation_Output',
+
                 operation_uid:
                     'piecewise.add_one',
-                output_uid: 'sum'
+
+                output_uid:
+                    'sum'
             }
         }
     ]
 }
-const Compare_X_To_Three: Operation_Invocation = {
-    uid: 'piecewise.x_greater_than_3',
+export const Compare_X_To_Three:
+    Operation_Invocation = {
 
-    operation: Greater_Than_Operation,
+    uid:
+        'piecewise.x_greater_than_3',
+
+    operation:
+        Greater_Than_Operation,
 
     arguments: [
+
         {
-            input_uid: 'left',
+            input_uid:
+                'left',
 
             source: {
-                type: 'Computation_Input',
-                input_uid: 'x'
+                type:
+                    'Computation_Input',
+
+                input_uid:
+                    'x'
             }
         },
 
+
         {
-            input_uid: 'right',
+            input_uid:
+                'right',
 
             source: {
-                type: 'Literal',
-                value: 3
+                type:
+                    'Instance',
+
+                instance:
+                    Number_Three_Instance
             }
         }
     ]
