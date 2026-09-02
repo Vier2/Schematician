@@ -84,7 +84,7 @@ type BaseSchema<T extends Data_Type> = {
      * Graphic representing schema
      */
     image_url?: string | null
-    rules?: Rule[]
+    rules?: string
     constraints?: Constraint_Map[T]
     relationships?: string
 }
@@ -252,7 +252,8 @@ export interface Search_Query_Input {
 type execution = 'Sequential' | 'Concurrent'
 
 
-
+export type Evaluable_Object =
+    | Operation_Invocation
 
 export interface Computation {
     uid: string
@@ -263,13 +264,12 @@ export interface Computation {
 
     operations: Operation_Invocation[]
 
-    control_flow?: Control_Flow[]
     branches?: Branch[]
 }
 export interface Computation_Input {
     uid: string
     schema: Schema
-    cardinality: 'Single' | 'Multiple'
+    cardinality: Cardinality
 }
 
 export interface Computation_Output {
@@ -277,38 +277,77 @@ export interface Computation_Output {
     schema: Schema
     source: Value_Source
 }
-export type Values = Record<string, unknown>
-
+export type Runtime_Value =
+    | GraphQL_Instance
+    | GraphQL_Instance[]
 export interface Execution_Context {
-    computation_inputs: Values
 
-    operation_outputs: Record<
-        string,
-        Values
-    >
-    branch_outputs: Record<
-        string,
-        unknown
-    >
+    computation_inputs: Runtime_Values
+
+    available_instances:
+    Map<string, GraphQL_Instance>
+
+    operation_outputs:
+    Record<string, Runtime_Values>
+
+    operation_traces:
+    Operation_Trace[]
+
+    branch_outputs:
+    Record<string, Runtime_Value>
 }
 export type Value_Source =
-    | Literal_Source
-    | Input_Source
-    | Element_Source
-    | Operation_Output_Source
-    | {
-        type: 'Computation_Input'
-        input_uid: string
-    } 
-      | {
-          type: 'Branch_Output'
-          branch_uid: string
-      }
-    |  {
-        type: 'Collection'
-        items: Value_Source[]
-    }
 
+    | Instance_Source
+
+    | Instance_Reference_Source
+
+    | Computation_Input_Source
+
+    | Operation_Output_Source
+
+    | Collection_Source
+
+    | Branch_Output_Source
+
+
+export interface Instance_Source {
+    type: 'Instance'
+
+    instance: GraphQL_Instance
+}
+
+export interface Instance_Reference_Source {
+    type: 'Instance_Reference'
+
+    instance_uid: string
+}
+
+export interface Computation_Input_Source {
+    type: 'Computation_Input'
+
+    input_uid: string
+}
+
+export interface Operation_Output_Source {
+    type: 'Operation_Output'
+
+    operation_uid: string
+
+    output_uid: string
+}
+
+export interface Collection_Source {
+    type: 'Collection'
+
+    items: Value_Source[]
+}
+
+export interface Branch_Output_Source {
+    type: 'Branch_Output'
+
+    branch_uid: string
+}
 
 export interface Literal_Source {
     type: 'Literal'
@@ -379,16 +418,16 @@ export interface Branch_Case {
     output?: Value_Source
 }
 
-export interface Rule {
-    uid: string
-    name: string
+// export interface Rule {
+//     uid: string
+//     name: string
 
-    relation: Relation_Instance
+//     relation: Relation_Instance
 
-    enforcement?: Rule_Enforcement
-    resolvers?: Rule_Resolver[]
+//     enforcement?: Rule_Enforcement
+//     resolvers?: Rule_Resolver[]
 
-}
+// }
 /**
  * Example: 
  * Known B, C → derive A
@@ -421,18 +460,6 @@ export type Match_Condition =
 type operator = '>'|  '<'|  '=' | 'contains'
 
 
-export interface Range {
-    value_map: Value_Map[]
-
-
-}
-
-export interface Value_Map {
-    value: string
-    operations: Operation[]
-
-}
-
 
 export interface Operation_Invocation {
     uid: string
@@ -442,23 +469,9 @@ export interface Operation_Invocation {
     arguments: Operation_Argument[]
 }
 
-interface Argument_Binding {
-    parameter_uid: string
 
-    source:
-    | Literal
-    | Variable_Reference
-    | Object_Reference
-    | Operation_Output_Reference
-}
 
-type Mathematical_Expression =
-    | Literal
-    | Variable_Reference
-    | Operation_Invocation
-    | Function_Invocation
-    | Vector
-    | Matrix
+
 /**Test one before making all of them */
 
 type Objective_type = 
@@ -473,154 +486,120 @@ type Objective_type =
     'Expand' |
     'Graph' |
     'Isolate' 
-interface Solve_Inputs {
-    statements: Mathematical_Statement[]
-    targets: Mathematical_Object[]
-    knowns?: Value_Binding[]
-    domain?: Mathematical_Domain
-    assumptions?: Mathematical_Statement[]
-}
-interface Solve_Output {
-    solutions: Solution_Set
-}
-
-interface Evaluate_Inputs {
-    object: Mathematical_Object
-    bindings?: Value_Binding[]
-    assumptions?: Mathematical_Statement[]
-    precision?: number
-}
-
-interface Evaluate_Output {
-    result: Mathematical_Value
-    trace?: Evaluation_Step[]
-}
-
-interface Substitution {
-    target: Mathematical_Object
-    replacement: Mathematical_Object
-}
-
-interface Transform_Inputs {
-    object: Mathematical_Object
-    target_form?: Mathematical_Form
-    rules?: Transformation_Rule[]
-}
-
-interface Transform_Inputs {
-    object: Mathematical_Object
-    target_form?: Mathematical_Form
-    rules?: Transformation_Rule[]
-}
-type Transform_Type =
-    | 'Simplify'
-    | 'Expand'
-    | 'Factor'
-    | 'Substitute'
-    | 'Rewrite'
-    | 'Rearrange'
-
-interface Simplify_Inputs {
-    object: Mathematical_Object
-    assumptions?: Mathematical_Statement[]
-    criterion?: Simplification_Criterion
-}
-
-interface Simplification_Criterion  {
-    metric: 'term_count' | 'operation_count' | 'depth' | 'custom'
-}
-
-interface Factor_Inputs {
-    expression: Mathematical_Expression
-    domain?: Mathematical_Domain
-}
-interface Factor_Output {
-    factored_expression: Mathematical_Expression
-}
 
 
-interface Expand_Inputs {
-    expression: Mathematical_Expression
-    scope?: Expansion_Scope
+export type Runtime_Values =
+    Record<string, Runtime_Value>
+export interface Evaluate_Inputs {
+
+    /**
+     * Mathematical operation/expression to evaluate.
+     */
+    target: Operation_Invocation
+
+    /**
+     * Existing Schematician instances available
+     * while resolving the target.
+     */
+    instances?: GraphQL_Instance[]
 }
 
-interface Expand_Output {
-    expanded_expression: Mathematical_Expression
+export interface Evaluate_Output {
+
+    /**
+     * Final result represented using the official
+     * Schematician instance model.
+     */
+    result: GraphQL_Instance
 }
 
-interface Differentiate_Inputs {
-    expression: Mathematical_Object
-    with_respect_to: Variable
-    order?: number
-    point?: Mathematical_Value
-}
+export type Evaluate_Objective =
+    Base_Objective<
+        'Evaluate',
+        Evaluate_Inputs
+    >
 
-interface Differentiate_Output {
-    derivative: Mathematical_Object
-}
-interface Differentiate_Output {
-    derivative: Mathematical_Object
-}
 
-interface Integrate_Output {
-    result: Mathematical_Object
-}
+export type Evaluate_Result =
+    Objective_Result<
+        'Evaluate',
+        Evaluate_Output
+    >
 
-interface Graph_Inputs {
-    object: Mathematical_Object
 
-    variables?: Variable[]
 
-    domain?: Domain_Restriction[]
 
-    viewport?: {
-        x_min?: number
-        x_max?: number
-        y_min?: number
-        y_max?: number
-    }
-}
 
-interface Graph_Output {
-    representation: Graph_Representation
-}
+
+
+
 export interface Describe_Input {
     y_function: string
     function: string
 }
-export type Objective_Input_Map = {
-    Solve: Solve_Inputs
-    Describe: Describe_Input
 
-
-}
-interface Base_Objective<T extends string, I, O> {
+export interface Base_Objective<
+    T extends Objective_type,
+    I
+> {
     type: T
     inputs: I
-    output?: O
+}
+
+export interface Atomic_Execution_Context {
+    invocation_uid: string
+
+    operation: Operation_Definition
+
+    inputs: Runtime_Values
 }
 
 
-type Solve_Objective =
-    Base_Objective<
-        'Solve',
-        Solve_Inputs,
-        Solve_Output
-    >
+export interface Objective_Result<
+    T extends Objective_type,
+    O
+> {
+    objective_type: T
 
-type Evaluate_Objective =
-    Base_Objective<
-        'Evaluate',
-        Evaluate_Inputs,
-        Evaluate_Output
-    >
+    output: O
 
-type Factor_Objective =
-    Base_Objective<
-        'Factor',
-        Factor_Inputs,
-        Factor_Output
-    >
+    trace: Computation_Trace
+}
+
+export interface Operation_Trace {
+    invocation_uid: string
+
+    operation_uid: string
+
+    operation_name: string
+
+    inputs: Runtime_Values
+
+    outputs: Runtime_Values
+
+    children: Operation_Trace[]
+}
+
+export interface Computation_Trace {
+    computation_uid: string
+
+    computation_name: string
+
+    inputs: Runtime_Values
+
+    operations: Operation_Trace[]
+
+    outputs: Runtime_Values
+}
+export interface Operation_Execution_Result {
+    outputs: Record<string, unknown>
+
+    trace: Operation_Trace
+}
+
+
+
+
 
 export interface Atomic_Operation_Implementation {
     type: 'Atomic'
@@ -637,6 +616,11 @@ export type Operation_Implementation =
     | Composite_Operation_Implementation
 
 
+export type Atomic_Value = unknown
+
+export type Atomic_Values =
+    Record<string, Atomic_Value>
+
 export type Atomic_Executor = (
-    inputs: Record<string, unknown>
-) => Record<string, unknown>
+    inputs: Atomic_Values
+) => Atomic_Values

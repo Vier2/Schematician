@@ -13,7 +13,7 @@ import type { Schema,
     GraphQL_Atomic_Instance,
     Atomic_Values,
     Operation_Execution_Result,
-     Rule, Atomic_Executor } from "@schematician/shared";
+     Atomic_Executor } from "@schematician/shared";
 
 import { 
     Addend_Schema,
@@ -141,25 +141,25 @@ export const Division_Operation:
 
 
 
-const Circle_Area_Rule: Rule = {
-    uid: 'math.rule.circle_area',
-    name: 'Circle Area Relationship',
+// const Circle_Area_Rule: Rule = {
+//     uid: 'math.rule.circle_area',
+//     name: 'Circle Area Relationship',
 
-    relation: {
-        type: 'Equality',
+//     relation: {
+//         type: 'Equality',
 
-        left: {
-            type: 'Element',
-            element_uid: 'area'
-        },
+//         left: {
+//             type: 'Element',
+//             element_uid: 'area'
+//         },
 
-        right: {
-            type: 'Operation_Output',
-            operation_uid: 'circle_area_computation',
-            output_uid: 'result'
-        }
-    }
-}
+//         right: {
+//             type: 'Operation_Output',
+//             operation_uid: 'circle_area_computation',
+//             output_uid: 'result'
+//         }
+//     }
+// }
 
 export const Atomic_Executors:
     Record<string, Atomic_Executor> = {
@@ -1275,6 +1275,23 @@ export const Number_Three_Instance:
     // required base fields
 }
 
+export const Number_Five_Instance:
+    GraphQL_Atomic_Instance = {
+
+    uid: 'math.instance.number.5',
+
+    schema_uid:
+        Number_Schema.uid!,
+
+    data_type:
+        'Number',
+
+    value:
+        5
+
+    // required base fields
+}
+
 export const Piecewise_Branch:
     Branch = {
 
@@ -1522,18 +1539,192 @@ export const Piecewise_Operation:
 }
 
 const result_1 = execute_operation(
+    '1', 
     Piecewise_Operation,
     {
-        x: 5
+        x: Number_Three_Instance
     }
 )
-
 const result_2 = execute_operation(
+    '2',
     Piecewise_Operation,
     {
-        x: 2
+        x: Number_One_Instance
     }
 )
 
-console.log(`result 1 ${JSON.stringify(result_1)}`)
-console.log(`result 2 ${JSON.stringify(result_2)}`)
+const result_3 = execute_operation(
+    '3',
+    Piecewise_Operation,
+    {
+        x: Number_Five_Instance
+    }
+)
+function format_runtime_value(
+    value: Runtime_Value
+): string {
+
+    if (Array.isArray(value)) {
+        return `[${value
+                .map(format_instance)
+                .join(', ')
+            }]`
+    }
+
+    return format_instance(value)
+}
+
+
+function format_instance(
+    instance: GraphQL_Instance
+): string {
+
+    switch (instance.data_type) {
+
+        case 'String':
+            return `"${instance.value}"`
+
+        case 'Number':
+        case 'Boolean':
+            return String(instance.value)
+
+        case 'Array':
+            return `[${instance.items
+                    .map(format_instance)
+                    .join(', ')
+                }]`
+
+        case 'Composite':
+            return `{${instance.uid}}`
+    }
+}
+
+
+function format_values(
+    values: Runtime_Values
+): string {
+
+    return Object.entries(values)
+        .map(
+            ([name, value]) =>
+                `${name} = ${format_runtime_value(value)}`
+        )
+        .join(', ')
+}
+
+
+function format_operation_trace(
+    trace: Operation_Trace,
+    prefix = '',
+    is_last = true
+): string[] {
+
+    const connector =
+        is_last
+            ? '└── '
+            : '├── '
+
+    const child_prefix =
+        prefix +
+        (
+            is_last
+                ? '    '
+                : '│   '
+        )
+
+    const lines: string[] = []
+
+    lines.push(
+        `${prefix}${connector}${trace.operation_name}`
+    )
+
+    lines.push(
+        `${child_prefix}├─ Inputs:  ${format_values(trace.inputs)
+        }`
+    )
+
+    lines.push(
+        `${child_prefix}└─ Outputs: ${format_values(trace.outputs)
+        }`
+    )
+
+
+    trace.children.forEach(
+        (child, index) => {
+
+            const child_is_last =
+                index ===
+                trace.children.length - 1
+
+            lines.push(
+                ...format_operation_trace(
+                    child,
+                    child_prefix,
+                    child_is_last
+                )
+            )
+        }
+    )
+
+    return lines
+}
+
+
+export function print_execution_result(
+    result: {
+        outputs: Runtime_Values
+        trace: Operation_Trace
+    }
+): void {
+
+    const trace = result.trace
+
+    console.log('')
+    console.log(
+        `${trace.operation_name}`
+    )
+
+    console.log(
+        `├─ Inputs:  ${format_values(trace.inputs)
+        }`
+    )
+
+    console.log('│')
+
+    if (trace.children.length > 0) {
+
+        trace.children.forEach(
+            (child, index) => {
+
+                const is_last =
+                    index ===
+                    trace.children.length - 1
+
+                for (
+                    const line
+                    of format_operation_trace(
+                        child,
+                        '├─ ',
+                        is_last
+                    )
+                ) {
+                    console.log(line)
+                }
+            }
+        )
+
+        console.log('│')
+    }
+
+    console.log(
+        `└─ Result:  ${format_values(result.outputs)
+        }`
+    )
+
+    console.log('')
+}
+
+
+print_execution_result(result_1)
+print_execution_result(result_2)
+print_execution_result(result_3)
