@@ -145,7 +145,7 @@ function string_instance(
         value
     }
 }
-function array_instance(
+export function array_instance(
     uid: string,
     schema_uid: string,
     items: GraphQL_Instance[]
@@ -159,7 +159,7 @@ function array_instance(
     }
 }
 
-function create_operation_argument_instance(
+export function create_operation_argument_instance(
     uid: string,
 
     input_uid: string,
@@ -203,7 +203,7 @@ function create_operation_argument_instance(
     }
 }
 
-function create_operation_application_instance(
+export function create_operation_application_instance(
     uid: string,
     operation: Operation_Definition,
     args:GraphQL_Composite_Instance[]

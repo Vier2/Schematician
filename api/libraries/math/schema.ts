@@ -16,21 +16,15 @@ import type { Schema,
      Atomic_Executor } from "@schematician/shared";
 
 import { 
-    Addend_Schema,
-    Sum_Schema,
-    Factor_Schema,
-    Product_Schema,
-    Dividend_Schema,
-    Divisor_Schema,
-    Quotient_Schema,
     Number_Schema,
     Boolean_Schema } from "./object.js";
-
 import { get_boolean_value,
     get_atomic_value,
     get_number_value,
     create_execution_context
- } from "./objectives/utils.js";
+ } from "./objectives/evaluate/utils.js";
+
+
 export const Count_Schema: Schema<'Number'> = {
     uid: 'math.count',
     name: 'Count',
@@ -46,98 +40,6 @@ export const Countable_Item_Schema: Schema = {
 
 
 
-
-export const Addition_Operation: Operation_Definition = {
-    uid: 'math.operation.addition',
-    name: 'Addition',
-
-    inputs: [
-        {
-            uid: 'addends',
-            schema: Addend_Schema,
-            cardinality: 'Multiple',
-            required: true
-        }
-    ],
-
-    outputs: [
-        {
-            uid: 'sum',
-            schema: Sum_Schema,
-            cardinality: 'Single'
-        }
-    ],
-
-    implementation: {
-        type: 'Atomic',
-        executor_uid: 'builtin.number.add'
-    }
-}
-
-export const Multiplication_Operation:
-    Operation_Definition = {
-
-    uid: 'math.operation.multiplication',
-    name: 'Multiplication',
-
-    inputs: [
-        {
-            uid: 'factors',
-            schema: Factor_Schema,
-            cardinality: 'Multiple',
-            required: true
-        }
-    ],
-
-    outputs: [
-        {
-            uid: 'product',
-            schema: Product_Schema,
-            cardinality: 'Single'
-        }
-    ],
-
-    implementation: {
-        type: 'Atomic',
-        executor_uid: 'builtin.number.multiply'
-    }
-}
-
-export const Division_Operation:
-    Operation_Definition = {
-
-    uid: 'math.operation.division',
-    name: 'Division',
-
-    inputs: [
-        {
-            uid: 'dividend',
-            schema: Dividend_Schema,
-            cardinality: 'Single',
-            required: true
-        },
-
-        {
-            uid: 'divisor',
-            schema: Divisor_Schema,
-            cardinality: 'Single',
-            required: true
-        }
-    ],
-
-    outputs: [
-        {
-            uid: 'quotient',
-            schema: Quotient_Schema,
-            cardinality: 'Single'
-        }
-    ],
-
-    implementation: {
-        type: 'Atomic',
-        executor_uid: 'builtin.number.divide'
-    }
-}
 
 
 
@@ -172,6 +74,19 @@ export const Atomic_Executors:
                 (sum, addend) => sum + addend,
                 0
             )
+        }
+    },
+    'builtin.number.subtract': inputs => {
+
+        const minuend =
+            inputs.minuend as number
+
+        const subtrahend =
+            inputs.subtrahend as number
+
+        return {
+            difference:
+                minuend - subtrahend
         }
     },
 
@@ -291,193 +206,7 @@ export const Mean_Result_Schema: Schema<'Number'> = {
     name: 'Mean',
     data_type: 'Number'
 }
-export const Count_Operation: Operation_Definition = {
-    uid: 'math.operation.count',
-    name: 'Count',
 
-    inputs: [
-        {
-            uid: 'items',
-            schema: Countable_Item_Schema,
-            cardinality: 'Multiple',
-            required: true
-        }
-    ],
-
-    outputs: [
-        {
-            uid: 'count',
-            schema: Count_Schema,
-            cardinality: 'Single'
-        }
-    ],
-
-    implementation: {
-        type: 'Atomic',
-        executor_uid: 'builtin.collection.count'
-    }
-}
-export const Mean_Computation: Computation = {
-    uid: 'math.computation.mean',
-
-    name: 'Arithmetic Mean Computation',
-
-    inputs: [
-        {
-            uid: 'values',
-
-            schema:
-                Mean_Input_Schema,
-
-            cardinality:
-                'Array'
-        }
-    ],
-
-    operations: [
-
-        {
-            uid: 'mean.add_values',
-
-            operation:
-                Addition_Operation,
-
-            arguments: [
-                {
-                    input_uid:
-                        'addends',
-
-                    source: {
-                        type:
-                            'Computation_Input',
-
-                        input_uid:
-                            'values'
-                    }
-                }
-            ]
-        },
-
-
-        {
-            uid: 'mean.count_values',
-
-            operation:
-                Count_Operation,
-
-            arguments: [
-                {
-                    input_uid:
-                        'items',
-
-                    source: {
-                        type:
-                            'Computation_Input',
-
-                        input_uid:
-                            'values'
-                    }
-                }
-            ]
-        },
-
-
-        {
-            uid: 'mean.divide',
-
-            operation:
-                Division_Operation,
-
-            arguments: [
-
-                {
-                    input_uid:
-                        'dividend',
-
-                    source:  {
-                        type:
-                            'Operation_Output',
-
-                        operation_uid:
-                            'mean.add_values',
-
-                        output_uid:
-                            'sum'
-                    
-
-                    }
-                },
-
-
-                {
-                    input_uid:
-                        'divisor',
-
-                    source: {
-                        type:
-                            'Operation_Output',
-
-                        operation_uid:
-                            'mean.count_values',
-
-                        output_uid:
-                            'count'
-                    }
-                }
-            ]
-        }
-    ],
-
-    outputs: [
-        {
-            uid: 'mean',
-
-            schema:
-                Mean_Result_Schema,
-
-            source: {
-                type:
-                    'Operation_Output',
-
-                operation_uid:
-                    'mean.divide',
-
-                output_uid:
-                    'quotient'
-            }
-        }
-    ]
-}
-export const Mean_Operation: Operation_Definition = {
-    uid: 'math.operation.mean',
-    name: 'Arithmetic Mean',
-
-    inputs: [
-        {
-            uid: 'values',
-            schema: Mean_Input_Schema,
-            cardinality: 'Multiple',
-            required: true
-        }
-    ],
-
-    outputs: [
-        {
-            uid: 'mean',
-            schema: Mean_Result_Schema,
-            cardinality: 'Single'
-        }
-    ],
-
-    implementation: {
-        type: 'Composite',
-
-        computation: Mean_Computation         // Addition invocation
-            // Count inv ocation
-            // Division invocation
-        
-    }
-}
 
 
 
@@ -509,12 +238,12 @@ export function execute_atomic_operation(
     return executor(inputs)
 }
 
-const result = execute_atomic_operation(
-    Addition_Operation,
-    {
-        addends: [5, 10, 20]
-    }
-)
+// const result = execute_atomic_operation(
+//     Addition_Operation,
+//     {
+//         addends: [5, 10, 20]
+//     }
+// )
 
 export function unwrap_runtime_value(
     value: Runtime_Value
@@ -590,7 +319,7 @@ export function unwrap_runtime_values(
     return atomic_inputs
 }
 
-console.log(result)
+// console.log(result)
 
 export function wrap_atomic_outputs(
     invocation_uid: string,
@@ -1292,151 +1021,151 @@ export const Number_Five_Instance:
     // required base fields
 }
 
-export const Piecewise_Branch:
-    Branch = {
+// export const Piecewise_Branch:
+//     Branch = {
 
-    uid:
-        'piecewise.branch',
+//     uid:
+//         'piecewise.branch',
 
-    condition: {
-        type:
-            'Operation_Output',
+//     condition: {
+//         type:
+//             'Operation_Output',
 
-        operation_uid:
-            'piecewise.x_greater_than_3',
+//         operation_uid:
+//             'piecewise.x_greater_than_3',
 
-        output_uid:
-            'result'
-    },
+//         output_uid:
+//             'result'
+//     },
 
-    cases: [
+//     cases: [
 
-        /*
-         * x > 3
-         *
-         * result = x²
-         */
-        {
-            equals:
-                true,
+//         /*
+//          * x > 3
+//          *
+//          * result = x²
+//          */
+//         {
+//             equals:
+//                 true,
 
-            operations: [
-                {
-                    uid:
-                        'piecewise.square_x',
+//             operations: [
+//                 {
+//                     uid:
+//                         'piecewise.square_x',
 
-                    operation:
-                        Power_Operation,
+//                     operation:
+//                         Power_Operation,
 
-                    arguments: [
+//                     arguments: [
 
-                        {
-                            input_uid:
-                                'base',
+//                         {
+//                             input_uid:
+//                                 'base',
 
-                            source: {
-                                type:
-                                    'Computation_Input',
+//                             source: {
+//                                 type:
+//                                     'Computation_Input',
 
-                                input_uid:
-                                    'x'
-                            }
-                        },
-
-
-                        {
-                            input_uid:
-                                'exponent',
-
-                            source: {
-                                type:
-                                    'Instance',
-
-                                instance:
-                                    Number_Two_Instance
-                            }
-                        }
-                    ]
-                }
-            ],
-
-            output: {
-                type:
-                    'Operation_Output',
-
-                operation_uid:
-                    'piecewise.square_x',
-
-                output_uid:
-                    'power'
-            }
-        },
+//                                 input_uid:
+//                                     'x'
+//                             }
+//                         },
 
 
-        /*
-         * x <= 3
-         *
-         * result = x + 1
-         */
-        {
-            equals:
-                false,
+//                         {
+//                             input_uid:
+//                                 'exponent',
 
-            operations: [
-                {
-                    uid:
-                        'piecewise.add_one',
+//                             source: {
+//                                 type:
+//                                     'Instance',
 
-                    operation:
-                        Addition_Operation,
+//                                 instance:
+//                                     Number_Two_Instance
+//                             }
+//                         }
+//                     ]
+//                 }
+//             ],
 
-                    arguments: [
-                        {
-                            input_uid:
-                                'addends',
+//             output: {
+//                 type:
+//                     'Operation_Output',
 
-                            source: {
-                                type:
-                                    'Collection',
+//                 operation_uid:
+//                     'piecewise.square_x',
 
-                                items: [
-
-                                    {
-                                        type:
-                                            'Computation_Input',
-
-                                        input_uid:
-                                            'x'
-                                    },
+//                 output_uid:
+//                     'power'
+//             }
+//         },
 
 
-                                    {
-                                        type:
-                                            'Instance',
+//         /*
+//          * x <= 3
+//          *
+//          * result = x + 1
+//          */
+//         {
+//             equals:
+//                 false,
 
-                                        instance:
-                                            Number_One_Instance
-                                    }
-                                ]
-                            }
-                        }
-                    ]
-                }
-            ],
+//             operations: [
+//                 {
+//                     uid:
+//                         'piecewise.add_one',
 
-            output: {
-                type:
-                    'Operation_Output',
+//                     operation:
+//                         Addition_Operation,
 
-                operation_uid:
-                    'piecewise.add_one',
+//                     arguments: [
+//                         {
+//                             input_uid:
+//                                 'addends',
 
-                output_uid:
-                    'sum'
-            }
-        }
-    ]
-}
+//                             source: {
+//                                 type:
+//                                     'Collection',
+
+//                                 items: [
+
+//                                     {
+//                                         type:
+//                                             'Computation_Input',
+
+//                                         input_uid:
+//                                             'x'
+//                                     },
+
+
+//                                     {
+//                                         type:
+//                                             'Instance',
+
+//                                         instance:
+//                                             Number_One_Instance
+//                                     }
+//                                 ]
+//                             }
+//                         }
+//                     ]
+//                 }
+//             ],
+
+//             output: {
+//                 type:
+//                     'Operation_Output',
+
+//                 operation_uid:
+//                     'piecewise.add_one',
+
+//                 output_uid:
+//                     'sum'
+//             }
+//         }
+//     ]
+// }
 export const Compare_X_To_Three:
     Operation_Invocation = {
 
@@ -1476,255 +1205,101 @@ export const Compare_X_To_Three:
         }
     ]
 }
-export const Piecewise_Computation: Computation = {
-    uid: 'math.computation.test_piecewise',
-    name: 'Test Piecewise Function',
+// export const Piecewise_Computation: Computation = {
+//     uid: 'math.computation.test_piecewise',
+//     name: 'Test Piecewise Function',
 
-    inputs: [
-        {
-            uid: 'x',
-            schema: Piecewise_Input_Schema,
-            cardinality: 'Single'
-        }
-    ],
+//     inputs: [
+//         {
+//             uid: 'x',
+//             schema: Piecewise_Input_Schema,
+//             cardinality: 'Single'
+//         }
+//     ],
 
-    operations: [
-        Compare_X_To_Three
-    ],
+//     operations: [
+//         Compare_X_To_Three
+//     ],
 
-    branches: [
-        Piecewise_Branch
-    ],
+//     branches: [
+//         Piecewise_Branch
+//     ],
 
-    outputs: [
-        {
-            uid: 'result',
+//     outputs: [
+//         {
+//             uid: 'result',
 
-            schema: Piecewise_Output_Schema,
+//             schema: Piecewise_Output_Schema,
 
-            source: {
-                type: 'Branch_Output',
-                branch_uid: 'piecewise.branch'
-            }
-        }
-    ]
-}
-export const Piecewise_Operation:
-    Operation_Definition = {
+//             source: {
+//                 type: 'Branch_Output',
+//                 branch_uid: 'piecewise.branch'
+//             }
+//         }
+//     ]
+// }
+// export const Piecewise_Operation:
+//     Operation_Definition = {
 
-    uid: 'math.operation.test_piecewise',
-    name: 'Test Piecewise Function',
+//     uid: 'math.operation.test_piecewise',
+//     name: 'Test Piecewise Function',
 
-    inputs: [
-        {
-            uid: 'x',
-            schema: Piecewise_Input_Schema,
-            cardinality: 'Single',
-            required: true
-        }
-    ],
+//     inputs: [
+//         {
+//             uid: 'x',
+//             schema: Piecewise_Input_Schema,
+//             cardinality: 'Single',
+//             required: true
+//         }
+//     ],
 
-    outputs: [
-        {
-            uid: 'result',
-            schema: Piecewise_Output_Schema,
-            cardinality: 'Single'
-        }
-    ],
+//     outputs: [
+//         {
+//             uid: 'result',
+//             schema: Piecewise_Output_Schema,
+//             cardinality: 'Single'
+//         }
+//     ],
 
-    implementation: {
-        type: 'Composite',
-        computation: Piecewise_Computation
-    }
-}
+//     implementation: {
+//         type: 'Composite',
+//         computation: Piecewise_Computation
+//     }
+// }
 
-const result_1 = execute_operation(
-    '1', 
-    Piecewise_Operation,
-    {
-        x: Number_Three_Instance
-    }
-)
-const result_2 = execute_operation(
-    '2',
-    Piecewise_Operation,
-    {
-        x: Number_One_Instance
-    }
-)
+// const result_1 = execute_operation(
+//     '1', 
+//     Piecewise_Operation,
+//     {
+//         x: Number_Three_Instance
+//     }
+// )
+// const result_2 = execute_operation(
+//     '2',
+//     Piecewise_Operation,
+//     {
+//         x: Number_One_Instance
+//     }
+// )
 
-const result_3 = execute_operation(
-    '3',
-    Piecewise_Operation,
-    {
-        x: Number_Five_Instance
-    }
-)
-function format_runtime_value(
-    value: Runtime_Value
-): string {
-
-    if (Array.isArray(value)) {
-        return `[${value
-                .map(format_instance)
-                .join(', ')
-            }]`
-    }
-
-    return format_instance(value)
-}
+// const result_3 = execute_operation(
+//     '3',
+//     Piecewise_Operation,
+//     {
+//         x: Number_Five_Instance
+//     }
+// )
 
 
-function format_instance(
-    instance: GraphQL_Instance
-): string {
-
-    switch (instance.data_type) {
-
-        case 'String':
-            return `"${instance.value}"`
-
-        case 'Number':
-        case 'Boolean':
-            return String(instance.value)
-
-        case 'Array':
-            return `[${instance.items
-                    .map(format_instance)
-                    .join(', ')
-                }]`
-
-        case 'Composite':
-            return `{${instance.uid}}`
-    }
-}
 
 
-function format_values(
-    values: Runtime_Values
-): string {
-
-    return Object.entries(values)
-        .map(
-            ([name, value]) =>
-                `${name} = ${format_runtime_value(value)}`
-        )
-        .join(', ')
-}
 
 
-function format_operation_trace(
-    trace: Operation_Trace,
-    prefix = '',
-    is_last = true
-): string[] {
-
-    const connector =
-        is_last
-            ? '└── '
-            : '├── '
-
-    const child_prefix =
-        prefix +
-        (
-            is_last
-                ? '    '
-                : '│   '
-        )
-
-    const lines: string[] = []
-
-    lines.push(
-        `${prefix}${connector}${trace.operation_name}`
-    )
-
-    lines.push(
-        `${child_prefix}├─ Inputs:  ${format_values(trace.inputs)
-        }`
-    )
-
-    lines.push(
-        `${child_prefix}└─ Outputs: ${format_values(trace.outputs)
-        }`
-    )
 
 
-    trace.children.forEach(
-        (child, index) => {
-
-            const child_is_last =
-                index ===
-                trace.children.length - 1
-
-            lines.push(
-                ...format_operation_trace(
-                    child,
-                    child_prefix,
-                    child_is_last
-                )
-            )
-        }
-    )
-
-    return lines
-}
 
 
-export function print_execution_result(
-    result: {
-        outputs: Runtime_Values
-        trace: Operation_Trace
-    }
-): void {
 
-    const trace = result.trace
-
-    console.log('')
-    console.log(
-        `${trace.operation_name}`
-    )
-
-    console.log(
-        `├─ Inputs:  ${format_values(trace.inputs)
-        }`
-    )
-
-    console.log('│')
-
-    if (trace.children.length > 0) {
-
-        trace.children.forEach(
-            (child, index) => {
-
-                const is_last =
-                    index ===
-                    trace.children.length - 1
-
-                for (
-                    const line
-                    of format_operation_trace(
-                        child,
-                        '├─ ',
-                        is_last
-                    )
-                ) {
-                    console.log(line)
-                }
-            }
-        )
-
-        console.log('│')
-    }
-
-    console.log(
-        `└─ Result:  ${format_values(result.outputs)
-        }`
-    )
-
-    console.log('')
-}
-
-
-print_execution_result(result_1)
-print_execution_result(result_2)
-print_execution_result(result_3)
+// print_execution_result(result_1)
+// print_execution_result(result_2)
+// print_execution_result(result_3)
