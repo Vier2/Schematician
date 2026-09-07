@@ -557,13 +557,12 @@ export interface Atomic_Execution_Context {
 
 export interface Objective_Result<
     T extends Objective_type,
-    O
+    O,
+    Trace = Computation_Trace
 > {
     objective_type: T
-
     output: O
-
-    trace: Computation_Trace
+    trace: Trace
 }
 
 export interface Operation_Trace {

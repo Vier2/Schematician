@@ -8,14 +8,17 @@ import type {
     Operation_Invocation,
     Operation_Trace,
     Runtime_Values,
-    GraphQL_Atomic_Instance
+    GraphQL_Atomic_Instance,
+    Schema
  } from "@schematician/shared"
 
 import { execute_operation } from "../schema.js"
 import { Mean_Operation } from "../schema.js"
-
-import { Mean_Input_Schema } from "../schema.js"
-
+export const Mean_Input_Schema: Schema<'Number'> = {
+    uid: 'math.mean.input',
+    name: 'Mean Input',
+    data_type: 'Number'
+}
 
 
 export function evaluate(
@@ -365,63 +368,63 @@ const Seven: GraphQL_Atomic_Instance = {
     value: 7
 }
 
-const Mean_Evaluation:
-    Evaluate_Objective = {
+// const Mean_Evaluation:
+//     Evaluate_Objective = {
 
-    type: 'Evaluate',
+//     type: 'Evaluate',
 
-    inputs: {
+//     inputs: {
 
-        target: {
-            uid: 'evaluation.mean',
+//         target: {
+//             uid: 'evaluation.mean',
 
-            operation:
-                Mean_Operation,
+//             operation:
+//                 Mean_Operation,
 
-            arguments: [
-                {
-                    input_uid:
-                        'values',
+//             arguments: [
+//                 {
+//                     input_uid:
+//                         'values',
 
-                    source: {
-                        type:
-                            'Collection',
+//                     source: {
+//                         type:
+//                             'Collection',
 
-                        items: [
-                            {
-                                type:
-                                    'Instance',
+//                         items: [
+//                             {
+//                                 type:
+//                                     'Instance',
 
-                                instance:
-                                    Three
-                            },
+//                                 instance:
+//                                     Three
+//                             },
 
-                            {
-                                type:
-                                    'Instance',
+//                             {
+//                                 type:
+//                                     'Instance',
 
-                                instance:
-                                    Mean_Five
-                            },
+//                                 instance:
+//                                     Mean_Five
+//                             },
 
-                            {
-                                type:
-                                    'Instance',
+//                             {
+//                                 type:
+//                                     'Instance',
 
-                                instance:
-                                    Seven
-                            }
-                        ]
-                    }
-                }
-            ]
-        }
-    }
-}
+//                                 instance:
+//                                     Seven
+//                             }
+//                         ]
+//                     }
+//                 }
+//             ]
+//         }
+//     }
+// }
 
-const mean_result =
-    evaluate(
-        Mean_Evaluation
-    )
+// const mean_result =
+//     evaluate(
+//         Mean_Evaluation
+//     )
 
-console.log(`mean result ${mean_result}`)
+// console.log(`mean result ${mean_result}`)
