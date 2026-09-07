@@ -13,7 +13,7 @@ import type {
  } from "@schematician/shared"
 
 import { execute_operation } from "../schema.js"
-import { Mean_Operation } from "../schema.js"
+
 export const Mean_Input_Schema: Schema<'Number'> = {
     uid: 'math.mean.input',
     name: 'Mean Input',

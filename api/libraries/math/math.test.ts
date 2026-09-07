@@ -1,14 +1,8 @@
-import { Mean_Operation,
-    execute_operation,
-    Piecewise_Input_Schema,
-    Piecewise_Output_Schema,
-    Greater_Than_Operation,
-    Addition_Operation,
-    Power_Operation,
-    Mean_Input_Schema
+import { 
+        Mean_Input_Schema
     
  } from "./schema.js"
-
+import { Mean_Operation } from "./operation/utils.js"
 import type { Operation_Definition,
     Operation_Invocation,
     Computation,

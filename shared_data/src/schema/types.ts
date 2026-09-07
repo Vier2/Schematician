@@ -392,11 +392,7 @@ export interface Operation_Output {
     schema: Schema
     cardinality: 'Single' | 'Multiple'
 }
-export interface Operation_Invocation {
-    uid: string
 
-    arguments: Operation_Argument[]
-}
 export interface Operation_Argument {
     input_uid: string
     source: Value_Source
@@ -461,20 +457,34 @@ type operator = '>'|  '<'|  '=' | 'contains'
 
 
 
-export interface Operation_Invocation {
-    uid: string
+export type Operation_Invocation =
+    Operation_Application
 
+export type Mathematical_Operation_Object =
+    Operation_Application
+
+export interface Operation_Application {
+    uid: string
     operation: Operation_Definition
 
     arguments: Operation_Argument[]
 }
 
 
+export interface Substitution_Trace_Step {
+    variable_uid: string
+
+    original: GraphQL_Instance
+
+    replacement: GraphQL_Instance
+
+    path: string[]
+}
 
 
 /**Test one before making all of them */
 
-type Objective_type = 
+export type Objective_type = 
     'Solve' |
     'Evaluate' |
     'Substitute' |

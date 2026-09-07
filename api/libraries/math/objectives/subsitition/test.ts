@@ -5,8 +5,8 @@ import { substitute } from "./utils.js"
 import type { Substitute_Objective } from "./types.js"
 import { Number_Three_Instance
  } from "../../schema.js"
+ 
 import { Variable_Schema, Number_Schema } from "../../object.js"
-import { JSONResolver } from "graphql-scalars"
 const X_Name_Instance: GraphQL_Atomic_Instance = {
     uid: 'math.instance.variable.x.name',
     schema_uid: 'math.variable.name',
@@ -27,6 +27,14 @@ export const X_Variable_Instance: GraphQL_Composite_Instance = {
     ]
 }
 
+
+
+export const Number_Two_Instance: GraphQL_Atomic_Instance = {
+    uid: 'math.instance.number.2',
+    schema_uid: 'math.number',
+    data_type: 'Number',
+    value: 2
+}
 
 export const Number_Four_Instance: GraphQL_Atomic_Instance = {
     uid: 'math.instance.number.4',

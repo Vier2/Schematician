@@ -1,4 +1,7 @@
-import type { GraphQL_Instance, Base_Objective, Objective_Result } from "@schematician/shared"
+import type { 
+    GraphQL_Instance, 
+    Substitution_Trace_Step,
+    Base_Objective, Objective_Result } from "@schematician/shared"
 
 export interface Substitute_Inputs {
     target: GraphQL_Instance
@@ -25,13 +28,4 @@ export type Substitute_Result =
         Substitute_Output,
         Substitution_Trace_Step[]
     >
-    
-export interface Substitution_Trace_Step {
-    variable_uid: string
 
-    original: GraphQL_Instance
-
-    replacement: GraphQL_Instance
-
-    path: string[]
-}
