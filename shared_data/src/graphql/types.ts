@@ -196,3 +196,7 @@ export interface GraphQL_Array_Instance
     items: GraphQL_Instance[]
 }
 
+export type Variable_Instance =
+    GraphQL_Composite_Instance & {
+        schema_uid: 'math.variable'
+    }

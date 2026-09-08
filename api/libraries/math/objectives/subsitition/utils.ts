@@ -1,5 +1,6 @@
 import type { GraphQL_Instance, 
         Schema, Substitution_Trace_Step,
+    Variable_Instance,
     GraphQL_Composite_Instance } from "@schematician/shared"
 import type { Substitute_Objective, Substitute_Result
  } from "./types.js"
@@ -8,7 +9,7 @@ import { Variable_Schema, Equation_Schema } from "../../object.js"
 export function is_variable_instance(
     instance: GraphQL_Instance,
     variable: Schema = Variable_Schema
-): instance is GraphQL_Composite_Instance {
+): instance is Variable_Instance {
 
     return (
         instance.data_type === 'Composite' &&
