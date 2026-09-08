@@ -60,7 +60,8 @@
     .Right_Column {
         /* Map & Next Element Arrow */
         display: grid;
-        grid-template-rows: 50% 30%
+        grid-template-rows: 50% 30%;
+        height: 100%;
 
     }
     :global(.Vertical_Flex_Column) {

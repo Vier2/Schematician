@@ -243,7 +243,7 @@ const Y_Name_Instance: GraphQL_Atomic_Instance = {
     value: 'y'
 }
 
-const Y_Variable_Instance: GraphQL_Composite_Instance = {
+export const Y_Variable_Instance: GraphQL_Composite_Instance = {
     uid: 'math.instance.variable.y',
     schema_uid: 'math.variable',
     data_type: 'Composite',

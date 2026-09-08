@@ -19,7 +19,16 @@ import type { Expansion_Trace_Step,
     Expand_Objective,
     Expand_Result
  } from "./types.js"
-function get_operation_uid(
+import { X_Variable_Instance,
+    Y_Variable_Instance,
+    Number_Four_Instance
+ } from "../subsitition/test.js"
+
+ import { Number_Three_Instance,
+    Number_Two_Instance
+  } from "../../schema.js"
+import { print_objective_result } from "../../formatter/utils.js"
+export function get_operation_uid(
     instance: GraphQL_Instance
 ): string | null {
 
@@ -518,3 +527,55 @@ export function expand(
         trace
     }
 }
+
+const X_Plus_Three =
+    create_addition(
+        'expand.deep.x_plus_3',
+        [
+            X_Variable_Instance,
+            Number_Three_Instance
+        ]
+    )
+
+
+const Y_Plus_Four =
+    create_addition(
+        'expand.deep.y_plus_4',
+        [
+            Y_Variable_Instance,
+            Number_Four_Instance
+        ]
+    )
+
+
+const Deep_Expansion_Target =
+    create_multiplication(
+        'expand.deep.expression',
+        [
+            Number_Two_Instance,
+            X_Plus_Three,
+            Y_Plus_Four
+        ]
+    )
+
+const Deep_Expand_Objective:
+    Expand_Objective = {
+
+    type: 'Expand',
+
+    inputs: {
+        target:
+            Deep_Expansion_Target
+    }
+}
+
+
+const deep_expand_result =
+    expand(
+        Deep_Expand_Objective
+    )
+
+
+print_objective_result(
+    deep_expand_result
+)
