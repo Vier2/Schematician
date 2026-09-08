@@ -1,3 +1,5 @@
 fastapi
 sympy
 pydantic
+gunicorn
+uvicorn
