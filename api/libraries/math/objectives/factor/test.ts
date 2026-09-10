@@ -158,7 +158,7 @@ const result =
 
 console.log(
     JSON.stringify(
-        result.output
+        result.output,
         null,
         2
     )
