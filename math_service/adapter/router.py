@@ -1,6 +1,5 @@
 from fastapi import APIRouter
 from .models import Math_Input, Math_Output
-from .service import protocol_to_sympy, factor_protocol
 from fastapi import (
     FastAPI,
     HTTPException,

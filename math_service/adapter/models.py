@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, RootModel
 from __future__ import annotations
+from pydantic import BaseModel, Field, RootModel
 
 from typing import Annotated, Literal
 

@@ -51,7 +51,7 @@ export class SymPy_Adapter
         const response =
             await call_sympy(
                 request,
-                ''
+                'https://localhost:8000/math'
             )
 
 
@@ -154,7 +154,7 @@ export async function call_sympy(
 
     const response =
         await fetch(
-            `${math_service_url}/math`,
+            math_service_url,
 
             {
                 method:
