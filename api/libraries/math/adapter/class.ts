@@ -14,58 +14,58 @@ import {
     math_protocol_to_schematician,
     
  } from "./utils.js"
-import { Variable_Schema } from "../object.js"
-export class SymPy_Adapter
-    implements Symbolic_Math_Engine {
+import { Equation_Schema, Variable_Schema } from "../object.js"
+// export class SymPy_Adapter
+//     implements Symbolic_Math_Engine {
 
-    uid =
-        'engine.sympy'
+//     uid =
+//         'engine.sympy'
 
-    async factor(
-        expression:
-            GraphQL_Instance,
+//     async factor(
+//         expression:
+//             GraphQL_Instance,
 
-        options?:
-            Factor_Options 
+//         options?:
+//             Factor_Options 
 
-    ): Promise<GraphQL_Instance> {
+//     ): Promise<GraphQL_Instance> {
 
-        const protocol =
-            schematician_to_math_protocol(
-                expression
-            )
-
-
-        const request: Math_Request = {
-            objective:
-                'Factor',
-
-            expression:
-                protocol
-        }
-
-        if (options !== undefined) {
-            request.options = options
-        }
-
-        const response =
-            await call_sympy(
-                request,
-                'https://localhost:8000/math'
-            )
+//         const protocol =
+//             schematician_to_math_protocol(
+//                 expression
+//             )
 
 
-        return math_protocol_to_schematician(
-            response.expression,
+//         const request: Math_Request = {
+//             objective:
+//                 'Factor',
 
-            collect_variables(
-                expression
-            ),
+//             expression:
+//                 protocol
+//         }
 
-            'sympy.factor.result'
-        )
-    }
-}
+//         if (options !== undefined) {
+//             request.options = options
+//         }
+
+//         const response =
+//             await call_sympy(
+//                 request,
+//                 'https://localhost:8000/math'
+//             )
+
+
+//         return math_protocol_to_schematician(
+//             response.expression,
+//             Equation_Schema,
+//             collect_variables(
+//                 expression
+//             ),
+
+//             'sympy.factor.result'
+//         )
+//     }
+// }
 export function collect_variables(
     target:
         GraphQL_Instance,

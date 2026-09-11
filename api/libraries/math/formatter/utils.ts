@@ -11,7 +11,12 @@ import type
 
  } from "@schematician/shared"
 
-
+import { Equation_Schema, Variable_Schema } from "../object.js"
+import { Operation_Application_Schema } from "../operation/utils.js"
+import { get_variable_name, get_composite_child } from "../adapter/utils.js"
+import type { Math_Tree_Node, OperationMap } from "./types.js"
+import { get_operation_application_values } from "../adapter/utils.js"
+import { get_operation_uid } from "../objectives/expand/utils.js"
 function format_instance(
     instance: GraphQL_Instance
 ): string {
@@ -110,105 +115,400 @@ export function format_objective_output(
 ): string[] {
 
     if (
-        is_graphql_instance(output)
+        typeof output !== 'object' ||
+        output === null
     ) {
-
         return [
-            format_instance(output)
+            String(output)
         ]
     }
 
-    if (Array.isArray(output)) {
 
-        return output.flatMap(
-            (item, index) => {
+    const record =
+        output as Record<
+            string,
+            unknown
+        >
 
-                const formatted =
-                    format_objective_output(
-                        item
-                    )
 
-                return formatted.map(
-                    line =>
-                        `[${index}] ${line}`
-                )
-            }
+    const lines:
+        string[] = []
+
+
+    for (
+        const [
+            key,
+            value
+        ]
+        of Object.entries(
+            record
         )
-    }
-
-    if (
-        typeof output === 'object' &&
-        output !== null
     ) {
 
-        const lines: string[] = []
-
-        for (
-            const [key, value]
-            of Object.entries(output)
+        if (
+            is_graphql_instance(
+                value
+            )
         ) {
-
-            if (
-                is_graphql_instance(value)
-            ) {
-
-                lines.push(
-                    `${key} = ${format_instance(value)
-                    }`
-                )
-
-                continue
-            }
-
-            if (
-                Array.isArray(value) &&
-                value.every(
-                    is_graphql_instance
-                )
-            ) {
-
-                lines.push(
-                    `${key} = [${value
-                        .map(format_instance)
-                        .join(', ')
-                    }]`
-                )
-
-                continue
-            }
-
-            if (
-                typeof value !== 'object' ||
-                value === null
-            ) {
-
-                lines.push(
-                    `${key} = ${String(value)}`
-                )
-
-                continue
-            }
 
             lines.push(
                 `${key}:`
             )
 
-            lines.push(
-                ...format_objective_output(
+
+            const tree =
+                format_math_instance_tree(
                     value
-                ).map(
-                    line =>
-                        `    ${line}`
                 )
-            )
+
+
+            for (
+                const line
+                of tree
+            ) {
+                lines.push(
+                    `    ${line}`
+                )
+            }
+
+
+            continue
         }
 
-        return lines
+
+        lines.push(
+            `${key} = ${format_objective_value(value)}`
+        )
     }
 
-    return [
-        String(output)
-    ]
+
+    return lines
+}
+function format_objective_value(
+    value: unknown
+): string {
+
+    if (
+        typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean'
+    ) {
+        return String(value)
+    }
+
+
+    if (
+        value === null
+    ) {
+        return 'null'
+    }
+
+
+    return JSON.stringify(
+        value
+    )
+}
+
+export function format_math_instance_tree(
+    instance: GraphQL_Instance
+): string[] {
+
+    const node =
+        get_math_tree_node(
+            instance
+        )
+
+
+    return render_tree_node(
+        node
+    )
+}
+function render_tree_node(
+    root:
+        Math_Tree_Node
+): string[] {
+
+    const lines:
+        string[] = [
+            root.label
+        ]
+
+
+    render_tree_children(
+        root.children,
+        '',
+        lines
+    )
+
+
+    return lines
+}
+
+function render_tree_children(
+    children:
+        Math_Tree_Node[],
+
+    prefix:
+        string,
+
+    lines:
+        string[]
+): void {
+
+    children.forEach(
+        (
+            child,
+            index
+        ) => {
+
+            const is_last =
+                index ===
+                children.length - 1
+
+
+            lines.push(
+                prefix +
+                (
+                    is_last
+                        ? '└── '
+                        : '├── '
+                ) +
+                child.label
+            )
+
+
+            render_tree_children(
+                child.children,
+
+                prefix +
+                (
+                    is_last
+                        ? '    '
+                        : '│   '
+                ),
+
+                lines
+            )
+        }
+    )
+}
+function get_math_tree_node(
+    instance: GraphQL_Instance
+): Math_Tree_Node {
+
+    switch (
+    instance.data_type
+    ) {
+
+        case 'Number':
+
+            return {
+                label:
+                    String(
+                        instance.value
+                    ),
+
+                children:
+                    []
+            }
+
+
+        case 'String':
+
+            return {
+                label:
+                    String(
+                        instance.value
+                    ),
+
+                children:
+                    []
+            }
+
+
+        case 'Boolean':
+
+            return {
+                label:
+                    String(
+                        instance.value
+                    ),
+
+                children:
+                    []
+            }
+
+
+        case 'Array':
+
+            return {
+                label:
+                    'Array',
+
+                children:
+                    instance.items.map(
+                        get_math_tree_node
+                    )
+            }
+
+
+        case 'Composite':
+
+            if (
+                instance.schema_uid ===
+                Variable_Schema.uid
+            ) {
+
+                return {
+                    label:
+                        get_variable_name(
+                            instance
+                        ),
+
+                    children:
+                        []
+                }
+            }
+
+
+            if (
+                instance.schema_uid ===
+                Operation_Application_Schema.uid
+            ) {
+
+                return get_operation_tree_node(
+                    instance
+                )
+            }
+
+
+            if (
+                instance.schema_uid ===
+                Equation_Schema.uid
+            ) {
+
+                return get_equation_tree_node(
+                    instance
+                )
+            }
+
+
+            return {
+                label:
+                    instance.schema_uid,
+
+                children:
+                    instance.objects.map(
+                        object =>
+                            get_math_tree_node(
+                                object.instance
+                            )
+                    )
+            }
+    }
+}
+
+function get_equation_tree_node(
+    instance:
+        GraphQL_Composite_Instance
+): Math_Tree_Node {
+
+    const left =
+        get_composite_child(
+            instance,
+            'left'
+        )
+
+
+    const right =
+        get_composite_child(
+            instance,
+            'right'
+        )
+
+
+    return {
+        label:
+            'Equation',
+
+        children: [
+            {
+                label:
+                    'Left',
+
+                children:
+                    left
+                        ? [
+                            get_math_tree_node(
+                                left
+                            )
+                        ]
+                        : []
+            },
+
+            {
+                label:
+                    'Right',
+
+                children:
+                    right
+                        ? [
+                            get_math_tree_node(
+                                right
+                            )
+                        ]
+                        : []
+            }
+        ]
+    }
+}
+function get_operation_tree_node(
+    instance:
+        GraphQL_Composite_Instance
+): Math_Tree_Node {
+    const operation_uid =
+        get_operation_uid(
+            instance
+        )
+    if (
+        operation_uid === null
+    ) {
+        throw new Error(
+            `Operation application ${instance.uid} has no operation UID.`
+        )
+    }
+
+    const Math_Operation_Names: OperationMap = {
+        'math.operation.addition': 'Addition',
+        'math.operation.count': 'Count',
+        'math.operation.division': 'Division',
+        'math.operation.multiplication': 'Multiplication',
+        'math.operation.subtraction': 'Subtraction',
+        'math.operation.mean': 'Arithmetic Mean'
+    }
+    const name =
+        Math_Operation_Names[
+        operation_uid 
+        ]
+        ??
+        operation_uid
+
+
+    const values =
+        get_operation_application_values(
+            instance
+        )
+
+
+    return {
+        label:
+            name,
+
+        children:
+            values.map(
+                get_math_tree_node
+            )
+    }
 }
 export function is_graphql_instance(
     value: unknown

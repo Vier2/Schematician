@@ -30,7 +30,7 @@ import {
     create_multiplication
 
  } from "../objectives/expand/utils.js"
-import { Number_Schema, Variable_Name_Schema, Variable_Schema } from "../object.js"
+import { Equation_Schema, Number_Schema, Variable_Name_Schema, Variable_Schema } from "../object.js"
 
 function map_operation_uid_to_protocol(
     uid: string,
@@ -80,7 +80,7 @@ export function get_composite_child(
     )?.instance
 }
 
-function get_operation_application_values(
+export function get_operation_application_values(
     operation:
         GraphQL_Composite_Instance
 
@@ -252,16 +252,16 @@ export function create_number_instance(
 
 
 export function schematician_to_math_protocol(
-    instance: GraphQL_Instance,
-    operation_application_schema:
-        Schema<'Composite'> = Operation_Application_Schema
+    instance:
+        GraphQL_Instance
 ): Math_Protocol_Node {
 
     /*
      * Number
      */
     if (
-        instance.data_type === 'Number'
+        instance.data_type ===
+        'Number'
     ) {
 
         if (
@@ -273,9 +273,13 @@ export function schematician_to_math_protocol(
             )
         }
 
+
         return {
-            type: 'Number',
-            value: instance.value
+            type:
+                'Number',
+
+            value:
+                instance.value
         }
     }
 
@@ -290,7 +294,8 @@ export function schematician_to_math_protocol(
     ) {
 
         return {
-            type: 'Symbol',
+            type:
+                'Symbol',
 
             uid:
                 instance.uid,
@@ -304,14 +309,66 @@ export function schematician_to_math_protocol(
 
 
     /*
-     * Operation application
+     * Equation
      */
     if (
         instance.data_type ===
         'Composite' &&
 
         instance.schema_uid ===
-        operation_application_schema.uid
+        Equation_Schema.uid
+    ) {
+
+        const left =
+            get_composite_child(
+                instance,
+                'left'
+            )
+
+
+        const right =
+            get_composite_child(
+                instance,
+                'right'
+            )
+
+
+        if (
+            !left ||
+            !right
+        ) {
+            throw new Error(
+                `Equation ${instance.uid} is missing a side.`
+            )
+        }
+
+
+        return {
+            type:
+                'Equation',
+
+            left:
+                schematician_to_math_protocol(
+                    left
+                ),
+
+            right:
+                schematician_to_math_protocol(
+                    right
+                )
+        }
+    }
+
+
+    /*
+     * Operation Application
+     */
+    if (
+        instance.data_type ===
+        'Composite' &&
+
+        instance.schema_uid ===
+        Operation_Application_Schema.uid
     ) {
 
         const operation_uid =
@@ -319,7 +376,10 @@ export function schematician_to_math_protocol(
                 instance
             )
 
-        if (!operation_uid) {
+
+        if (
+            operation_uid === null
+        ) {
             throw new Error(
                 `Operation application ${instance.uid} has no operation UID.`
             )
@@ -333,7 +393,8 @@ export function schematician_to_math_protocol(
 
 
         return {
-            type: 'Operation',
+            type:
+                'Operation',
 
             operation:
                 map_operation_uid_to_protocol(
@@ -344,8 +405,7 @@ export function schematician_to_math_protocol(
                 values.map(
                     value =>
                         schematician_to_math_protocol(
-                            value,
-                            operation_application_schema
+                            value
                         )
                 )
         }
@@ -353,9 +413,48 @@ export function schematician_to_math_protocol(
 
 
     throw new Error(
-        `Unsupported Schematician mathematical instance: ` +
+        `Unsupported Schematician math instance: ` +
         `${instance.schema_uid} (${instance.data_type})`
     )
+}
+
+export function create_equation_instance(
+    uid: string,
+    equation_schema = Equation_Schema,
+    left:
+        GraphQL_Instance,
+
+    right:
+        GraphQL_Instance
+): GraphQL_Composite_Instance {
+
+    return {
+        uid,
+
+        schema_uid:
+            equation_schema.uid!,
+
+        data_type:
+            'Composite',
+
+        objects: [
+            {
+                element_relationship_uid:
+                    'left',
+
+                instance:
+                    left
+            },
+
+            {
+                element_relationship_uid:
+                    'right',
+
+                instance:
+                    right
+            }
+        ]
+    }
 }
 export function math_protocol_to_schematician(
     node:
@@ -371,7 +470,9 @@ export function math_protocol_to_schematician(
         string
 ): GraphQL_Instance {
 
-    switch (node.type) {
+    switch (
+    node.type
+    ) {
 
         case 'Number':
 
@@ -383,10 +484,6 @@ export function math_protocol_to_schematician(
 
         case 'Rational':
 
-            /*
-             * For now represent a Rational
-             * structurally as Division.
-             */
             return create_binary_operation_application(
                 `${uid_prefix}.rational`,
 
@@ -416,8 +513,9 @@ export function math_protocol_to_schematician(
                 )
 
 
-            if (existing) {
-
+            if (
+                existing
+            ) {
                 return clone_instance(
                     existing
                 )
@@ -437,6 +535,25 @@ export function math_protocol_to_schematician(
                 node,
                 variable_registry,
                 uid_prefix
+            )
+
+
+        case 'Equation':
+
+            return create_equation_instance(
+                `${uid_prefix}.equation`,
+                Equation_Schema,
+                math_protocol_to_schematician(
+                    node.left,
+                    variable_registry,
+                    `${uid_prefix}.left`
+                ),
+
+                math_protocol_to_schematician(
+                    node.right,
+                    variable_registry,
+                    `${uid_prefix}.right`
+                )
             )
 
 

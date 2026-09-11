@@ -4,6 +4,11 @@ import {
     create_binary_operation_application
 } from "../../adapter/utils.js"
 
+import type { 
+    GraphQL_Composite_Instance,
+    GraphQL_Instance
+ } from "@schematician/shared"
+import type { Factor_Options } from "./types.js"
 import { create_addition,
     create_multiplication
  } from "../expand/utils.js"
@@ -14,7 +19,7 @@ import { print_objective_result } from "../../formatter/utils.js"
 import type { Symbolic_Math_Engine } from "./types.js"
 import { collect_variables, call_sympy } from "../../adapter/class.js"
 import { schematician_to_math_protocol, math_protocol_to_schematician } from "../../adapter/utils.js"
-import type { Math_Request } from "./types.js"
+import { Equation_Schema } from "../../object.js"
 const X =
     create_variable_instance(
         'math.instance.variable.x',
@@ -104,10 +109,14 @@ export const SymPy_Engine:
     uid:
         'sympy',
 
+
     async factor(
-        expression,
-        options
-    ) {
+        expression:
+            GraphQL_Instance,
+
+        options:
+            Factor_Options
+    ): Promise<GraphQL_Instance> {
 
         const variable_registry =
             collect_variables(
@@ -121,31 +130,111 @@ export const SymPy_Engine:
             )
 
 
-
-        const request: Math_Request = {
-            objective:
-                'Factor',
-
-            expression:
-                protocol_expression
-        }
-
-        if (options !== undefined) {
-            request.options = options
-        }
         const response =
-            await call_sympy(
-                request
-                , 'http://localhost:8000/math')
+            await call_sympy({
+                objective:
+                    'Factor',
+
+                expression:
+                    protocol_expression,
+
+                options}, '')
+
+
+        if (
+            response.objective !==
+            'Factor'
+        ) {
+            throw new Error(
+                `Expected Factor response, received ${response.objective}.`
+            )
+        }
 
 
         return math_protocol_to_schematician(
-            response.expression,
-
-            variable_registry,
-
+            response.expression,           
+             variable_registry,
             'sympy.factor.result'
         )
+    },
+
+    async isolate(
+        equation,
+        target
+    ) {
+
+        const variables =
+            collect_variables(
+                equation
+            )
+
+
+        variables.set(
+            target.uid,
+            target
+        )
+
+
+        const equation_protocol =
+            schematician_to_math_protocol(
+                equation
+            )
+
+
+        const target_protocol =
+            schematician_to_math_protocol(
+                target
+            )
+
+
+        if (
+            equation_protocol.type !==
+            'Equation'
+        ) {
+            throw new Error(
+                'Expected Equation protocol node.'
+            )
+        }
+
+
+        if (
+            target_protocol.type !==
+            'Symbol'
+        ) {
+            throw new Error(
+                'Isolation target must be a Symbol.'
+            )
+        }
+
+
+        const response =
+            await call_sympy({
+                objective:
+                    'Isolate',
+
+                equation:
+                    equation_protocol,
+
+                target:
+                    target_protocol
+            }, 'http://localhost:8000/math')
+
+
+        if (
+            response.objective !==
+            'Isolate'
+        ) {
+            throw new Error(
+                'Unexpected math service response.'
+            )
+        }
+
+
+        return math_protocol_to_schematician(
+            response.equation,
+            variables,
+            'sympy.isolate.result'
+        ) as GraphQL_Composite_Instance
     }
 }
 
@@ -156,13 +245,7 @@ const result =
     )
 
 
-console.log(
-    JSON.stringify(
-        result.output,
-        null,
-        2
-    )
-)
+
 
 
 print_objective_result(

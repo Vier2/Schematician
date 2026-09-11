@@ -46,9 +46,9 @@ const expand_result_1 =
         Expand_Test_1
     )
 
-print_objective_result(
-    expand_result_1
-)
+// print_objective_result(
+//     expand_result_1
+// )
 
 const X_Plus_Three =
     create_addition(
@@ -115,6 +115,6 @@ const expand_result_2 =
                 Binomial_Product
         }
     })
-console.log(`expand 1 ${(JSON.stringify(expand_result_1.output))}`)
+// console.log(`expand 1 ${(JSON.stringify(expand_result_1.output))}`)
 
-console.log(`expand 2 ${(JSON.stringify(expand_result_2.output))}`)
+// console.log(`expand 2 ${(JSON.stringify(expand_result_2.output))}`)

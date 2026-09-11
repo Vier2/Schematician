@@ -16,6 +16,7 @@ class Math_Output(BaseModel):
 
 
 
+
 MathProtocolOperation = Literal[
     "Add",
     "Subtract",
@@ -23,12 +24,25 @@ MathProtocolOperation = Literal[
     "Divide",
     "Power",
 ]
+class MathIsolateRequest(BaseModel):
+    objective: Literal["Isolate"]
+
+    equation: MathEquationNode
+
+    target: MathSymbolNode
+
+class MathIsolateResponse(BaseModel):
+    objective: Literal["Isolate"]
+
+    equation: MathEquationNode
 
 MathDomain = Literal[
     "Rational",
     "Real",
     "Complex",
 ]
+
+
 
 
 class MathNumberNode(BaseModel):
@@ -57,13 +71,20 @@ class MathOperationNode(BaseModel):
 
     arguments: list[MathNode]
 
+class MathEquationNode(BaseModel):
+    type: Literal["Equation"]
 
+    left:MathNode
+
+    right:MathNode
+    
 class MathNode(
     RootModel[
         Annotated[
             MathNumberNode
             | MathRationalNode
             | MathSymbolNode
+            | MathEquationNode
             | MathOperationNode,
             Field(discriminator="type"),
         ]
@@ -89,6 +110,21 @@ class MathFactorResponse(BaseModel):
 
     expression: MathNode
 
+MathRequest = Annotated[
+    MathFactorRequest
+    | MathIsolateRequest,
+    Field(
+        discriminator="objective"
+    ),
+]
+MathResponse = Annotated[
+    MathFactorResponse
+    | MathIsolateResponse,
+
+    Field(
+        discriminator="objective"
+    ),
+]
 
 # Resolve recursive model references.
 MathOperationNode.model_rebuild()

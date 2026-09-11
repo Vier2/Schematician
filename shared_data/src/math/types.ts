@@ -4,6 +4,7 @@ export type Math_Protocol_Node =
     | Math_Rational_Node
     | Math_Symbol_Node
     | Math_Operation_Node
+    | Math_Equation_Node
 
 export interface Math_Rational_Node {
     type: 'Rational'
@@ -62,3 +63,16 @@ export type Math_Domain =
     | 'Rational'
     | 'Real'
     | 'Complex'
+
+
+export interface Math_Equation_Node {
+
+    type:
+    'Equation'
+
+    left:
+    Math_Protocol_Node
+
+    right:
+    Math_Protocol_Node
+}

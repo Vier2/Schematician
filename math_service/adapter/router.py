@@ -1,37 +1,36 @@
 from fastapi import APIRouter
-from .models import Math_Input, Math_Output
 from fastapi import (
     FastAPI,
     HTTPException,
 )
 
 from .models import (
-    MathFactorRequest,
+    MathRequest,
     MathFactorResponse,
+    MathIsolateResponse,
+    MathResponse
 )
 
 from ..factor.service import (
     factor_expression,
 )
-
+from ..isolate.service import isolate_variable
 
 
 math_router = APIRouter(prefix='/math')
 
-@math_router.post('', response_model=MathFactorResponse)
-async def math(request: MathFactorRequest):
-    try:
-        return factor_expression(
-            request
-        )
+@math_router.post('', response_model= MathResponse)
+async def math(
+    request: MathRequest,
+) ->  MathResponse:
 
-    except (
-        ValueError,
-        TypeError,
-    ) as error: raise HTTPException(
-            status_code=400,
-            detail=str(error),
-        ) from error
-    pass
+    match request.objective:
 
-    return Math_Output
+        case "Factor":
+            return factor_expression(
+                request
+            )
+
+        case "Isolate":
+            return isolate_variable(
+                request)

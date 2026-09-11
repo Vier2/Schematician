@@ -230,12 +230,13 @@ function create_nary_operation_application(
 
 export function create_addition(
     uid: string,
-    addends: GraphQL_Instance[]
+    addends: GraphQL_Instance[],
+    addiiton_operation = Addition_Operation
 ): GraphQL_Composite_Instance {
 
     return create_nary_operation_application(
         uid,
-        Addition_Operation,
+        addiiton_operation,
         'addends',
         addends
     )
@@ -576,6 +577,6 @@ const deep_expand_result =
     )
 
 
-print_objective_result(
-    deep_expand_result
-)
+// print_objective_result(
+//     deep_expand_result
+// )

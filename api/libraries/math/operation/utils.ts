@@ -24,7 +24,6 @@ import { X_Variable_Instance,
     Number_Two_Instance, 
     Number_Eleven_Instance,
     Number_Four_Instance } from "../objectives/subsitition/test.js"
-import { print_objective_result } from "../formatter/utils.js"
 
 export const Operation_UID_Schema:
     Schema<'String'> = {
@@ -808,12 +807,12 @@ const equation_result =
     substitute(
         Equation_Substitution
     )
-console.log(
-    `equation result ${JSON.stringify(equation_result.output.result)}`
-)
+// console.log(
+//     `equation result ${JSON.stringify(equation_result.output.result)}`
+// )
 
 
-print_objective_result(
-    equation_result
-)
+// print_objective_result(
+//     equation_result
+// )
 
