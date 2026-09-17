@@ -53,7 +53,7 @@ builder.inputType(
                     required: true
                 }),
                 
-                image: t.string(),
+                image_url: t.string(),
                 
                 rules: t.string(),
                 

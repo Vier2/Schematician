@@ -186,7 +186,7 @@ export function Add_Save_Schema_Function(
                         'uid',
                         'name',
                         'data_type',
-                        'image',
+                        'image_url',
                         'rules',
                         'logic',
                         'relationships',
@@ -1471,7 +1471,6 @@ export function Convert_GraphQL_Schema_To_Schema(
         })),
 
         rules: graphql_schema.rules,
-        logic: graphql_schema.logic,
         relationships: graphql_schema.relationships,
 
         constraints: graphql_schema.constraints as any,

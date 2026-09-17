@@ -52,7 +52,7 @@ Schema_Ref.implement({
             type: Data_Type_Enum
         }),
 
-        image: t.exposeString('image', { nullable: true }),
+        image_url: t.exposeString('image_url', { nullable: true }),
         rules: t.exposeString('rules', { nullable: true }),
         logic: t.exposeString('logic', { nullable: true }),
         relationships: t.exposeString('relationships', { nullable: true }),

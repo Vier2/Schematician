@@ -234,7 +234,7 @@ function Build_Schema_Selection(
             'uid',
             'name',
             'data_type',
-            'image',
+            'image_url',
             'rules',
             'logic',
             'relationships',
@@ -578,9 +578,8 @@ export function Convert_Schema_To_Update_Data(
         name: state.name,
         data_type: state.data_type,
 
-        image: state.image,
+        image_url: state.image_url,
         rules: state.rules,
-        logic: state.logic,
         relationships: state.relationships,
 
         constraints: state.constraints,
