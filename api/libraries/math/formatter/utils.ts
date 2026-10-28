@@ -8,10 +8,11 @@ import type
     Computation_Trace,
     Runtime_Value,
     GraphQL_Composite_Instance,
+    Schema,
 
  } from "@schematician/shared"
 
-import { Equation_Schema, Variable_Schema } from "../object.js"
+import { Equation_Schema, Rational_Schema, Variable_Schema } from "../object.js"
 import { Operation_Application_Schema } from "../operation/utils.js"
 import { get_variable_name, get_composite_child } from "../adapter/utils.js"
 import type { Math_Tree_Node, OperationMap } from "./types.js"
@@ -210,12 +211,14 @@ function format_objective_value(
 }
 
 export function format_math_instance_tree(
-    instance: GraphQL_Instance
+    instance: GraphQL_Instance,
+    rational_schema: Schema<'Composite'> = Rational_Schema
 ): string[] {
 
     const node =
         get_math_tree_node(
-            instance
+            instance,
+            rational_schema
         )
 
 
@@ -293,7 +296,8 @@ function render_tree_children(
     )
 }
 function get_math_tree_node(
-    instance: GraphQL_Instance
+    instance: GraphQL_Instance,
+    rational_schema: Schema<'Composite'>
 ): Math_Tree_Node {
 
     switch (
@@ -347,7 +351,7 @@ function get_math_tree_node(
 
                 children:
                     instance.items.map(
-                        get_math_tree_node
+                        item => get_math_tree_node(item, rational_schema)
                     )
             }
 
@@ -377,10 +381,34 @@ function get_math_tree_node(
             ) {
 
                 return get_operation_tree_node(
-                    instance
+                    instance,
+                    rational_schema
                 )
             }
 
+
+            if (
+                instance.schema_uid ===
+                rational_schema.uid
+            ) {
+                const numerator = get_composite_child(
+                    instance,
+                    'numerator'
+                )
+                const denominator = get_composite_child(
+                    instance,
+                    'denominator'
+                )
+
+                return {
+                    label:
+                        numerator?.data_type === 'Number' &&
+                        denominator?.data_type === 'Number'
+                            ? `${numerator.value}/${denominator.value}`
+                            : 'Rational',
+                    children: []
+                }
+            }
 
             if (
                 instance.schema_uid ===
@@ -388,7 +416,8 @@ function get_math_tree_node(
             ) {
 
                 return get_equation_tree_node(
-                    instance
+                    instance,
+                    rational_schema
                 )
             }
 
@@ -401,7 +430,8 @@ function get_math_tree_node(
                     instance.objects.map(
                         object =>
                             get_math_tree_node(
-                                object.instance
+                                object.instance,
+                                rational_schema
                             )
                     )
             }
@@ -409,8 +439,8 @@ function get_math_tree_node(
 }
 
 function get_equation_tree_node(
-    instance:
-        GraphQL_Composite_Instance
+    instance: GraphQL_Composite_Instance,
+    rational_schema: Schema<'Composite'>
 ): Math_Tree_Node {
 
     const left =
@@ -440,7 +470,8 @@ function get_equation_tree_node(
                     left
                         ? [
                             get_math_tree_node(
-                                left
+                                left,
+                                rational_schema
                             )
                         ]
                         : []
@@ -454,7 +485,8 @@ function get_equation_tree_node(
                     right
                         ? [
                             get_math_tree_node(
-                                right
+                                right,
+                                rational_schema
                             )
                         ]
                         : []
@@ -463,8 +495,8 @@ function get_equation_tree_node(
     }
 }
 function get_operation_tree_node(
-    instance:
-        GraphQL_Composite_Instance
+    instance: GraphQL_Composite_Instance,
+    rational_schema: Schema<'Composite'>
 ): Math_Tree_Node {
     const operation_uid =
         get_operation_uid(
@@ -484,7 +516,12 @@ function get_operation_tree_node(
         'math.operation.division': 'Division',
         'math.operation.multiplication': 'Multiplication',
         'math.operation.subtraction': 'Subtraction',
-        'math.operation.mean': 'Arithmetic Mean'
+        'math.operation.mean': 'Arithmetic Mean',
+        'math.operation.greater_than': 'Greater Than',
+        'math.operation.power': 'Power',
+        'math.operation.radical': 'Radical',
+        'math.operation.rational': 'Rational',
+        'math.operation.modulus': 'Modulus'
     }
     const name =
         Math_Operation_Names[
@@ -506,7 +543,7 @@ function get_operation_tree_node(
 
         children:
             values.map(
-                get_math_tree_node
+                value => get_math_tree_node(value, rational_schema)
             )
     }
 }

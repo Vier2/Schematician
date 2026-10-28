@@ -578,7 +578,6 @@ export function Convert_Schema_To_Update_Data(
         name: state.name,
         data_type: state.data_type,
 
-        image_url: state.image_url,
         rules: state.rules,
         relationships: state.relationships,
 

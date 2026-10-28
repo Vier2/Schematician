@@ -9,15 +9,27 @@ import type { Schema,
     Branch,
     Computation_Trace,
     GraphQL_Instance,
+    GraphQL_Composite_Instance,
     Runtime_Values,
     GraphQL_Atomic_Instance,
     Atomic_Values,
     Operation_Execution_Result,
      Atomic_Executor } from "@schematician/shared";
 
-import { 
+import {
     Number_Schema,
-    Boolean_Schema } from "./object.js";
+    Boolean_Schema,
+    Radicand_Schema,
+    Root_Index_Schema,
+    Root_Schema,
+    Rational_Numerator_Schema,
+    Rational_Denominator_Schema,
+    Rational_Schema,
+    Modulus_Value_Schema,
+    Modulus_Divisor_Schema,
+    Modulus_Result_Schema,
+    normalize_rational
+} from "./object.js";
 import { get_boolean_value,
     get_atomic_value,
     get_number_value,
@@ -62,6 +74,31 @@ export const Countable_Item_Schema: Schema = {
 //         }
 //     }
 // }
+
+export function create_rational_executor(
+    rational_normalizer: typeof normalize_rational = normalize_rational
+): Atomic_Executor {
+    return inputs => {
+        const numerator = inputs.numerator
+        const denominator = inputs.denominator
+
+        if (
+            typeof numerator !== 'number' ||
+            typeof denominator !== 'number'
+        ) {
+            throw new Error(
+                'Rational numerator and denominator must be numbers.'
+            )
+        }
+
+        return {
+            rational: rational_normalizer(
+                numerator,
+                denominator
+            )
+        }
+    }
+}
 
 export const Atomic_Executors:
     Record<string, Atomic_Executor> = {
@@ -137,6 +174,76 @@ export const Atomic_Executors:
 
         return {
             power: base ** exponent
+        }
+    },
+    'builtin.number.radical': inputs => {
+        const radicand = inputs.radicand
+        const index = inputs.index
+
+        if (
+            typeof radicand !== 'number' ||
+            !Number.isFinite(radicand)
+        ) {
+            throw new Error(
+                'Radicand must be a finite number.'
+            )
+        }
+
+        if (
+            typeof index !== 'number' ||
+            !Number.isSafeInteger(index) ||
+            index <= 0
+        ) {
+            throw new Error(
+                'Root index must be a positive safe integer.'
+            )
+        }
+
+        if (radicand < 0 && index % 2 === 0) {
+            throw new Error(
+                'Even roots of negative numbers are not real.'
+            )
+        }
+
+        const root = Math.pow(
+            Math.abs(radicand),
+            1 / index
+        )
+
+        return {
+            root: radicand < 0 ? -root : root
+        }
+    },
+    'builtin.number.rational': create_rational_executor(),
+    'builtin.number.modulus': inputs => {
+        const dividend = inputs.dividend
+        const divisor = inputs.modulus
+
+        if (
+            typeof dividend !== 'number' ||
+            !Number.isFinite(dividend) ||
+            typeof divisor !== 'number' ||
+            !Number.isFinite(divisor)
+        ) {
+            throw new Error(
+                'Modulus operands must be finite numbers.'
+            )
+        }
+
+        if (divisor === 0) {
+            throw new Error(
+                'Modulus cannot equal zero.'
+            )
+        }
+
+        const remainder = dividend % divisor
+
+        return {
+            remainder: remainder === 0
+                ? 0
+                : Math.sign(remainder) === Math.sign(divisor)
+                    ? remainder
+                    : remainder + divisor
         }
     }
 }
@@ -431,6 +538,61 @@ export function create_instance_from_value(
                 // other base fields
             }
 
+        case 'Composite': {
+            if (
+                typeof value !== 'object' ||
+                value === null ||
+                Array.isArray(value)
+            ) {
+                throw new Error(
+                    `Composite output ${schema.name} must be an object.`
+                )
+            }
+
+            const values = value as Record<string, unknown>
+            const objects: GraphQL_Composite_Instance['objects'] = []
+
+            for (const element of schema.elements ?? []) {
+                if (!element.uid) {
+                    throw new Error(
+                        `Composite output ${schema.name} has an element without a UID.`
+                    )
+                }
+
+                if (element.cardinality !== 'Single') {
+                    throw new Error(
+                        `Composite output element ${element.uid} must be single-cardinality.`
+                    )
+                }
+
+                const child_value = values[element.uid]
+
+                if (child_value === undefined) {
+                    if (element.required) {
+                        throw new Error(
+                            `Composite output ${schema.name} is missing ${element.uid}.`
+                        )
+                    }
+                    continue
+                }
+
+                objects.push({
+                    element_relationship_uid: element.uid,
+                    instance: create_instance_from_value(
+                        element.element,
+                        child_value,
+                        `${uid}.${element.uid}`
+                    )
+                })
+            }
+
+            return {
+                uid,
+                schema_uid: schema.uid!,
+                data_type: 'Composite',
+                objects
+            }
+        }
 
         default:
 
@@ -844,6 +1006,96 @@ export const Power_Operation: Operation_Definition = {
     implementation: {
         type: 'Atomic',
         executor_uid: 'builtin.number.power'
+    }
+}
+
+export const Radical_Operation: Operation_Definition = {
+    uid: 'math.operation.radical',
+    name: 'Radical',
+    inputs: [
+        {
+            uid: 'radicand',
+            schema: Radicand_Schema,
+            cardinality: 'Single',
+            required: true
+        },
+        {
+            uid: 'index',
+            schema: Root_Index_Schema,
+            cardinality: 'Single',
+            required: true
+        }
+    ],
+    outputs: [
+        {
+            uid: 'root',
+            schema: Root_Schema,
+            cardinality: 'Single'
+        }
+    ],
+    implementation: {
+        type: 'Atomic',
+        executor_uid: 'builtin.number.radical'
+    }
+}
+
+export const Rational_Operation: Operation_Definition = {
+    uid: 'math.operation.rational',
+    name: 'Rational',
+    inputs: [
+        {
+            uid: 'numerator',
+            schema: Rational_Numerator_Schema,
+            cardinality: 'Single',
+            required: true
+        },
+        {
+            uid: 'denominator',
+            schema: Rational_Denominator_Schema,
+            cardinality: 'Single',
+            required: true
+        }
+    ],
+    outputs: [
+        {
+            uid: 'rational',
+            schema: Rational_Schema,
+            cardinality: 'Single'
+        }
+    ],
+    implementation: {
+        type: 'Atomic',
+        executor_uid: 'builtin.number.rational'
+    }
+}
+
+export const Modulus_Operation: Operation_Definition = {
+    uid: 'math.operation.modulus',
+    name: 'Modulus',
+    inputs: [
+        {
+            uid: 'dividend',
+            schema: Modulus_Value_Schema,
+            cardinality: 'Single',
+            required: true
+        },
+        {
+            uid: 'modulus',
+            schema: Modulus_Divisor_Schema,
+            cardinality: 'Single',
+            required: true
+        }
+    ],
+    outputs: [
+        {
+            uid: 'remainder',
+            schema: Modulus_Result_Schema,
+            cardinality: 'Single'
+        }
+    ],
+    implementation: {
+        type: 'Atomic',
+        executor_uid: 'builtin.number.modulus'
     }
 }
 

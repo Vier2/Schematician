@@ -9,6 +9,17 @@ import { builder, Data_Type_Enum } from '../../builder.js'
 import { Schema_Ref } from '../../schema.js'
 import type { Update_Schema_Data, Delete_Schema_Result , GraphQL_Schema_Element, JSON_Value} from '@schematician/shared'
 import type { GraphQL_Schema_Link_Input, Schema_Element_Update } from './types.js'
+import { 
+    Asset_Ref, 
+    Create_Asset_Metadata_Input_Ref,
+    Update_Asset_Metadata_Input_Ref,
+    Delete_Asset_Metadata_Result_Ref
+} from './asset/types.js'
+import { 
+    db_create_asset_metadata, 
+    db_delete_asset_metadata,
+    db_update_asset_metadata } from './asset/repository.js'
+
 
 /**
  * Describes one element/property/identifier connection.
@@ -225,6 +236,115 @@ builder.mutationFields(t => ({
                 ...args,
                 uid: uuidv4()
             } as any)
+        }
+    }),
+    create_asset_metadata: t.field({
+        type: Asset_Ref,
+
+        args: {
+            asset: t.arg({
+                type: Create_Asset_Metadata_Input_Ref,
+                required: true
+            })
+        },
+
+        resolve: (_root, args, context) => {
+            if (!context.user) {
+                throw new Error('Unauthorized')
+            }
+
+            return db_create_asset_metadata(
+                context.driver,
+                context.user.id,
+                {
+                    uid: args.asset.uid,
+                    type: args.asset.type,
+                    object_key: args.asset.object_key,
+                    mime_type: args.asset.mime_type,
+
+                    ...(args.asset.original_filename != null
+                        ? {
+                            original_filename:
+                                args.asset.original_filename
+                        }
+                        : {}),
+
+                    ...(args.asset.size_bytes != null
+                        ? {
+                            size_bytes:
+                                args.asset.size_bytes
+                        }
+                        : {})
+                }
+            )
+        }
+    }),
+
+    update_asset_metadata: t.field({
+        type: Asset_Ref,
+        nullable: true,
+
+        args: {
+            asset: t.arg({
+                type: Update_Asset_Metadata_Input_Ref,
+                required: true
+            })
+        },
+
+        resolve: (_root, args, context) => {
+            if (!context.user) {
+                throw new Error('Unauthorized')
+            }
+
+            return db_update_asset_metadata(
+                context.driver,
+                context.user.id,
+                {
+                    uid: args.asset.uid,
+
+                    ...(args.asset.original_filename !== undefined
+                        ? {
+                            original_filename:
+                                args.asset.original_filename
+                        }
+                        : {})
+                }
+            )
+        }
+    }),
+
+    delete_asset_metadata: t.field({
+        type: Delete_Asset_Metadata_Result_Ref,
+
+        args: {
+            uid: t.arg.string({
+                required: true
+            })
+        },
+
+        resolve: async (_root, args, context) => {
+            if (!context.user) {
+                throw new Error('Unauthorized')
+            }
+
+            const success =
+                await db_delete_asset_metadata(
+                    context.driver,
+                    context.user.id,
+                    args.uid
+                )
+
+            return {
+                success,
+
+                message: success
+                    ? 'Asset metadata deleted successfully.'
+                    : 'Asset was not found or is not owned by the current user.',
+
+                deleted_uid: success
+                    ? args.uid
+                    : null
+            }
         }
     }),
 

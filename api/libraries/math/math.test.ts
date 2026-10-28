@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest'
 import { 
         Mean_Input_Schema
     
@@ -282,3 +283,16 @@ const Mean_Evaluation:
 
 // console.log(`result 1 ${result_1}`)
 // console.log(`result 2 ${result_2}`)
+
+describe('math library smoke checks', () => {
+    it('declares arithmetic mean as a three-operation composite', () => {
+        expect(Mean_Operation.implementation.type).toBe('Composite')
+
+        if (Mean_Operation.implementation.type !== 'Composite') {
+            throw new Error('Mean must be implemented as a computation.')
+        }
+
+        expect(Mean_Operation.implementation.computation.operations).toHaveLength(3)
+        expect(Mean_Operation.outputs[0]?.uid).toBe('mean')
+    })
+})

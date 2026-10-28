@@ -1,4 +1,7 @@
-import type { Cardinality, JSON_Value } from "@schematician/shared"
+import type { 
+    Cardinality, JSON_Value,
+    GraphQL_Schema
+ } from "@schematician/shared"
 
 export type Schema_Link_Role =
     | 'HAS_ELEMENT'

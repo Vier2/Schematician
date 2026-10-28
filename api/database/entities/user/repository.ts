@@ -1,13 +1,7 @@
 import { Driver } from 'neo4j-driver'
+import type { GraphQL_User } from '@schematician/shared'
 
-export interface User_Node {
-    uid: string
-    username: string
-    email: string
-    password: string
-}
-
-export async function db_get_user_by_uuid(driver: Driver, uid: string): Promise<User_Node | null> {
+export async function db_get_user_by_uuid(driver: Driver, uid: string): Promise<GraphQL_User | null> {
     const session = driver.session()
     try {
         const result = await session.run(
@@ -21,7 +15,7 @@ export async function db_get_user_by_uuid(driver: Driver, uid: string): Promise<
     }
 }
 
-export async function db_get_user_by_email(driver: Driver, email: string): Promise<User_Node | null> {
+export async function db_get_user_by_email(driver: Driver, email: string): Promise<GraphQL_User | null> {
     const session = driver.session()
     try {
         const result = await session.run(
@@ -35,7 +29,7 @@ export async function db_get_user_by_email(driver: Driver, email: string): Promi
     }
 }
 
-export async function db_create_user(driver: Driver, uid: string, username: string, email: string, password: string): Promise<User_Node> {
+export async function db_create_user(driver: Driver, uid: string, username: string, email: string, password: string): Promise<GraphQL_User> {
     const session = driver.session()
     try {
         const result = await session.run(

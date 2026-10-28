@@ -15,14 +15,17 @@ implementation:
         and adding the margin left value to that, setting it
 */
 import { goto } from "$app/navigation";
-import type { Cardinality, Instance_Node, Schema_Element, Update_Schema_Data } from "@schematician/shared";
+import type { asset_type, Cardinality, Schema_Element, Update_Schema_Data } from "@schematician/shared";
 import type { GraphQL_Schema } from "@schematician/shared";
 import { Send_GraphQL_Request, Convert_Schema_To_Update_Data } from "../graphql/utils";
 import type { Create_Schema_Input, Create_Schema_Response, Update_Schema_Response} from "../graphql/types";
-import type { Schema, Data_Type, Schema_Instance } from "@schematician/shared";
-import type { Rendered_Search_Value, Input_View, Input_Viewer,  Rendered_Node } from "../Schema/models";
-import type { CSS_Property,  Schemas_Query_Response, CSS_Unit, GraphQL_Response, Element_Handler, Value_Computer } from "../types/types";
+import type { Schema, Data_Type } from "@schematician/shared";
+import type { Input_View, Input_Viewer,  Rendered_Node } from "../Schema/models";
+import type { CSS_Property,  Schemas_Query_Response, CSS_Unit, GraphQL_Response, Element_Handler, Value_Computer, State } from "../types/types";
 import type { Selection, Schema_Value, Schema_Association} from "@schematician/shared";
+import { Upload_Asset } from "$lib/assets/utils";
+import type { files } from "$service-worker";
+
 function Make_Create_Element_UI(types: Data_Type[],
     state: Schema,
     element_container: HTMLDivElement
@@ -146,7 +149,7 @@ export function Handle_Create_Schema_Form(
 
 export function Add_Save_Schema_Function(
     button: HTMLButtonElement,
-    state: Schema,
+    state: State,
     api_url: string
 ): void {
     button.addEventListener(
@@ -156,6 +159,19 @@ export function Add_Save_Schema_Function(
             Convert_Schema_To_Update_Data(state)
             
             console.log(`update data elements ${JSON.stringify(update_data.elements)}`)
+            if (update_data.assets && state.asset_files) {
+                state.asset_files.forEach(file => {
+                    Upload_Asset(api_url, file,
+                        {'asset_type': file.type as asset_type,
+                        'mime_type': '',
+                        'original_filename': file.name,
+                        'size_bytes': file.bytes.length,
+                        'user_uid': localStorage.getItem('user_uid')!
+                        }, localStorage.getItem('token')!
+                     )
+                    
+                });
+            }
             const result =
                 await Send_GraphQL_Request<
                     Update_Schema_Response,
@@ -248,7 +264,6 @@ export function Add_Save_Schema_Function(
                         localStorage.getItem('token') ??
                         undefined
                 })
-
             const updated_schema =
                 result.schema
 
@@ -1417,12 +1432,12 @@ export function Apply_Length_Value_CSS(Element: HTMLElement, property: CSS_Prope
     Element.style.setProperty(kebab_property, `${value}${unit}`)
 }
 export async function Send_Post_Request<
-    Request_composite,
-    Response_composite
+    Request_Interface,
+    Response_Inferface
 >(
     path_url: string,
-    data: Request_composite,
-): Promise<Response_composite> {
+    data: Request_Interface,
+): Promise<Response_Inferface> {
 
     const token = localStorage.getItem('token')
     console.log(localStorage.getItem('token'))
@@ -1441,7 +1456,71 @@ export async function Send_Post_Request<
         body: JSON.stringify(data)
     })
 
-    return await Response.json() as Response_composite
+    return await Response.json() as Response_Inferface
+}
+
+export async function Send_Put_Request<
+    Request_Interface = undefined,
+    Response_Interface = undefined
+>(
+    path_url: string,
+    data?: Request_Interface,
+    options: {
+        content_type?: string
+        authenticated?: boolean
+    } = {}
+): Promise<Response_Interface> {
+    const token =
+        options.authenticated
+            ? localStorage.getItem(
+                'token'
+            )
+            : null
+
+    const Response =
+        await fetch(
+            path_url,
+            {
+                method:
+                    'PUT',
+
+                headers: {
+                    ...(options.content_type
+                        ? {
+                            'Content-Type':
+                                options.content_type
+                        }
+                        : {}),
+
+                    ...(token
+                        ? {
+                            Authorization:
+                                `Bearer ${token}`
+                        }
+                        : {})
+                },
+
+                body:
+                    data as BodyInit | null | undefined
+            }
+        )
+
+    if (!Response.ok) {
+        throw new Error(
+            `PUT request failed: ${Response.status} ${Response.statusText}`
+        )
+    }
+
+    if (
+        Response.status === 204 ||
+        Response.headers.get(
+            'content-length'
+        ) === '0'
+    ) {
+        return undefined as Response_Interface
+    }
+
+    return await Response.json() as Response_Interface
 }
 
 export function Convert_GraphQL_Schema_To_Schema(

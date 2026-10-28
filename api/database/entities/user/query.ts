@@ -12,9 +12,10 @@
  */
 
 import { builder } from '../../builder.js'
+import type { GraphQL_User } from '@schematician/shared'
+
 import { db_get_user_by_uuid, db_get_user_by_email } from './repository.js'
-import type { User_Node } from './repository.js'
-const User_Ref = builder.objectRef<User_Node>('User')
+const User_Ref = builder.objectRef<GraphQL_User>('User')
 
 
 User_Ref.implement({

@@ -60,6 +60,10 @@
 
             </div>
         </div>
+        <div>
+            <p id="Image_Label"> Image</p>
+            <input type="file" id="image_file">
+        </div>
     </div>
 </div>
 <div id="right_column">
@@ -261,6 +265,9 @@ function Resolve_Schema_In_Elements(
 
             const save_schema: HTMLButtonElement = document.getElementById('save_schema') as HTMLButtonElement
 
+            /**
+             * Connect asset elements to array of assets
+             */
             const updated_schema = Add_Save_Schema_Function(
                 save_schema, 
                 state,
@@ -270,6 +277,9 @@ function Resolve_Schema_In_Elements(
             console.log('Updated schema:', updated_schema)
 
                     }
+            const image_file: HTMLInputElement = document.getElementById('image_file') as HTMLInputElement
+                
          
+            
     });
 </script>

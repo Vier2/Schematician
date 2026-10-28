@@ -30,7 +30,16 @@ import {
     create_multiplication
 
  } from "../objectives/expand/utils.js"
-import { Equation_Schema, Number_Schema, Variable_Name_Schema, Variable_Schema } from "../object.js"
+import {
+    Equation_Schema,
+    Number_Schema,
+    Rational_Denominator_Schema,
+    Rational_Numerator_Schema,
+    Rational_Schema,
+    normalize_rational,
+    Variable_Name_Schema,
+    Variable_Schema
+} from "../object.js"
 
 function map_operation_uid_to_protocol(
     uid: string,
@@ -250,10 +259,50 @@ export function create_number_instance(
     }
 }
 
+export function create_rational_instance(
+    uid: string,
+    numerator: number,
+    denominator: number,
+    rational_schema: Schema<'Composite'> = Rational_Schema,
+    numerator_schema: Schema<'Number'> = Rational_Numerator_Schema,
+    denominator_schema: Schema<'Number'> = Rational_Denominator_Schema,
+    rational_normalizer: typeof normalize_rational = normalize_rational
+): GraphQL_Composite_Instance {
+    const rational = rational_normalizer(
+        numerator,
+        denominator
+    )
+
+    return {
+        uid,
+        schema_uid: rational_schema.uid!,
+        data_type: 'Composite',
+        objects: [
+            {
+                element_relationship_uid: 'numerator',
+                instance: create_number_instance(
+                    `${uid}.numerator`,
+                    rational.numerator,
+                    numerator_schema
+                )
+            },
+            {
+                element_relationship_uid: 'denominator',
+                instance: create_number_instance(
+                    `${uid}.denominator`,
+                    rational.denominator,
+                    denominator_schema
+                )
+            }
+        ]
+    }
+}
+
 
 export function schematician_to_math_protocol(
-    instance:
-        GraphQL_Instance
+    instance: GraphQL_Instance,
+    rational_schema: Schema<'Composite'> = Rational_Schema,
+    rational_normalizer: typeof normalize_rational = normalize_rational
 ): Math_Protocol_Node {
 
     /*
@@ -308,6 +357,39 @@ export function schematician_to_math_protocol(
     }
 
 
+    if (
+        instance.data_type === 'Composite' &&
+        instance.schema_uid === rational_schema.uid
+    ) {
+        const numerator = get_composite_child(
+            instance,
+            'numerator'
+        )
+        const denominator = get_composite_child(
+            instance,
+            'denominator'
+        )
+
+        if (
+            !numerator || numerator.data_type !== 'Number' ||
+            typeof numerator.value !== 'number' ||
+            !denominator || denominator.data_type !== 'Number' ||
+            typeof denominator.value !== 'number'
+        ) {
+            throw new Error(
+                `Rational ${instance.uid} has invalid components.`
+            )
+        }
+
+        return {
+            type: 'Rational',
+            ...rational_normalizer(
+                numerator.value,
+                denominator.value
+            )
+        }
+    }
+
     /*
      * Equation
      */
@@ -349,12 +431,16 @@ export function schematician_to_math_protocol(
 
             left:
                 schematician_to_math_protocol(
-                    left
+                    left,
+                    rational_schema,
+                    rational_normalizer
                 ),
 
             right:
                 schematician_to_math_protocol(
-                    right
+                    right,
+                    rational_schema,
+                    rational_normalizer
                 )
         }
     }
@@ -405,7 +491,9 @@ export function schematician_to_math_protocol(
                 values.map(
                     value =>
                         schematician_to_math_protocol(
-                            value
+                            value,
+                            rational_schema,
+                            rational_normalizer
                         )
                 )
         }
@@ -457,17 +545,13 @@ export function create_equation_instance(
     }
 }
 export function math_protocol_to_schematician(
-    node:
-        Math_Protocol_Node,
-
-    variable_registry:
-        Map<
-            string,
-            GraphQL_Composite_Instance
-        >,
-
-    uid_prefix:
-        string
+    node: Math_Protocol_Node,
+    variable_registry: Map<string, GraphQL_Composite_Instance>,
+    uid_prefix: string,
+    rational_schema: Schema<'Composite'> = Rational_Schema,
+    numerator_schema: Schema<'Number'> = Rational_Numerator_Schema,
+    denominator_schema: Schema<'Number'> = Rational_Denominator_Schema,
+    rational_normalizer: typeof normalize_rational = normalize_rational
 ): GraphQL_Instance {
 
     switch (
@@ -484,24 +568,14 @@ export function math_protocol_to_schematician(
 
         case 'Rational':
 
-            return create_binary_operation_application(
+            return create_rational_instance(
                 `${uid_prefix}.rational`,
-
-                Division_Operation,
-
-                'dividend',
-
-                create_number_instance(
-                    `${uid_prefix}.numerator`,
-                    node.numerator
-                ),
-
-                'divisor',
-
-                create_number_instance(
-                    `${uid_prefix}.denominator`,
-                    node.denominator
-                )
+                node.numerator,
+                node.denominator,
+                rational_schema,
+                numerator_schema,
+                denominator_schema,
+                rational_normalizer
             )
 
 
@@ -534,7 +608,11 @@ export function math_protocol_to_schematician(
             return protocol_operation_to_schematician(
                 node,
                 variable_registry,
-                uid_prefix
+                uid_prefix,
+                rational_schema,
+                numerator_schema,
+                denominator_schema,
+                rational_normalizer
             )
 
 
@@ -546,13 +624,21 @@ export function math_protocol_to_schematician(
                 math_protocol_to_schematician(
                     node.left,
                     variable_registry,
-                    `${uid_prefix}.left`
+                    `${uid_prefix}.left`,
+                    rational_schema,
+                    numerator_schema,
+                    denominator_schema,
+                    rational_normalizer
                 ),
 
                 math_protocol_to_schematician(
                     node.right,
                     variable_registry,
-                    `${uid_prefix}.right`
+                    `${uid_prefix}.right`,
+                    rational_schema,
+                    numerator_schema,
+                    denominator_schema,
+                    rational_normalizer
                 )
             )
 
@@ -617,17 +703,13 @@ export function create_binary_operation(
 }
 
 export function protocol_operation_to_schematician(
-    node:
-        Math_Operation_Node,
-
-    variables:
-        Map<
-            string,
-            GraphQL_Composite_Instance
-        >,
-
-    uid:
-        string
+    node: Math_Operation_Node,
+    variables: Map<string, GraphQL_Composite_Instance>,
+    uid: string,
+    rational_schema: Schema<'Composite'> = Rational_Schema,
+    numerator_schema: Schema<'Number'> = Rational_Numerator_Schema,
+    denominator_schema: Schema<'Number'> = Rational_Denominator_Schema,
+    rational_normalizer: typeof normalize_rational = normalize_rational
 ): GraphQL_Composite_Instance {
 
     const args =
@@ -636,7 +718,11 @@ export function protocol_operation_to_schematician(
                 math_protocol_to_schematician(
                     argument,
                     variables,
-                    `${uid}.argument.${index}`
+                    `${uid}.argument.${index}`,
+                    rational_schema,
+                    numerator_schema,
+                    denominator_schema,
+                    rational_normalizer
                 )
         )
 

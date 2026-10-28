@@ -1,5 +1,9 @@
-import { GraphQL_Instance, JSON_Value } from "../graphql/types"
-
+import { 
+    GraphQL_Instance, 
+    GraphQL_Schema,
+    JSON_Value } from "../graphql/types"
+import { GraphQL_User } from "../user/types"
+import { Asset } from "../asset/types"
 export interface Schema_Element_Update {
     element_uid: string
     required: boolean
@@ -83,10 +87,10 @@ type BaseSchema<T extends Data_Type> = {
     /**
      * Graphic representing schema
      */
-    image_url?: string | null
     rules?: string
     constraints?: Constraint_Map[T]
     relationships?: string
+    assets?: Asset
 }
 interface Computational_Schema<
     T extends Data_Type
@@ -193,6 +197,7 @@ export interface Update_Schema_Data {
     elements?: Schema_Element_Update[]
     properties?: Schema_Association_Update[]
     identifiers?: Schema_Association_Update[]
+    assets?: Asset
 }
 
 export type Search_Target =
@@ -495,7 +500,8 @@ export type Objective_type =
     'Integrate' |
     'Expand' |
     'Graph' |
-    'Isolate' 
+    'Isolate' |
+     'Construct'
 
 
 export type Runtime_Values =
@@ -633,3 +639,393 @@ export type Atomic_Values =
 export type Atomic_Executor = (
     inputs: Atomic_Values
 ) => Atomic_Values
+
+
+
+
+export type Entity_Label =
+    keyof Entity_Type_Map
+
+
+
+export type Relationship_Type =
+    | 'OWNS'
+    | 'HAS_ELEMENT'
+    | 'HAS_PROPERTY'
+    | 'HAS_IDENTIFIER'
+    | 'HAS_OBJECT'
+    | 'HAS_ITEM'
+    | 'HAS_ASSET'
+    | 'INSTANCE_OF'
+
+export type Repository_Operation =
+    | Match_Entities_Operation
+    | Match_Owned_Entities_Operation
+    | Create_Owned_Entity_Operation
+    | Create_Entity_Operation
+    | Update_Entity_Operation
+    | Delete_Entity_Operation
+    | Create_Relationship_Operation
+    | Delete_Relationship_Operation
+    | Match_Related_Entities_Operation
+
+export interface Match_Entities_Operation<
+    Entity extends Entity_Label =
+    Entity_Label,
+
+    Cardinality extends Return_Cardinality =
+    Return_Cardinality
+> {
+    operation:
+    'Match_Entities'
+
+    entity:
+    Entity
+
+    where?:
+    Entity_Properties<Entity>
+
+    return:
+    Cardinality
+}
+
+export interface Match_Owned_Entities_Operation<
+    Entity extends Entity_Label =
+    Entity_Label,
+
+    Cardinality extends Return_Cardinality =
+    Return_Cardinality
+> {
+    operation:
+    'Match_Owned_Entities'
+
+    user_uid:
+    string
+
+    entity:
+    Entity
+
+    where?:
+    Entity_Properties<Entity>
+
+    return:
+    Cardinality
+}
+
+
+export interface Create_Owned_Entity_Operation<
+    Entity extends Entity_Label =
+    Entity_Label
+> {
+    operation:
+    'Create_Owned_Entity'
+
+    user_uid:
+    string
+
+    entity:
+    Entity
+
+    properties:
+    Entity_Property_Map[Entity]
+}
+
+export interface Create_Entity_Operation<
+    Entity extends Entity_Label =
+    Entity_Label
+> {
+    operation:
+    'Create_Entity'
+
+    entity:
+    Entity
+
+    properties:
+    Entity_Properties<Entity>
+}
+
+
+export interface Update_Entity_Operation<
+    Entity extends Entity_Label =
+    Entity_Label
+> {
+    operation:
+    'Update_Entity'
+
+    entity:
+    Entity
+    owned_by?: {
+        user_uid: string
+    }
+    where:
+    Entity_Properties<Entity>
+
+    properties:
+    Entity_Properties<Entity>
+}
+
+export interface Delete_Entity_Operation<
+    Entity extends Entity_Label =
+    Entity_Label
+> {
+    operation:
+    'Delete_Entity'
+    owned_by?: {
+        user_uid: string
+    }
+    entity:
+    Entity
+
+    where:
+    Entity_Properties<Entity>
+
+    detach?:
+    boolean
+
+}
+
+
+
+export interface Delete_Relationship_Operation<
+    From_Entity extends Entity_Label =
+    Entity_Label,
+
+    To_Entity extends Entity_Label =
+    Entity_Label
+> {
+    operation:
+    'Delete_Relationship'
+
+    from:
+    Entity_Reference<From_Entity>
+
+    relationship:
+    Relationship_Type
+
+    relationship_where?:
+    Record<string, unknown>
+
+    to:
+    Entity_Reference<To_Entity>
+}
+
+export interface Create_Relationship_Operation<
+    From_Entity extends Entity_Label =
+    Entity_Label,
+
+    To_Entity extends Entity_Label =
+    Entity_Label
+> {
+    operation:
+    'Create_Relationship'
+
+    from:
+    Entity_Reference<From_Entity>
+
+    relationship:
+    Relationship_Type
+
+    relationship_properties?:
+    Record<string, unknown>
+
+    to:
+    Entity_Reference<To_Entity>
+}
+
+export type Related_Entity_Result<
+    Entity extends Entity_Label,
+    Return_Mode extends Related_Entity_Return_Mode
+> =
+    Return_Mode extends 'Entity_And_Relationship'
+    ? Related_Entity_With_Relationship<Entity>
+    : Entity_Type_Map[Entity]
+
+
+export type Related_Entity_Return<
+    Entity extends Entity_Label,
+    Cardinality extends Return_Cardinality,
+    Return_Mode extends Related_Entity_Return_Mode
+> =
+    Cardinality extends 'One'
+    ? Related_Entity_Result<
+        Entity,
+        Return_Mode
+    > | null
+    : Related_Entity_Result<
+        Entity,
+        Return_Mode
+    >[]
+
+export type Related_Entity_Return_Mode =
+    | 'Entity'
+    | 'Entity_And_Relationship'
+
+
+export interface Related_Entity_With_Relationship<
+    Entity extends Entity_Label
+> {
+    entity:
+    Entity_Type_Map[Entity]
+
+    relationship:
+    Record<string, unknown>
+}
+
+
+export interface Match_Related_Entities_Operation<
+    From_Entity extends Entity_Label =
+    Entity_Label,
+
+    To_Entity extends Entity_Label =
+    Entity_Label,
+
+    Cardinality extends Return_Cardinality =
+    Return_Cardinality,
+
+    Return_Mode extends Related_Entity_Return_Mode =
+    'Entity'
+> {
+    operation:
+    'Match_Related_Entities'
+
+    from:
+    Entity_Reference<From_Entity>
+
+    relationship:
+    Relationship_Type
+
+    relationship_where?:
+    Record<string, unknown>
+
+    to:
+    To_Entity
+
+    to_where?:
+    Entity_Properties<To_Entity>
+
+    direction?:
+    'Outgoing'
+    | 'Incoming'
+
+    return:
+    Cardinality
+
+    return_mode?:
+    Return_Mode
+
+    order_by_relationship_property?:
+    string
+}
+
+export type One_Many = 'One' | 'Many'
+
+
+export interface Entity_Type_Map {
+
+    Schema:
+    GraphQL_Schema
+
+    Instance:
+    GraphQL_Instance
+
+    Asset:
+    Asset
+}
+
+export interface Entity_Type_Map {
+    User:
+    GraphQL_User
+
+    Schema:
+    GraphQL_Schema
+
+    Instance:
+    GraphQL_Instance
+
+    Asset:
+    Asset
+}
+
+
+
+export type Entity_Type<
+    Entity extends Entity_Label
+> =
+    Entity_Type_Map[Entity]
+
+
+
+export type Return_Cardinality =
+    | 'One'
+    | 'Many'
+
+
+export type Entity_Properties<
+    Entity extends Entity_Label
+> =
+    Partial<
+        Entity_Type_Map[Entity]
+    >
+export interface Entity_Ownership_Constraint {
+    user_uid:
+    string
+}
+export interface Entity_Reference<
+    Entity extends Entity_Label =
+    Entity_Label
+> {
+    entity:
+    Entity
+
+    where:
+    Entity_Properties<Entity>
+    owned_by?:
+    Entity_Ownership_Constraint
+}
+
+
+export type Entity_Return<
+    Entity extends Entity_Label,
+    Cardinality extends Return_Cardinality
+> =
+    Cardinality extends 'One'
+    ? Entity_Type_Map[Entity] | null
+    : Entity_Type_Map[Entity][]
+
+interface Entity_Property_Map {
+    Schema: Schema_Node_Properties
+
+    Instance:
+    Instance_Node_Properties
+
+    Asset:
+    Asset_Node_Properties
+
+    User:
+    User_Node_Properties
+}
+
+export interface Schema_Node_Properties {
+    /**
+     * properties in neo4j database,
+     * as opposed to those in typescript interface
+     */
+}
+
+export interface Instance_Node_Properties {
+    /**
+     * Properties in
+     */
+}
+
+export interface Asset_Node_Properties {
+    /**
+     * 
+     */
+}
+
+export interface User_Node_Properties {
+    /**
+     * 
+     */
+}

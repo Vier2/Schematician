@@ -2,7 +2,10 @@ import type { GraphQL_Schema } from "@schematician/shared";
 export type Cleanup = () => void;
 export type Key_Value_Container_Creation = () => HTMLElement
 
-
+import type { 
+        Schema,
+        Data_Type
+         } from "@schematician/shared";
 
 export type CSS_Property = {
     [K in keyof CSSStyleDeclaration]: CSSStyleDeclaration[K] extends string ? K : never
@@ -28,4 +31,8 @@ export interface GraphQL_Response<T> {
 
 export interface Schemas_Query_Response {
     schemas: GraphQL_Schema[]
+}
+
+export type State<T extends Data_Type = Data_Type> = Schema<T> & {
+    asset_files?: File[]
 }
